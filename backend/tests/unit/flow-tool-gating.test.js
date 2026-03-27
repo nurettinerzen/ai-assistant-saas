@@ -48,18 +48,19 @@ describe('flow scoped tool gating', () => {
     });
   });
 
-  it('keeps auto tool mode for non-stock flows', () => {
+  it('forces a stock tool call for product info flows when stock tools are available', () => {
     expect(shouldForceStockToolCall({
       resolvedFlow: 'PRODUCT_INFO',
       gatedTools: ['get_product_stock']
-    })).toBe(false);
+    })).toBe(true);
 
     expect(buildFunctionCallingConfig({
       resolvedFlow: 'PRODUCT_INFO',
       gatedTools: ['get_product_stock']
     })).toEqual({
       functionCallingConfig: {
-        mode: 'AUTO'
+        mode: 'ANY',
+        allowedFunctionNames: ['get_product_stock']
       }
     });
   });
@@ -76,25 +77,23 @@ describe('flow scoped tool gating', () => {
     expect(result.gatedTools).toEqual(['create_callback']);
   });
 
-  it('infers STOCK_CHECK from user message when no flow metadata exists', () => {
+  it('does not infer STOCK_CHECK from raw user text when classifier has no flow signal', () => {
     const result = resolveFlowScopedTools({
       state: {},
       classification: {},
       routingResult: {},
-      userMessage: 'Bu model stokta var mı, kaç tane kaldı?',
       allToolNames: ['customer_data_lookup', 'get_product_stock', 'check_stock_crm']
     });
 
-    expect(result.resolvedFlow).toBe('STOCK_CHECK');
-    expect(result.gatedTools).toEqual(['get_product_stock', 'check_stock_crm']);
+    expect(result.resolvedFlow).toBe(null);
+    expect(result.gatedTools).toEqual(['customer_data_lookup', 'get_product_stock', 'check_stock_crm']);
   });
 
-  it('infers PRODUCT_INFO from user message when no flow metadata exists', () => {
+  it('uses classifier flow metadata instead of raw user text for PRODUCT_INFO gating', () => {
     const result = resolveFlowScopedTools({
       state: {},
-      classification: {},
+      classification: { suggestedFlow: 'PRODUCT_INFO' },
       routingResult: {},
-      userMessage: 'Ürün özellikleri ve garanti bilgisi nedir?',
       allToolNames: ['customer_data_lookup', 'get_product_stock', 'check_stock_crm']
     });
 
@@ -126,7 +125,7 @@ describe('flow scoped tool gating', () => {
     }
   });
 
-  it('disables inferFlowFromMessage in tenant_scoped mode', () => {
+  it('keeps tenant_scoped mode fully open when there is no classifier flow signal', () => {
     const previousMode = process.env.TOOL_ALLOWLIST_MODE;
     process.env.TOOL_ALLOWLIST_MODE = 'tenant_scoped';
 
@@ -135,7 +134,6 @@ describe('flow scoped tool gating', () => {
         state: {},
         classification: {},
         routingResult: {},
-        userMessage: 'Bu model stokta var mı, kaç tane kaldı?',
         allToolNames: ['customer_data_lookup', 'get_product_stock', 'check_stock_crm']
       });
 

@@ -21,22 +21,16 @@ const FLOW_TOOL_OVERRIDES = Object.freeze({
 const VERIFICATION_FLOWS = Object.freeze(['ORDER_STATUS', 'DEBT_INQUIRY', 'TRACKING_INFO', 'TICKET_STATUS', 'ACCOUNT_LOOKUP']);
 const STOCK_TOOLS = Object.freeze(['get_product_stock', 'check_stock_crm']);
 
-/**
- * Detect specific entity references (order no, ticket no, tracking no) in user message.
- * Returns the matched entity string or null.
- */
-function detectEntityInMessage(text) {
-  if (!text) return null;
-  // Order numbers: ORD-123456, SIP-123456, or with space/underscore
-  const orderMatch = text.match(/\b(ORD[-_ ]?\d{4,}|SIP[-_ ]?\d{4,})\b/i);
-  if (orderMatch) return orderMatch[0];
-  // Ticket/service numbers: TCK-1234, SRV-1234
-  const ticketMatch = text.match(/\b(TCK[-_ ]?\d{3,}|SRV[-_ ]?\d{3,})\b/i);
-  if (ticketMatch) return ticketMatch[0];
-  // Tracking numbers: SHP471656, YRT789012, PTT12345
-  const trackingMatch = text.match(/\b(SHP|YRT|PTT|MNG|UPS|HN)\d{4,}\b/i);
-  if (trackingMatch) return trackingMatch[0];
-  return null;
+function resolveExplicitLookupReference({ classification = null, state = {} } = {}) {
+  const candidates = [
+    classification?.extractedSlots?.order_number,
+    classification?.extractedSlots?.ticket_number,
+    state?.extractedSlots?.order_number,
+    state?.extractedSlots?.ticket_number
+  ];
+
+  const value = candidates.find(candidate => typeof candidate === 'string' && candidate.trim());
+  return value ? String(value).trim() : null;
 }
 
 function getToolAllowlistMode() {
@@ -51,41 +45,6 @@ function normalizeFlowName(flowName) {
   if (!normalized) return null;
   if (normalized === 'PRODUCT_INQUIRY') return 'PRODUCT_INFO';
   return normalized;
-}
-
-function normalizeFlowHeuristicText(message = '') {
-  return String(message || '')
-    .toLowerCase()
-    .replace(/ı/g, 'i')
-    .replace(/İ/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ç/g, 'c')
-    .replace(/ğ/g, 'g')
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function inferFlowFromMessage(message = '') {
-  const text = normalizeFlowHeuristicText(message);
-  if (!text) return null;
-
-  const servicePattern = /\b(servis|service|ariza|ticket|rma|tamir|onarim|repair)\b/;
-  if (servicePattern.test(text)) {
-    return 'TICKET_STATUS';
-  }
-
-  if (/\b(stok|stock|envanter|available|availability|kac tane|kac adet|adet|tane|kac var|ne kadar var)\b/.test(text)) {
-    return 'STOCK_CHECK';
-  }
-
-  if (/\b(urun|product|model|ozellik|spec|garanti|warranty|renk|color|fiyat|price)\b/.test(text)) {
-    return 'PRODUCT_INFO';
-  }
-
-  return null;
 }
 
 export function isVerificationContextRelevant({
@@ -110,7 +69,7 @@ export function isVerificationContextRelevant({
   );
 }
 
-export function resolveFlowScopedTools({ state, classification, routingResult, userMessage = '', allToolNames = [] }) {
+export function resolveFlowScopedTools({ state, classification, routingResult, allToolNames = [] }) {
   const allowlistMode = getToolAllowlistMode();
   const normalizedAllTools = Array.isArray(allToolNames) ? allToolNames.filter(Boolean) : [];
   if (normalizedAllTools.length === 0) {
@@ -126,13 +85,6 @@ export function resolveFlowScopedTools({ state, classification, routingResult, u
     routingResult?.routing?.routing?.suggestedFlow,
     classification?.suggestedFlow
   ].map(normalizeFlowName).filter(Boolean);
-
-  if (allowlistMode !== 'tenant_scoped') {
-    const inferredFlow = normalizeFlowName(inferFlowFromMessage(userMessage));
-    if (inferredFlow) {
-      candidates.push(inferredFlow);
-    }
-  }
 
   const resolvedFlow = candidates[0] || null;
   if (allowlistMode === 'tenant_scoped') {
@@ -179,7 +131,7 @@ export function resolveFlowScopedTools({ state, classification, routingResult, u
 }
 
 export function shouldForceStockToolCall({ resolvedFlow, gatedTools = [] }) {
-  if (resolvedFlow !== 'STOCK_CHECK') return false;
+  if (resolvedFlow !== 'STOCK_CHECK' && resolvedFlow !== 'PRODUCT_INFO') return false;
   return (Array.isArray(gatedTools) ? gatedTools : []).some(tool => STOCK_TOOLS.includes(tool));
 }
 
@@ -225,7 +177,6 @@ export async function buildLLMRequest(params) {
     state,
     classification,
     routingResult,
-    userMessage,
     allToolNames
   });
 
@@ -551,7 +502,7 @@ KURALLAR:
   // If user message contains a specific entity reference (order no, ticket no, tracking no),
   // inject a mandatory tool call instruction. Prevents LLM from using stale conversation
   // history data instead of making a fresh lookup.
-  const entityRefMatch = detectEntityInMessage(userMessage);
+  const entityRefMatch = resolveExplicitLookupReference({ classification, state });
   if (entityRefMatch) {
     enhancedSystemPrompt += `
 

@@ -72,7 +72,15 @@ function decideRouting(messageType, state, business) {
   const { activeFlow, flowStatus, expectedSlot, anchor, postResultTurns } = state;
 
   const normalizedSuggestedFlow = String(suggestedFlow || '').toUpperCase();
-  const transactionalSuggestedFlows = new Set(['ORDER_STATUS', 'TRACKING_INFO', 'DEBT_INQUIRY']);
+  const toolableSuggestedFlows = new Set([
+    'ORDER_STATUS',
+    'TRACKING_INFO',
+    'DEBT_INQUIRY',
+    'CALLBACK_REQUEST',
+    'STOCK_CHECK',
+    'PRODUCT_INFO',
+    'TICKET_STATUS'
+  ]);
 
   // ============================================
   // CONFIDENCE THRESHOLD CHECK (Priority)
@@ -80,10 +88,10 @@ function decideRouting(messageType, state, business) {
   // If confidence too low, let Gemini handle naturally
   if (confidence < 0.7) {
     // Guardrail: even in low confidence, transactional intents should not be routed as chatter.
-    if (transactionalSuggestedFlows.has(normalizedSuggestedFlow)) {
+    if (toolableSuggestedFlows.has(normalizedSuggestedFlow)) {
       return {
         action: 'RUN_INTENT_ROUTER',
-        reason: `Low confidence (${confidence.toFixed(2)}) but transactional flow suggested (${normalizedSuggestedFlow})`,
+        reason: `Low confidence (${confidence.toFixed(2)}) but toolable flow suggested (${normalizedSuggestedFlow})`,
         nextAction: 'intent-router',
         suggestedFlow: normalizedSuggestedFlow,
         safeMode: true,
@@ -167,6 +175,7 @@ function decideRouting(messageType, state, business) {
         reason: 'New intent during post-result grace period',
         nextAction: 'intent-router',
         preserveAnchor: true,
+        suggestedFlow: normalizedSuggestedFlow || null,
         confidence
       };
     }
@@ -178,6 +187,7 @@ function decideRouting(messageType, state, business) {
       nextAction: 'intent-router',
       preserveAnchor: false,
       safeMode: confidence >= 0.7 && confidence < 0.85, // Safe mode for medium confidence
+      suggestedFlow: normalizedSuggestedFlow || null,
       confidence
     };
   }

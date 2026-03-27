@@ -311,11 +311,12 @@ describe('KB_ONLY Golden Scenarios', () => {
       hasKBMatch: false
     });
 
-    expect(result.directResponse).toBe(true);
+    expect(result.directResponse).toBe(false);
     expect(result.isKbOnlyRedirect).toBe(true);
     expect(result.metadata.category).toBe('ORDER');
     expect(result.metadata.classifierConfidence).toBeGreaterThanOrEqual(0.7);
-    expect(result.reply).toContain('KB_ONLY_ORDER_REDIRECT');
+    expect(result.routing.routing.action).toBe('KB_ONLY_REDIRECT');
+    expect(result.kbOnlyRedirect.variables.link).toContain('https://example.com/orders');
   });
 
   // Scenario 2: "Takip numaramı ver" (KB_ONLY chat, KB miss) → ORDER redirect
@@ -329,7 +330,7 @@ describe('KB_ONLY Golden Scenarios', () => {
       hasKBMatch: false
     });
 
-    expect(result.directResponse).toBe(true);
+    expect(result.directResponse).toBe(false);
     expect(result.isKbOnlyRedirect).toBe(true);
     expect(result.metadata.category).toBe('ORDER');
   });
@@ -361,7 +362,7 @@ describe('KB_ONLY Golden Scenarios', () => {
       hasKBMatch: false
     });
 
-    expect(result.directResponse).toBe(true);
+    expect(result.directResponse).toBe(false);
     expect(result.isKbOnlyRedirect).toBe(true);
     expect(result.metadata.category).toBe('PAYMENT');
   });
@@ -392,7 +393,7 @@ describe('KB_ONLY Golden Scenarios', () => {
       hasKBMatch: false
     });
 
-    expect(result.directResponse).toBe(true);
+    expect(result.directResponse).toBe(false);
     expect(result.isKbOnlyRedirect).toBe(true);
     expect(result.metadata.category).toBe('ACCOUNT');
   });
@@ -408,7 +409,7 @@ describe('KB_ONLY Golden Scenarios', () => {
       hasKBMatch: false
     });
 
-    expect(result.directResponse).toBe(true);
+    expect(result.directResponse).toBe(false);
     expect(result.isKbOnlyRedirect).toBe(true);
     expect(result.metadata.category).toBe('ORDER');
   });
@@ -689,11 +690,11 @@ describe('KB_ONLY Router Edge Cases', () => {
       hasKBMatch: false
     });
 
-    expect(result.directResponse).toBe(true);
+    expect(result.directResponse).toBe(false);
     expect(result.isKbOnlyRedirect).toBe(true);
     expect(result.metadata.category).toBe('ORDER');
-    // Reply should still contain the catalog key (fallback guidance, no URL)
-    expect(result.reply).toContain('KB_ONLY_ORDER_REDIRECT');
+    expect(result.routing.routing.action).toBe('KB_ONLY_REDIRECT');
+    expect(result.kbOnlyRedirect.variables.link.length).toBeGreaterThan(0);
   });
 
   it('English message with ORDER keyword triggers redirect', async () => {

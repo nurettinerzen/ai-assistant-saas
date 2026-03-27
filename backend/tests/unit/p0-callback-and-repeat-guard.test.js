@@ -21,7 +21,7 @@ describe('P0 Callback deterministic flow', () => {
     const state = {};
 
     const result = await makeRoutingDecision({
-      classification: { type: 'NEW_INTENT', confidence: 0.9, triggerRule: null },
+      classification: { type: 'NEW_INTENT', confidence: 0.9, triggerRule: null, suggestedFlow: 'CALLBACK_REQUEST' },
       state,
       userMessage: 'yetkili biriyle görüşmek istiyorum',
       conversationHistory: [],
@@ -74,7 +74,7 @@ describe('P0 Callback deterministic flow', () => {
     };
 
     const phonePrompt = await makeRoutingDecision({
-      classification: { type: 'NEW_INTENT', confidence: 0.9, triggerRule: null },
+      classification: { type: 'NEW_INTENT', confidence: 0.9, triggerRule: null, suggestedFlow: null },
       state: stateNeedsPhone,
       userMessage: 'Ahmet Yılmaz',
       conversationHistory: [],
@@ -95,7 +95,7 @@ describe('P0 Callback deterministic flow', () => {
     };
 
     const namePrompt = await makeRoutingDecision({
-      classification: { type: 'NEW_INTENT', confidence: 0.9, triggerRule: null },
+      classification: { type: 'NEW_INTENT', confidence: 0.9, triggerRule: null, suggestedFlow: null },
       state: stateNeedsName,
       userMessage: '0555 111 22 33',
       conversationHistory: [],

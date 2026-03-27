@@ -156,4 +156,27 @@ describe('user risk detector hardening', () => {
     expect(second.shouldLock).toBe(true);
     expect(second.reason).toBe('SECURITY_BYPASS');
   });
+
+  it('does not treat a pending phone_last4 verification reply as spam', async () => {
+    classifySemanticRiskMock.mockResolvedValue({
+      category: 'SPAM',
+      action: 'WARN',
+      lockReason: 'SPAM',
+      severity: 'MEDIUM',
+      confidence: 0.91,
+      rationale: 'repetitive flooding',
+      source: 'semantic'
+    });
+
+    const state = {
+      verification: {
+        pendingField: 'phone_last4'
+      }
+    };
+
+    const result = await detectUserRisks('9111', 'TR', state);
+    expect(result.shouldLock).toBe(false);
+    expect(result.softRefusal).toBeFalsy();
+    expect(state.spamCounter).toBeUndefined();
+  });
 });

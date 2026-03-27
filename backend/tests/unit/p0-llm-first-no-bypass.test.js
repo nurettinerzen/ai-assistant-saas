@@ -15,6 +15,7 @@ const persistAndEmitMetricsMock = jest.fn();
 const buildBusinessIdentityMock = jest.fn();
 const containsChildSafetyViolationMock = jest.fn();
 const detectPromptInjectionMock = jest.fn();
+const detectUserRisksMock = jest.fn();
 const checkSessionThrottleMock = jest.fn();
 const getChannelModeMock = jest.fn();
 const getHelpLinksMock = jest.fn();
@@ -67,14 +68,21 @@ jest.unstable_mockModule('../../src/utils/content-safety.js', () => ({
 }));
 
 jest.unstable_mockModule('../../src/services/user-risk-detector.js', () => ({
-  detectPromptInjection: detectPromptInjectionMock
+  detectPromptInjection: detectPromptInjectionMock,
+  detectUserRisks: detectUserRisksMock,
+  getPIIWarningMessages: jest.fn(() => [])
 }));
 
 jest.unstable_mockModule('../../src/services/session-lock.js', () => ({
   checkEnumerationAttempt: jest.fn(async () => ({ shouldBlock: false, attempts: 0 })),
   resetEnumerationCounter: jest.fn(async () => undefined),
   getLockMessage: jest.fn(() => 'locked'),
-  ENUMERATION_LIMITS: { MAX_ATTEMPTS: 3 }
+  ENUMERATION_LIMITS: { MAX_ATTEMPTS: 3 },
+  lockSession: jest.fn(async () => ({
+    reason: 'TEST_LOCK',
+    lockUntil: null,
+    lockedAt: new Date().toISOString()
+  }))
 }));
 
 jest.unstable_mockModule('../../src/messages/messageCatalog.js', () => ({
@@ -113,6 +121,7 @@ beforeEach(() => {
 
   containsChildSafetyViolationMock.mockReturnValue(false);
   detectPromptInjectionMock.mockReturnValue({ detected: false });
+  detectUserRisksMock.mockResolvedValue({ shouldLock: false, reason: null, warnings: [], stateUpdated: false });
   checkSessionThrottleMock.mockReturnValue({ allowed: true });
   getChannelModeMock.mockReturnValue('FULL');
   getHelpLinksMock.mockReturnValue({});

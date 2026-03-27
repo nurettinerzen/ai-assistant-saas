@@ -59,8 +59,7 @@ import {
 } from '../services/gemini-utils.js';
 
 // Session lock & risk detection
-import { isSessionLocked, getLockMessage, lockSession } from '../services/session-lock.js';
-import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
+import { isSessionLocked, getLockMessage } from '../services/session-lock.js';
 import { syncPersistedAssistantReply, updateAssistantReplyInMessages } from '../services/reply-parity.js';
 import {
   ASSISTANT_CHANNEL_CAPABILITIES,
@@ -1087,88 +1086,6 @@ router.post('/widget', async (req, res) => {
       });
     }
 
-    // GUARD 2: Detect user input risks (abuse, threats, spam, PII)
-    const state = await getState(sessionId);
-    const riskDetection = await detectUserRisks(message, language, state);
-
-    if (riskDetection.stateUpdated) {
-      await updateState(sessionId, state);
-      console.log('[Chat Guard] Risk state updated', {
-        abuseCounter: state.abuseCounter,
-        securityBypassCounter: state.securityBypassCounter
-      });
-    }
-
-    // If critical risk detected → lock session immediately
-    if (riskDetection.shouldLock) {
-      console.log(`🚨 [Chat Guard] RISK DETECTED: ${riskDetection.reason}`);
-
-      // Lock the session
-      await lockSession(sessionId, riskDetection.reason);
-
-      // Pre-LLM SecurityTelemetry (route-level block)
-      console.log('📊 [SecurityTelemetry]', {
-        blocked: true,
-        blockReason: riskDetection.reason,
-        stage: 'pre-llm',
-        source: 'route-guard',
-        latencyMs: Date.now() - _widgetStart,
-      });
-
-      // Return lock message
-      const lockMsg = getLockMessage(riskDetection.reason, language);
-      return res.json({
-        reply: lockMsg,
-        outcome: ToolOutcome.DENIED,
-        locked: true,
-        lockReason: riskDetection.reason,
-        conversationId: sessionId,
-        sessionId: clientSessionId || sessionId,
-        metadata: {
-          outcome: ToolOutcome.DENIED,
-          lockReason: riskDetection.reason
-        }
-      });
-    }
-
-    // SOFT REFUSAL: Encoded injection or other soft-block cases
-    // Session stays open but this specific message is rejected
-    if (riskDetection.softRefusal) {
-      console.log(`🛡️ [Chat Guard] SOFT REFUSAL - message rejected, session stays open`);
-      const softBlockReason =
-        riskDetection.softBlockReason
-        || riskDetection.reason
-        || riskDetection.warnings?.[0]?.type
-        || 'SOFT_REFUSAL';
-
-      // Pre-LLM SecurityTelemetry (route-level soft refusal)
-      console.log('📊 [SecurityTelemetry]', {
-        blocked: true,
-        blockReason: softBlockReason,
-        stage: 'pre-llm',
-        source: 'route-guard',
-        softRefusal: true,
-        riskType: riskDetection.warnings?.[0]?.type || 'UNKNOWN',
-        latencyMs: Date.now() - _widgetStart,
-      });
-
-      return res.json({
-        reply: riskDetection.refusalMessage,
-        outcome: ToolOutcome.DENIED,
-        softRefusal: true,
-        warnings: riskDetection.warnings.map(w => w.type),
-        conversationId: sessionId,
-        sessionId: clientSessionId || sessionId,
-        metadata: {
-          outcome: ToolOutcome.DENIED,
-          softRefusal: true
-        }
-      });
-    }
-
-    // If PII warnings (but not locked yet), we'll prepend warnings to response later
-    const piiWarnings = getPIIWarningMessages(riskDetection.warnings);
-    const hasPIIWarnings = piiWarnings.length > 0;
     console.log(`⏱️ [Widget] Security guards: ${Date.now() - _t}ms`); _t = Date.now();
 
     // ===== SESSION OK - CONTINUE NORMAL PROCESSING =====
@@ -1360,10 +1277,9 @@ router.post('/widget', async (req, res) => {
         postprocessorsApplied.push('route_firewall_enforce_sanitize');
       }
     }
-    if (hasPIIWarnings) {
-      const warningText = piiWarnings.join('\n');
-      finalReply = `${warningText}\n\n${finalReply}`;
-      postprocessorsApplied.push('prepend_pii_warning');
+    const resultWarnings = Array.isArray(result.warnings) ? result.warnings : [];
+    if (resultWarnings.length > 0) {
+      postprocessorsApplied.push('core_warning_prefix');
     }
 
     const historyParity = updateAssistantReplyInMessages({
@@ -1453,7 +1369,7 @@ router.post('/widget', async (req, res) => {
       assistantName: assistant.name,
       history: historyParity.updated ? historyParity.messages : (existingLog?.messages || []),
       verificationStatus: updatedState.verification?.status || 'none', // P0: Gate requirement for verification tests
-      warnings: hasPIIWarnings ? piiWarnings : undefined,
+      warnings: resultWarnings.length > 0 ? resultWarnings : undefined,
       toolsCalled: result.toolsCalled || [], // For test assertions (deprecated, use toolCalls)
       toolCalls: result.toolsCalled || [], // P0: Test expects 'toolCalls' not 'toolsCalled'
       metadata: {

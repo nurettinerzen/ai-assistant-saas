@@ -49,7 +49,6 @@ import {
   extractTokenUsage
 } from '../services/gemini-utils.js';
 import { isSessionLocked, getLockMessage, shouldSendAndMarkLockMessage, lockSession } from '../services/session-lock.js';
-import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
 import { getState, updateState } from '../services/state-manager.js';
 import { resolveChatAssistantForBusiness } from '../services/assistantChannels.js';
 import { syncPersistedAssistantReply } from '../services/reply-parity.js';
@@ -477,44 +476,6 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
       return; // EXIT - Do not process message
     }
 
-    // GUARD 2: Detect user input risks (abuse, threats, spam, PII)
-    const state = await getState(sessionId);
-    const riskDetection = await detectUserRisks(messageBody, language, state);
-
-    if (riskDetection.stateUpdated) {
-      await updateState(sessionId, state);
-      console.log('[WhatsApp Guard] Risk state updated', {
-        abuseCounter: state.abuseCounter,
-        securityBypassCounter: state.securityBypassCounter
-      });
-    }
-
-    // If critical risk detected → lock session immediately
-    if (riskDetection.shouldLock) {
-      console.log(`🚨 [WhatsApp Guard] RISK DETECTED: ${riskDetection.reason}`);
-
-      // Lock the session
-      await lockSession(sessionId, riskDetection.reason);
-
-      // Send lock message to user
-      const lockMsg = getLockMessage(riskDetection.reason, language);
-      await sendWhatsAppMessage(business, from, lockMsg, { inboundMessageId: messageId });
-
-      return; // EXIT - Do not process message
-    }
-
-    // SOFT REFUSAL: Encoded injection or other soft-block cases
-    // Session stays open but this specific message is rejected
-    if (riskDetection.softRefusal) {
-      console.log(`🛡️ [WhatsApp Guard] SOFT REFUSAL - message rejected, session stays open`);
-      await sendWhatsAppMessage(business, from, riskDetection.refusalMessage, { inboundMessageId: messageId });
-      return; // EXIT - Don't process but don't lock
-    }
-
-    // If PII warnings (but not locked yet), prepend warning to response
-    const piiWarnings = getPIIWarningMessages(riskDetection.warnings);
-    const hasPIIWarnings = piiWarnings.length > 0;
-
     // ===== SESSION OK - DELEGATE TO CORE ORCHESTRATOR =====
 
     console.log('\n📱 [WhatsApp Adapter] Delegating to core orchestrator...');
@@ -555,14 +516,10 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
       }
     });
 
-    // Prepare final response (with PII warnings if any)
-    let aiResponse = result.reply;
-    const postprocessorsApplied = [];
-    if (hasPIIWarnings) {
-      const warningText = piiWarnings.join('\n');
-      aiResponse = `${warningText}\n\n${aiResponse}`;
-      postprocessorsApplied.push('prepend_pii_warning');
-    }
+    const aiResponse = result.reply;
+    const postprocessorsApplied = Array.isArray(result.warnings) && result.warnings.length > 0
+      ? ['core_warning_prefix']
+      : [];
 
     // Send response using business's credentials (with idempotency)
     await sendWhatsAppMessage(business, from, aiResponse, { inboundMessageId: messageId });

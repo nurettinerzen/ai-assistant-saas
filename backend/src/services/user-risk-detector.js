@@ -15,7 +15,6 @@
 import { getLockMessage } from './session-lock.js';
 import { isFeatureEnabled } from '../config/feature-flags.js';
 import {
-  classifySemanticPromptInjection,
   classifySemanticRisk
 } from './semantic-guard-classifier.js';
 
@@ -55,6 +54,32 @@ function findPatternMatch(pattern, targets = []) {
     if (match) return match;
   }
   return null;
+}
+
+function isPhoneLast4VerificationReply(message, state = {}) {
+  const normalized = String(message || '').trim();
+  if (!/^\d{4}$/.test(normalized)) return false;
+
+  const pendingField =
+    state?.verification?.pendingField ||
+    state?.verificationContext?.pendingField ||
+    state?.pendingVerificationField ||
+    state?.expectedSlot ||
+    null;
+
+  if (pendingField === 'phone_last4') return true;
+
+  const verificationPending =
+    state?.verification?.status === 'pending' ||
+    state?.verificationContext?.status === 'pending';
+
+  const hasPhoneAnchor =
+    Boolean(state?.verification?.anchor?.phone) ||
+    state?.verificationContext?.anchorType === 'PHONE' ||
+    Boolean(state?.anchor?.phone) ||
+    Boolean(state?.anchor?.customerPhone);
+
+  return verificationPending && hasPhoneAnchor;
 }
 
 /**
@@ -336,6 +361,23 @@ function detectPromptInjectionHeuristic(message) {
     signalCount: signals.length,
     signals: signals.map(s => s.type)
   };
+}
+
+function isExplicitPreLlmInjectionSignal(result = {}) {
+  if (!result?.detected) return false;
+
+  const explicitTypes = new Set([
+    'XML_CONFIG_INJECTION',
+    'CONFIG_OVERRIDE',
+    'JSON_CONFIG_OVERRIDE',
+    'BLOCKED_PHRASE'
+  ]);
+
+  if (explicitTypes.has(result.type)) {
+    return true;
+  }
+
+  return result.type === 'ROLE_IMPERSONATION' && result.severity === 'CRITICAL' && Number(result.signalCount || 0) >= 2;
 }
 
 function resetTimedCounter(state, counterKey, windowKey, windowMs) {
@@ -701,28 +743,18 @@ export async function detectPromptInjection(message, language = 'TR') {
   }
 
   const heuristic = detectPromptInjectionHeuristic(message);
-
-  try {
-    const semantic = await classifySemanticPromptInjection(message, language);
-    if (semantic && semantic.detected && semantic.confidence >= 0.65) {
-      return {
-        detected: true,
-        type: semantic.type,
-        severity: semantic.severity,
-        pattern: semantic.rationale || null,
-        confidence: semantic.confidence,
-        source: semantic.source
-      };
-    }
-
-    if (semantic && semantic.detected === false && semantic.confidence >= 0.8) {
-      return { detected: false, type: null, severity: 'NONE', pattern: null };
-    }
-  } catch (error) {
-    console.warn(`⚠️ [Risk Detector] Semantic injection classifier failed: ${error.message}`);
+  if (!isExplicitPreLlmInjectionSignal(heuristic)) {
+    return { detected: false, type: null, severity: 'NONE', pattern: null };
   }
 
-  return heuristic;
+  return {
+    detected: true,
+    type: heuristic.type,
+    severity: heuristic.severity,
+    pattern: heuristic.pattern,
+    signalCount: heuristic.signalCount,
+    source: 'heuristic_explicit_payload'
+  };
 }
 
 /**
@@ -736,6 +768,15 @@ export async function detectPromptInjection(message, language = 'TR') {
 export async function detectUserRisks(message, language = 'TR', state = {}) {
   if (!message || typeof message !== 'string') {
     return { shouldLock: false, reason: null, warnings: [] };
+  }
+
+  if (isPhoneLast4VerificationReply(message, state)) {
+    return {
+      shouldLock: false,
+      reason: null,
+      warnings: [],
+      stateUpdated: false
+    };
   }
 
   const warnings = [];

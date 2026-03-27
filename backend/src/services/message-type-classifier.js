@@ -26,49 +26,18 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  * @returns {Promise<Object>} { type, confidence, reason, suggestedFlow?, extractedSlots? }
  */
 export async function classifyMessageType(state, lastAssistantMessage, userMessage, language = 'TR', options = {}) {
-  // ─── Deterministic stock follow-up detection ───────────────────
-  // If we just answered a stock query and user asks about quantity,
-  // skip LLM classification entirely — this is always a follow-up.
-  // Check both active anchor AND lastStockContext (preserved after post-result reset).
-  const hasStockAnchor = state.anchor?.type === 'STOCK' && state.activeFlow === 'STOCK_CHECK';
-  const hasStockContext = !!state.lastStockContext;
-
-  if (hasStockAnchor || hasStockContext) {
-    const anchorTimestamp = state.anchor?.timestamp || state.lastStockContext?.timestamp;
-    const timeSinceAnchor = Date.now() - new Date(anchorTimestamp).getTime();
-    const isRecent = timeSinceAnchor < 10 * 60 * 1000; // 10 minutes
-
-    if (isRecent) {
-      const userLower = userMessage.toLowerCase().replace(/[?!.,]/g, '');
-      const stockFollowupPatterns = [
-        /ka[çc]\s*(tane|adet)/,
-        /ka[çc]\s*(var|kald[ıi])/,
-        /stok(ta)?\s*(ne\s*kadar|ka[çc])/,
-        /ne\s*kadar\s*var/,
-        /\d+\s*(tane|adet)\s*(var|ister|istiyorum|alabilir)/,
-        /\d+\s*(tane|adet)\s*m[ıi]/,
-        /miktarı?\s*(ne|ka[çc])/
-      ];
-
-      if (stockFollowupPatterns.some(p => p.test(userLower))) {
-        console.log('📦 [Classifier] Deterministic STOCK follow-up detected:', userMessage, hasStockAnchor ? '(active anchor)' : '(lastStockContext)');
-        return {
-          type: 'SLOT_ANSWER',
-          confidence: 0.95,
-          reason: 'Stock follow-up: quantity question after stock query',
-          suggestedFlow: 'STOCK_CHECK',
-          extractedSlots: {},
-          triggerRule: null
-        };
-      }
-    }
-  }
-
   // Build context for classifier
   const context = {
     flowStatus: state.flowStatus, // idle | in_progress | resolved | post_result
     activeFlow: state.activeFlow, // ORDER_STATUS | DEBT_INQUIRY | COMPLAINT | STOCK_CHECK | etc.
     expectedSlot: state.expectedSlot, // order_number | phone | customer_name | etc.
+    callbackPending: state.callbackFlow?.pending === true,
+    callbackMissingFields: state.callbackFlow?.missingFields || [],
+    verificationStatus: state.verification?.status || state.verificationContext?.status || 'none',
+    pendingVerificationField:
+      state.verification?.pendingField ||
+      state.verificationContext?.pendingField ||
+      null,
     lastAssistantMessage: lastAssistantMessage?.substring(0, 200) || null,
     anchor: state.anchor?.type === 'STOCK' ? {
       type: 'STOCK',
@@ -156,6 +125,10 @@ function buildClassifierPrompt(userMessage, context, language) {
 - Flow Status: ${context.flowStatus}
 - Active Flow: ${context.activeFlow || 'none'}
 - Expected Slot: ${context.expectedSlot || 'none'}
+- Callback Pending: ${context.callbackPending ? 'yes' : 'no'}
+- Callback Missing Fields: ${(context.callbackMissingFields || []).join(', ') || 'none'}
+- Verification Status: ${context.verificationStatus || 'none'}
+- Pending Verification Field: ${context.pendingVerificationField || 'none'}
 - Last Assistant Message: "${context.lastAssistantMessage || 'none'}"
 ${context.anchor?.type === 'STOCK' ? `- Stock Context: product="${context.anchor.stockProductName}", match="${context.anchor.stockMatchType}", availability="${context.anchor.stockAvailability}"` : context.anchor ? `- Truth Anchor: orderStatus="${context.anchor.orderStatus}", hasDebt=${context.anchor.hasDebt}` : ''}
 
@@ -178,8 +151,12 @@ ${context.anchor?.type === 'STOCK' ? `- Stock Context: product="${context.anchor
 3. **NEW_INTENT**: User asks about a different topic or starts new conversation
    - Example: User: "Siparişim nerede?" (new topic: order tracking)
    - Example: User: "Borcum var mı?" (new topic: debt inquiry)
+   - Example: User: "Yetkili biriyle görüşmek istiyorum" → suggested_flow: CALLBACK_REQUEST
+   - Example: User: "Beni arayın" → suggested_flow: CALLBACK_REQUEST
    - Example: User: "Artemis var mı stokta?" → suggested_flow: STOCK_CHECK
+   - Example: User: "RRCAPL0126 stokta var mı?" → suggested_flow: STOCK_CHECK, extracted_slots.sku = "RRCAPL0126"
    - Example: User: "Ses geçidi var mı stokta?" → suggested_flow: STOCK_CHECK
+   - Example: User: "Merhaba 2 adet ASUS M3N78VM ve 1 adet ECS H55H-M stokta var mı?" → suggested_flow: STOCK_CHECK
    - Example: User: "iPhone 17 fiyatı nedir?" → suggested_flow: PRODUCT_INFO
    - Example: User: "Hızlandırır mısın şu işi?" → suggested_flow: COMPLAINT
    - Can happen even when expecting slot (topic switch)
@@ -195,6 +172,9 @@ If message contains slot data, extract it:
 - phone: 5551234567, 905551234567, etc.
 - customer_name: "Ali Yılmaz", etc.
 - ticket_number: SRV-19186, TKT-2026-0001, B21-TKT-2026-0001, etc.
+- sku: product SKU/code such as "RRCAPL0126", "NZ100OEM566", "VX00UGR04"
+- product_name: normalized product search phrase such as "Artemis", "Ses Geçidi", "Apple iPhone 17"
+- requested_qty: quantity only when user explicitly asks for a concrete amount like "2 adet", "4 tane"
 - complaint_details: extracted text if complaint intent
 
 **Response Format (JSON):**
@@ -202,7 +182,7 @@ If message contains slot data, extract it:
   "message_type": "SLOT_ANSWER" | "FOLLOWUP_DISPUTE" | "NEW_INTENT" | "CHATTER",
   "confidence": 0.0-1.0,
   "reason": "Brief explanation in ${languageName}",
-  "suggested_flow": "ORDER_STATUS" | "TRACKING_INFO" | "DEBT_INQUIRY" | "TICKET_STATUS" | "COMPLAINT" | "STOCK_CHECK" | "PRODUCT_INFO" | null,
+  "suggested_flow": "ORDER_STATUS" | "TRACKING_INFO" | "DEBT_INQUIRY" | "TICKET_STATUS" | "COMPLAINT" | "CALLBACK_REQUEST" | "STOCK_CHECK" | "PRODUCT_INFO" | null,
   "extracted_slots": {
     "slot_name": "value"
   },
@@ -216,6 +196,12 @@ If message contains slot data, extract it:
 - Always prioritize context over keywords
 - Stock / availability / in-stock / inventory questions should use suggested_flow="STOCK_CHECK"
 - Product detail / model / specification / price questions should use suggested_flow="PRODUCT_INFO"
+- Asking for a human, manager, representative, callback, or "call me back" should use suggested_flow="CALLBACK_REQUEST"
+- If callbackPending=yes and user shares only a name or phone number, classify as SLOT_ANSWER
+- If pendingVerificationField="phone_last4" and user shares a 4-digit number, classify as SLOT_ANSWER
+- If user provides only a SKU/code, extract it into "sku"
+- If user asks stock/availability for a named product family or model, extract the searchable phrase into "product_name"
+- Do not invent SKU or product_name values that are not clearly present in the user message
 - If expecting slot but message is emotional/angry → CHATTER, not SLOT_ANSWER
 - If flowStatus="post_result" and user contradicts → FOLLOWUP_DISPUTE
 - If activeFlow="STOCK_CHECK" and user asks about quantity/stock → SLOT_ANSWER (stock follow-up), NOT NEW_INTENT`;
@@ -228,6 +214,24 @@ function fallbackClassifier(state, userMessage, language) {
   console.warn('⚠️ [Classifier] Using fallback heuristics');
 
   const userLower = userMessage.toLowerCase();
+
+  if (state.callbackFlow?.pending) {
+    const phoneMatch = userMessage.trim().match(/^(\+?90|0)?[5]\d{9}$/);
+    const nameMatch = userMessage.trim().match(/^[A-Za-zÇĞİÖŞÜçğıöşü]+(?:\s+[A-Za-zÇĞİÖŞÜçğıöşü]+){1,2}$/);
+
+    if (phoneMatch || nameMatch) {
+      return {
+        type: 'SLOT_ANSWER',
+        confidence: 0.8,
+        reason: 'Fallback: callback slot answer',
+        suggestedFlow: 'CALLBACK_REQUEST',
+        extractedSlots: {
+          ...(phoneMatch ? { phone: userMessage.trim() } : {}),
+          ...(nameMatch ? { customer_name: userMessage.trim() } : {})
+        }
+      };
+    }
+  }
 
   // If expecting slot and message is very short → likely slot answer
   if (state.expectedSlot && userMessage.trim().length < 30) {
@@ -266,8 +270,8 @@ function fallbackClassifier(state, userMessage, language) {
   // Default: NEW_INTENT with low confidence
   return {
     type: 'NEW_INTENT',
-    confidence: 0.5,
-    reason: 'Fallback: unclear, defaulting to new intent'
+    confidence: 0.4,
+    reason: 'Fallback: classifier unavailable, preserving LLM-first routing'
   };
 }
 

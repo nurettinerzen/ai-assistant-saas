@@ -16,6 +16,11 @@ import { getToolExecutionResult, setToolExecutionResult } from '../../../service
 import { isSessionLocked, getLockMessage, checkEnumerationAttempt } from '../../../services/session-lock.js';
 import { GENERIC_ERROR_MESSAGES, ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 import {
+  buildMultiProductStockClarification,
+  buildStockQueryArgs,
+  detectMultiProductStockQuery
+} from '../../../services/stock-query-parser.js';
+import {
   deriveOutcomeEvents,
   applyOutcomeEventsToState,
   shouldAskVerification,
@@ -46,6 +51,7 @@ const RESPONSE_ORIGIN = Object.freeze({
 const LLM_SEND_MAX_ATTEMPTS = 2;
 const LLM_SEND_RETRY_BASE_MS = 400;
 const RETRYABLE_SEND_ERROR_PATTERN = /(timeout|timed out|rate limit|429|temporar|unavailable|503|econnreset|socket hang up|upstream|try again)/i;
+const STOCK_TOOL_NAMES = new Set(['check_stock_crm', 'get_product_stock']);
 
 function isRetryableSendError(error) {
   const message = String(error?.message || '');
@@ -62,6 +68,10 @@ function getSendErrorCode(error) {
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isStockTool(toolName) {
+  return STOCK_TOOL_NAMES.has(toolName);
 }
 
 async function sendMessageWithRetry(chat, payload, { label = 'llm.sendMessage', maxAttempts = LLM_SEND_MAX_ATTEMPTS } = {}) {
@@ -475,6 +485,63 @@ export async function executeToolLoop(params) {
         }
       }
 
+      if (isStockTool(toolName)) {
+        if (detectMultiProductStockQuery(userMessage)) {
+          console.log(`📦 [ToolLoop] Multi-product stock query detected, requesting clarification before ${toolName}`);
+          return {
+            reply: buildMultiProductStockClarification(language),
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            hadToolSuccess,
+            hadToolFailure: false,
+            failedTool: null,
+            toolsCalled,
+            toolResults,
+            iterations,
+            chat,
+            _responseOrigin: RESPONSE_ORIGIN.TEMPLATE,
+            _originId: 'toolLoop.stock.multiProductClarification',
+            _llmCalled: llmCalled,
+            _llmStatus: 'success'
+          };
+        }
+
+        toolArgs = buildStockQueryArgs({
+          userMessage,
+          extractedSlots: state.extractedSlots || {},
+          args: toolArgs,
+          toolName
+        });
+
+        console.log(`📦 [ToolLoop] Hydrated stock args for ${toolName}:`, {
+          sku: toolArgs.sku || toolArgs.product_sku || null,
+          product_name: toolArgs.product_name || null,
+          requested_qty: toolArgs.requested_qty || null
+        });
+
+        if (!toolArgs.sku && !toolArgs.product_sku && !toolArgs.product_name) {
+          const clarification = language === 'TR'
+            ? 'Stok kontrolü yapabilmem için lütfen ürün adını veya SKU kodunu paylaşır mısınız?'
+            : 'Please share the product name or SKU so I can check stock availability.';
+          return {
+            reply: clarification,
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            hadToolSuccess,
+            hadToolFailure: false,
+            failedTool: null,
+            toolsCalled,
+            toolResults,
+            iterations,
+            chat,
+            _responseOrigin: RESPONSE_ORIGIN.TEMPLATE,
+            _originId: 'toolLoop.stock.missingQuery',
+            _llmCalled: llmCalled,
+            _llmStatus: 'success'
+          };
+        }
+      }
+
       // ════════════════════════════════════════════════════════════════════
       // PRECONDITION CHECK: extractedSlots'ta gerekli alanlar var mı?
       // ════════════════════════════════════════════════════════════════════
@@ -682,7 +749,7 @@ export async function executeToolLoop(params) {
         }
 
         // Stock tool results → write to anchor so classifier knows context
-        if (toolName === 'check_stock_crm' || toolName === 'get_product_stock') {
+        if (isStockTool(toolName)) {
           const matchType = toolResult.data.match_type; // EXACT_SKU | MULTIPLE_CANDIDATES
           state.anchor = {
             type: 'STOCK',
@@ -772,6 +839,33 @@ export async function executeToolLoop(params) {
         outcome,
         toolResult
       });
+
+      if (
+        isStockTool(toolName) &&
+        [
+          ToolOutcome.OK,
+          ToolOutcome.NOT_FOUND,
+          ToolOutcome.NEED_MORE_INFO,
+          ToolOutcome.VALIDATION_ERROR
+        ].includes(outcome)
+      ) {
+        return {
+          reply: toolResult.message,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          hadToolSuccess: true,
+          hadToolFailure: false,
+          failedTool: null,
+          toolsCalled,
+          toolResults,
+          iterations,
+          chat,
+          _responseOrigin: RESPONSE_ORIGIN.TEMPLATE,
+          _originId: `tool.stock.${outcome.toLowerCase()}`,
+          _llmCalled: llmCalled,
+          _llmStatus: 'success'
+        };
+      }
 
       if (shouldAskVerification(outcome)) {
         console.log('🔐 [ToolLoop] Verification required outcome received');
