@@ -646,6 +646,17 @@
         "step1": "Order status request -> fetch from ERP/Shopify/ikas -> respond with up-to-date status.",
         "step2": "Return request -> classify issue -> open return form and add tags.",
         "step3": "Cargo tracking -> generate tracking link -> share and update automatically."
+      },
+      "chatDemo": {
+        "msg1": "Where is my order? #ORD-23423",
+        "msg2": "I found your order. For verification, could you please provide the last 4 digits of your phone number?",
+        "msg3": "1234",
+        "msg4": "Verified successfully. Order #ORD-23423 has been shipped. Your tracking number is YK-832402."
+      },
+      "tabs": {
+        "tab1": { "title": "Order Tracking", "contentTitle": "Real-Time Order Status", "contentDesc": "Your customers can instantly check order status by order number. AI pulls live data from your ERP and shipping systems.", "bullet1": "Auto-generated tracking links", "bullet2": "Delivery time estimates", "bullet3": "Proactive delay notifications" },
+        "tab2": { "title": "Returns & Exchange", "contentTitle": "Seamless Return Process", "contentDesc": "Auto-classify return requests, generate forms, and keep customers informed at every step.", "bullet1": "One-step return requests", "bullet2": "Auto-generated labels and shipping instructions", "bullet3": "Return status tracking" },
+        "tab3": { "title": "Product Advisory", "contentTitle": "Personal Shopping Assistant", "contentDesc": "Offer product recommendations, stock checks and size/color guidance based on customer preferences.", "bullet1": "Purchase history-based suggestions", "bullet2": "Real-time stock availability", "bullet3": "Size and compatibility guide" }
       }
     },
     "restaurant": {
@@ -706,6 +717,17 @@
         "step1": "Reservation request -> check availability from calendar -> offer slots instantly.",
         "step2": "Menu question -> return allergen/portion details -> suggest suitable items.",
         "step3": "Order inquiry -> confirm status from POS/integration -> inform customer."
+      },
+      "chatDemo": {
+        "msg1": "Hi, can I make a reservation for tonight?",
+        "msg2": "Of course. How many guests and what time would you prefer?",
+        "msg3": "4 people, around 8 PM.",
+        "msg4": "A table for 4 at 8 PM is available. May I have your name and phone number?"
+      },
+      "tabs": {
+        "tab1": { "title": "Reservations", "contentTitle": "Smart Table Management", "contentDesc": "Real-time availability with calendar integration. Customers can book tables 24/7 via WhatsApp or web.", "bullet1": "Google Calendar integration", "bullet2": "Auto confirmation and reminders", "bullet3": "No-show protection" },
+        "tab2": { "title": "Menu Guide", "contentTitle": "Interactive Menu Assistant", "contentDesc": "Present your menu digitally with allergen info, portion details and prices.", "bullet1": "Allergen and dietary filters", "bullet2": "Chef's picks and daily specials", "bullet3": "Multi-language support" },
+        "tab3": { "title": "Feedback", "contentTitle": "Guest Experience Tracking", "contentDesc": "Send automatic post-meal satisfaction surveys. Route negative feedback to managers instantly.", "bullet1": "Auto survey delivery", "bullet2": "Instant manager alerts", "bullet3": "Trend analysis dashboard" }
       }
     },
     "salon": {
@@ -766,6 +788,17 @@
         "step1": "Appointment request -> match staff + service duration -> suggest best slot.",
         "step2": "Pre-visit question -> share service details and preparation guidance.",
         "step3": "No-show risk -> send reminder and confirm attendance."
+      },
+      "chatDemo": {
+        "msg1": "Can I book a haircut for tomorrow?",
+        "msg2": "Sure. Tomorrow afternoon Sarah is available at 2 PM and Emily at 3:30 PM. Which do you prefer?",
+        "msg3": "Sarah at 2 PM please.",
+        "msg4": "Your appointment is confirmed. Haircut with Sarah tomorrow at 2 PM. You'll get a reminder 1 hour before."
+      },
+      "tabs": {
+        "tab1": { "title": "Appointments", "contentTitle": "Smart Booking System", "contentDesc": "Auto-match staff availability, service duration and customer preferences. 24/7 appointment booking.", "bullet1": "Staff-based calendar management", "bullet2": "Duration-based slot calculation", "bullet3": "Conflict prevention system" },
+        "tab2": { "title": "Reminders", "contentTitle": "Auto Reminder System", "contentDesc": "Reduce no-shows by up to 50% with pre-appointment WhatsApp reminders.", "bullet1": "24-hour and 1-hour reminders", "bullet2": "One-tap confirm/cancel", "bullet3": "Waitlist on cancellation" },
+        "tab3": { "title": "Service Catalog", "contentTitle": "Digital Service Guide", "contentDesc": "Share all your services, durations, prices and sample photos with customers.", "bullet1": "Detailed service descriptions", "bullet2": "Price and duration info", "bullet3": "Staff expertise matching" }
       }
     },
     "support": {
@@ -826,6 +859,17 @@
         "step1": "Incoming issue -> detect intent and priority from message.",
         "step2": "Knowledge lookup -> provide grounded answer with references.",
         "step3": "If unresolved -> create ticket and handoff with conversation summary."
+      },
+      "chatDemo": {
+        "msg1": "I can't reset my password, it keeps giving an error.",
+        "msg2": "I can help with that. Which email address is your account registered with?",
+        "msg3": "info@mycompany.com",
+        "msg4": "A password reset link has been sent to info@mycompany.com. The link is valid for 15 minutes."
+      },
+      "tabs": {
+        "tab1": { "title": "Resolution", "contentTitle": "Smart Issue Detection", "contentDesc": "AI automatically identifies intent and priority from customer messages, generating grounded answers from your knowledge base.", "bullet1": "Intent and priority classification", "bullet2": "Knowledge-grounded responses", "bullet3": "Multi-language support" },
+        "tab2": { "title": "Escalation", "contentTitle": "Smart Routing", "contentDesc": "AI routes unresolved issues to the right department and agent with full context summary.", "bullet1": "Department-based routing", "bullet2": "Conversation summary handoff", "bullet3": "Priority-based queueing" },
+        "tab3": { "title": "Analytics", "contentTitle": "Performance Dashboard", "contentDesc": "Monitor resolution rates, customer satisfaction, average response times and trend analysis from one dashboard.", "bullet1": "Real-time metrics", "bullet2": "Agent performance comparison", "bullet3": "Weekly trend reports" }
       }
     },
     "channels": {

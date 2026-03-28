@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import MarketingFAQ from '@/components/MarketingFAQ';
+import AnimatedCounter from '@/components/solutions/AnimatedCounter';
+import BentoGrid from '@/components/solutions/BentoGrid';
 import {
   ShoppingCart,
   UtensilsCrossed,
@@ -33,8 +35,6 @@ export default function SolutionsPage() {
       descKey: 'solutions.ecommerce.desc',
       href: '/solutions/ecommerce',
       color: 'from-blue-500 to-cyan-500',
-      bgLight: 'bg-blue-50',
-      bgDark: 'dark:bg-blue-950/20',
       features: [
         'solutions.ecommerce.feature1',
         'solutions.ecommerce.feature2',
@@ -48,8 +48,6 @@ export default function SolutionsPage() {
       descKey: 'solutions.restaurant.desc',
       href: '/solutions/restaurant',
       color: 'from-orange-500 to-red-500',
-      bgLight: 'bg-orange-50',
-      bgDark: 'dark:bg-orange-950/20',
       features: [
         'solutions.restaurant.feature1',
         'solutions.restaurant.feature2',
@@ -63,8 +61,6 @@ export default function SolutionsPage() {
       descKey: 'solutions.salon.desc',
       href: '/solutions/salon',
       color: 'from-pink-500 to-rose-500',
-      bgLight: 'bg-pink-50',
-      bgDark: 'dark:bg-pink-950/20',
       features: [
         'solutions.salon.feature1',
         'solutions.salon.feature2',
@@ -78,8 +74,6 @@ export default function SolutionsPage() {
       descKey: 'solutions.support.desc',
       href: '/solutions/support',
       color: 'from-green-500 to-emerald-500',
-      bgLight: 'bg-green-50',
-      bgDark: 'dark:bg-green-950/20',
       features: [
         'solutions.support.feature1',
         'solutions.support.feature2',
@@ -88,29 +82,28 @@ export default function SolutionsPage() {
     },
   ];
 
-  const benefits = [
-    { icon: Zap, key: 'benefit1', color: 'from-yellow-500 to-orange-500' },
-    { icon: MessageSquare, key: 'benefit2', color: 'from-blue-500 to-primary' },
-    { icon: Link2, key: 'benefit3', color: 'from-emerald-500 to-teal-500' },
-    { icon: ShieldCheck, key: 'benefit4', color: 'from-violet-500 to-primary' },
+  const benefitItems = [
+    { key: 'b1', icon: Zap, title: t('solutions.whyTelyx.benefit1.title'), desc: t('solutions.whyTelyx.benefit1.desc'), color: 'from-yellow-500 to-orange-500' },
+    { key: 'b2', icon: MessageSquare, title: t('solutions.whyTelyx.benefit2.title'), desc: t('solutions.whyTelyx.benefit2.desc'), color: 'from-blue-500 to-primary' },
+    { key: 'b3', icon: Link2, title: t('solutions.whyTelyx.benefit3.title'), desc: t('solutions.whyTelyx.benefit3.desc'), color: 'from-emerald-500 to-teal-500' },
+    { key: 'b4', icon: ShieldCheck, title: t('solutions.whyTelyx.benefit4.title'), desc: t('solutions.whyTelyx.benefit4.desc'), color: 'from-violet-500 to-primary' },
   ];
 
-  const stats = [
-    { valueKey: 'solutions.stats.conversationsValue', labelKey: 'solutions.stats.conversations' },
-    { valueKey: 'solutions.stats.resolutionValue', labelKey: 'solutions.stats.resolution' },
-    { valueKey: 'solutions.stats.responseValue', labelKey: 'solutions.stats.response' },
-    { valueKey: 'solutions.stats.satisfactionValue', labelKey: 'solutions.stats.satisfaction' },
+  const hubStats = [
+    { key: 's1', numeric: 500, prefix: '', suffix: 'K+', label: t('solutions.stats.conversations') },
+    { key: 's2', numeric: 85, prefix: '', suffix: '%', label: t('solutions.stats.resolution') },
+    { key: 's3', raw: t('solutions.stats.responseValue'), label: t('solutions.stats.response') },
+    { key: 's4', numeric: 96, prefix: '', suffix: '%', label: t('solutions.stats.satisfaction') },
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950">
+    <div className="solutions-page min-h-screen bg-white dark:bg-neutral-950">
       <Navigation />
 
       {/* ═══ Hero ═══ */}
       <section className="pt-28 md:pt-36 pb-16 md:pb-20 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="sol-glow-blob w-96 h-96 top-20 left-1/4" style={{ background: '#17a2b3' }} />
+        <div className="sol-glow-blob w-72 h-72 bottom-0 right-1/4" style={{ background: '#3b82f6' }} />
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
@@ -146,7 +139,7 @@ export default function SolutionsPage() {
               className="flex flex-col sm:flex-row gap-3 justify-center mt-8"
             >
               <Link href="#solutions-grid">
-                <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 px-8">
+                <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 px-8 sol-glow-btn">
                   {t('solutions.hero.explore')}
                 </Button>
               </Link>
@@ -160,27 +153,43 @@ export default function SolutionsPage() {
         </div>
       </section>
 
-      {/* ═══ Stats Bar ═══ */}
+      {/* ═══ Stats Bar (Animated) ═══ */}
       <section className="py-10 bg-gray-50/70 dark:bg-neutral-900/40 border-y border-gray-100 dark:border-neutral-800">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={stat.labelKey}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.08 }}
-                className="text-center"
-              >
-                <div className="text-3xl md:text-4xl font-bold text-primary mb-1">
-                  {t(stat.valueKey)}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-neutral-400">
-                  {t(stat.labelKey)}
-                </div>
-              </motion.div>
-            ))}
+            {hubStats.map((stat) => {
+              if (stat.raw) {
+                return (
+                  <motion.div
+                    key={stat.key}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5 }}
+                    className="text-center"
+                  >
+                    <div className="sol-counter-value text-4xl md:text-5xl font-bold text-primary">
+                      {stat.raw}
+                    </div>
+                    <div className="text-sm mt-1 text-gray-600 dark:text-neutral-400">
+                      {stat.label}
+                    </div>
+                  </motion.div>
+                );
+              }
+              return (
+                <AnimatedCounter
+                  key={stat.key}
+                  value={stat.numeric}
+                  prefix={stat.prefix}
+                  suffix={stat.suffix}
+                  label={stat.label}
+                  className="text-center"
+                  valueClassName="text-primary"
+                  labelClassName="text-gray-600 dark:text-neutral-400"
+                />
+              );
+            })}
           </div>
         </div>
       </section>
@@ -199,38 +208,37 @@ export default function SolutionsPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
-                  <Card className="p-6 md:p-8 h-full rounded-2xl hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-white dark:bg-neutral-800/80 border-gray-100 dark:border-neutral-700/80 group relative overflow-hidden">
-                    {/* Subtle accent glow */}
-                    <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br ${solution.color} opacity-10 group-hover:opacity-20 transition-opacity duration-300 blur-2xl`} />
+                  <Link href={solution.href} className="block h-full">
+                    <Card className="p-6 md:p-8 h-full rounded-2xl hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-white dark:bg-neutral-800/80 border-gray-100 dark:border-neutral-700/80 group relative overflow-hidden cursor-pointer">
+                      <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br ${solution.color} opacity-10 group-hover:opacity-20 transition-opacity duration-300 blur-2xl`} />
 
-                    <div className="relative z-10">
-                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${solution.color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon className="w-7 h-7 text-white" />
-                      </div>
-                      <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-primary transition-colors">
-                        {t(solution.titleKey)}
-                      </h3>
-                      <p className="text-gray-600 dark:text-neutral-400 mb-5 leading-relaxed">
-                        {t(solution.descKey)}
-                      </p>
-                      <ul className="space-y-2.5 mb-6">
-                        {solution.features.map((feature) => (
-                          <li key={feature} className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-neutral-300">
-                            <div className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                            </div>
-                            <span>{t(feature)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <Link href={solution.href}>
-                        <Button variant="outline" className="rounded-full group/btn">
+                      <div className="relative z-10">
+                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${solution.color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
+                          <Icon className="w-7 h-7 text-white" />
+                        </div>
+                        <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-primary transition-colors">
+                          {t(solution.titleKey)}
+                        </h3>
+                        <p className="text-gray-600 dark:text-neutral-400 mb-5 leading-relaxed">
+                          {t(solution.descKey)}
+                        </p>
+                        <ul className="space-y-2.5 mb-6">
+                          {solution.features.map((feature) => (
+                            <li key={feature} className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-neutral-300">
+                              <div className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                              </div>
+                              <span>{t(feature)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-neutral-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-neutral-300 group-hover:border-primary group-hover:text-primary transition-colors">
                           {t('solutions.learnMore')}
-                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                        </Button>
-                      </Link>
-                    </div>
-                  </Card>
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </span>
+                      </div>
+                    </Card>
+                  </Link>
                 </motion.div>
               );
             })}
@@ -238,7 +246,7 @@ export default function SolutionsPage() {
         </div>
       </section>
 
-      {/* ═══ Why Telyx ═══ */}
+      {/* ═══ Why Telyx (Bento Grid) ═══ */}
       <section className="py-16 md:py-20 bg-gray-50/70 dark:bg-neutral-900/40">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-12">
@@ -254,31 +262,8 @@ export default function SolutionsPage() {
               {t('solutions.whyTelyx.subtitle')}
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {benefits.map((benefit, index) => {
-              const Icon = benefit.icon;
-              return (
-                <motion.div
-                  key={benefit.key}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.45, delay: index * 0.08 }}
-                >
-                  <Card className="p-6 h-full rounded-2xl bg-white dark:bg-neutral-800/80 border-gray-100 dark:border-neutral-700/80 hover:shadow-lg transition-all duration-300 text-center">
-                    <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${benefit.color} flex items-center justify-center mx-auto mb-4`}>
-                      <Icon className="w-7 h-7 text-white" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      {t(`solutions.whyTelyx.${benefit.key}.title`)}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-neutral-400 leading-relaxed">
-                      {t(`solutions.whyTelyx.${benefit.key}.desc`)}
-                    </p>
-                  </Card>
-                </motion.div>
-              );
-            })}
+          <div className="max-w-5xl mx-auto">
+            <BentoGrid items={benefitItems} />
           </div>
         </div>
       </section>
@@ -306,7 +291,7 @@ export default function SolutionsPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/contact">
-                  <Button size="lg" className="w-full sm:w-auto rounded-full bg-white text-slate-900 hover:bg-gray-100 px-8 font-semibold">
+                  <Button size="lg" className="w-full sm:w-auto rounded-full bg-white text-slate-900 hover:bg-gray-100 px-8 font-semibold sol-glow-btn">
                     {t('solutions.cta.contact')}
                   </Button>
                 </Link>

@@ -1,0 +1,369 @@
+/* ═══════════════════════════════════════════════
+   Solutions Pages — Shared Styles & Animations
+   Scoped under .solutions-page
+   ═══════════════════════════════════════════════ */
+
+/* ── CSS Custom Properties ── */
+.solutions-page {
+  --sol-accent: #3b82f6;
+  --sol-accent-light: #60a5fa;
+  --sol-accent-glow: rgba(59, 130, 246, 0.25);
+  --sol-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --sol-glass: rgba(255, 255, 255, 0.7);
+  --sol-glass-hover: rgba(255, 255, 255, 0.9);
+  --sol-border: rgba(0, 0, 0, 0.06);
+  --sol-border-hover: rgba(0, 0, 0, 0.12);
+  --sol-text-primary: #0f172a;
+  --sol-text-secondary: #475569;
+  --sol-text-muted: #94a3b8;
+  --sol-glow-opacity: 0.15;
+
+  --sol-chat-customer-bg: #e0f2fe;
+  --sol-chat-customer-border: #bae6fd;
+  --sol-chat-customer-color: #0c4a6e;
+  --sol-chat-bot-bg: #f1f5f9;
+  --sol-chat-bot-border: #e2e8f0;
+  --sol-chat-bot-color: #334155;
+}
+
+:is(.dark) .solutions-page {
+  --sol-glass: rgba(255, 255, 255, 0.04);
+  --sol-glass-hover: rgba(255, 255, 255, 0.08);
+  --sol-border: rgba(255, 255, 255, 0.06);
+  --sol-border-hover: rgba(255, 255, 255, 0.12);
+  --sol-text-primary: #f1f5f9;
+  --sol-text-secondary: #94a3b8;
+  --sol-text-muted: #64748b;
+  --sol-glow-opacity: 0.3;
+
+  --sol-chat-customer-bg: rgba(59, 130, 246, 0.15);
+  --sol-chat-customer-border: rgba(59, 130, 246, 0.2);
+  --sol-chat-customer-color: #bfdbfe;
+  --sol-chat-bot-bg: rgba(255, 255, 255, 0.06);
+  --sol-chat-bot-border: rgba(255, 255, 255, 0.08);
+  --sol-chat-bot-color: #cbd5e1;
+}
+
+/* ── Keyframes ── */
+@keyframes sol-dot-pulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sol-glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes sol-progress-fill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes sol-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ── Chat Demo ── */
+.sol-chat-window {
+  border-radius: 20px;
+  border: 1px solid var(--sol-border);
+  background: var(--sol-glass);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  width: 100%;
+  max-width: 380px;
+}
+
+:is(.dark) .sol-chat-window {
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sol-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--sol-border);
+}
+
+.sol-chat-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sol-accent), var(--sol-accent-light));
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.sol-chat-header-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sol-text-primary);
+}
+
+.sol-chat-header-status {
+  font-size: 11px;
+  color: #22c55e;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sol-chat-header-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+}
+
+.sol-chat-messages {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 300px;
+  overflow: hidden;
+}
+
+.sol-chat-msg {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.sol-chat-msg.customer {
+  align-self: flex-end;
+  background: var(--sol-chat-customer-bg);
+  border: 1px solid var(--sol-chat-customer-border);
+  color: var(--sol-chat-customer-color);
+  border-bottom-right-radius: 4px;
+}
+
+.sol-chat-msg.bot {
+  align-self: flex-start;
+  background: var(--sol-chat-bot-bg);
+  border: 1px solid var(--sol-chat-bot-border);
+  color: var(--sol-chat-bot-color);
+  border-bottom-left-radius: 4px;
+}
+
+.sol-typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px 2px;
+}
+
+.sol-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sol-text-muted);
+  animation: sol-dot-pulse 1.4s ease-in-out infinite;
+}
+
+.sol-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.sol-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── Auto Rotate Tabs ── */
+.sol-tabs-list {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 16px;
+  background: var(--sol-glass);
+  border: 1px solid var(--sol-border);
+  width: fit-content;
+}
+
+.sol-tab-trigger {
+  position: relative;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sol-text-secondary);
+  cursor: pointer;
+  transition: color 0.3s var(--sol-ease), background 0.3s var(--sol-ease);
+  overflow: hidden;
+  border: none;
+  background: transparent;
+}
+
+.sol-tab-trigger.active {
+  color: var(--sol-text-primary);
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+:is(.dark) .sol-tab-trigger.active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sol-tab-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--sol-accent);
+  border-radius: 2px;
+  width: 0;
+}
+
+.sol-tab-progress.running {
+  animation: sol-progress-fill var(--sol-tab-interval, 5s) linear forwards;
+}
+
+.sol-tab-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+  padding: 32px 0;
+  min-height: 280px;
+}
+
+@media (max-width: 768px) {
+  .sol-tab-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px 0;
+  }
+}
+
+.sol-tab-visual {
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--sol-glass), var(--sol-glass-hover));
+  border: 1px solid var(--sol-border);
+  padding: 28px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ── Bento Grid ── */
+.sol-bento {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .sol-bento {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .sol-bento {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sol-bento-item {
+  position: relative;
+  border-radius: 20px;
+  padding: 28px;
+  background: var(--sol-glass);
+  border: 1px solid var(--sol-border);
+  overflow: hidden;
+  transition: border-color 0.3s var(--sol-ease), box-shadow 0.4s var(--sol-ease);
+}
+
+.sol-bento-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    var(--sol-accent-glow),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.4s var(--sol-ease);
+  pointer-events: none;
+}
+
+.sol-bento-item:hover {
+  border-color: var(--sol-border-hover);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+}
+
+.sol-bento-item:hover::before {
+  opacity: 1;
+}
+
+:is(.dark) .sol-bento-item:hover {
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Glow CTA Button ── */
+.sol-glow-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.sol-glow-btn::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--sol-accent), var(--sol-accent-light));
+  opacity: 0;
+  z-index: -1;
+  filter: blur(12px);
+  transition: opacity 0.3s var(--sol-ease);
+}
+
+.sol-glow-btn:hover::after {
+  opacity: 0.6;
+  animation: sol-glow-pulse 2s ease-in-out infinite;
+}
+
+/* ── Counter ── */
+.sol-counter-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
+/* ── Background Glow Blobs ── */
+.sol-glow-blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: var(--sol-glow-opacity);
+}
+
+/* ── Hero Split Layout ── */
+.sol-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .sol-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .sol-chat-window {
+    max-width: 100%;
+  }
+}

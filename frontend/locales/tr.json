@@ -50,7 +50,7 @@
     "clear": "Temizle",
     "apply": "Uygula",
     "test": "Test Et",
-    "retry": "Tekrar Dene",
+    "retry": "Tekrar Deneyin",
     "continue": "Devam Et",
     "start": "Başlat",
     "stop": "Durdur",
@@ -63,11 +63,11 @@
       "badge": "AI Destekli Müşteri Hizmetleri Platformu",
       "title": "AI ile Müşteri Hizmetlerini Otomatikleştirin",
       "subtitle": "WhatsApp, Telefon, Chat ve Email - 7/24 AI destekli müşteri hizmeti",
-      "cta": "Ücretsiz Başla",
-      "ctaPrimary": "Ücretsiz Dene",
+      "cta": "Ücretsiz Başlayın",
+      "ctaPrimary": "Ücretsiz Deneyin",
       "ctaDemo": "Demo Talep Et",
       "ctaWaitlist": "Demo Talep Edin",
-      "watch": "Fiyatları Gör",
+      "watch": "Fiyatları Görün",
       "demoProcess": {
         "title": "Demo nasıl çalışır?",
         "step1": "Kayıt ol",
@@ -196,7 +196,7 @@
     "cta": {
       "title": "Hemen Başlayın",
       "subtitle": "15 dakika ücretsiz arama ile deneyin. Kredi kartı gerekmez.",
-      "startTrial": "Ücretsiz Başlat",
+      "startTrial": "Ücretsiz Başlatın",
       "applyEarlyAccess": "Demo Talep Edin",
       "talkToSales": "Satış ile Konuşun"
     },
@@ -227,7 +227,7 @@
       "line4": "Email.",
       "tagline": "Tek AI, tüm kanallar.",
       "sub": "Müşteri hizmetlerini 7/24 otomatize edin. Telefon, WhatsApp, chat ve email — her kanalda aynı AI asistan, aynı kalite.",
-      "cta": "Ücretsiz Başla",
+      "cta": "Ücretsiz Başlayın",
       "howItWorks": "Nasıl çalışır?"
     },
     "manifesto": {
@@ -337,7 +337,7 @@
     "features": "Özellikler",
     "pricing": "Fiyatlar",
     "contact": "İletişim",
-    "getStarted": "Ücretsiz Başla",
+    "getStarted": "Ücretsiz Başlayın",
     "applyEarlyAccess": "Demo Talep Edin",
     "solutionsEcommerce": "E-ticaret",
     "solutionsRestaurant": "Restoran",
@@ -350,7 +350,7 @@
     "subtitle": "İşletmeniz için en uygun planı seçin",
     "trial": "14 gün ücretsiz deneme - Kredi kartı gerekmez",
     "recommended": "Önerilen",
-    "cta": "Başla",
+    "cta": "Başlayın",
     "ctaWaitlist": "Erken Erişim İçin Başvur",
     "questions": "Sorularınız mı var?",
     "contactUs": "Bize ulaşın",
@@ -392,7 +392,7 @@
       "badge": "Telyx Platform Özellikleri",
       "title": "Güçlü Özellikler",
       "subtitle": "Müşteri hizmetlerinizi otomatikleştirmek için ihtiyacınız olan her şey",
-      "explore": "Özellikleri Keşfet"
+      "explore": "Özellikleri Keşfedin"
     },
     "multichannel": {
       "title": "Çok Kanallı Destek",
@@ -442,7 +442,7 @@
     "cta": {
       "title": "Hazır mısınız?",
       "subtitle": "Hemen başlayın ve AI ile müşteri hizmetlerinizi dönüştürün",
-      "start": "Ücretsiz Başla",
+      "start": "Ücretsiz Başlayın",
       "applyEarlyAccess": "Demo Talep Edin",
       "contact": "İletişime Geçin"
     },
@@ -488,7 +488,7 @@
         "desc": "Ürün bilgileri, SSS ve politikalarınızı yükleyin."
       },
       "step4": {
-        "title": "Test et ve yayına al",
+        "title": "Test edin ve yayına alın",
         "desc": "Asistanınızı test edin, sonuçları kontrol edin ve canlıya alın."
       }
     },
@@ -496,7 +496,7 @@
       "title": "Sektörel Çözüm Akışları",
       "subtitle": "Her sektör için örnek müşteri akışlarını inceleyin.",
       "seeAll": "Tüm çözümler",
-      "tryFree": "Ücretsiz dene",
+      "tryFree": "Ücretsiz Deneyin",
       "sampleFlow": "Örnek Akış",
       "sampleFlowDesc": "3 adımda otomasyon + entegrasyon çıktısı",
       "kpis": "KPI'lar",
@@ -549,10 +549,10 @@
       "title": "Sektörünüze Özel AI Çözümleri",
       "subtitle": "Her sektörün kendine özgü ihtiyaçları var. Telyx, sektörünüze özel eğitilmiş AI asistanlarla müşteri deneyiminizi dönüştürür.",
       "badge": "Sektörel Çözümler",
-      "explore": "Çözümleri Keşfet"
+      "explore": "Çözümleri Keşfedin"
     },
     "learnMore": "Detaylı Bilgi",
-    "startFree": "Ücretsiz Başla",
+    "startFree": "Ücretsiz Başlayın",
     "contactSales": "Satış ile Görüşün",
     "whyTelyx": {
       "title": "Neden Telyx?",
@@ -646,6 +646,17 @@
         "step1": "Sipariş durumu sorusu -> ERP/Shopify/ikas üzerinden sorgula -> güncel durumu yanıtla.",
         "step2": "İade talebi -> sorunu sınıflandır -> iade formu oluştur ve etiketle.",
         "step3": "Kargo takibi -> takip linkini üret -> otomatik paylaş ve güncelle."
+      },
+      "chatDemo": {
+        "msg1": "Siparişim nerede? #ORD-23423",
+        "msg2": "Siparişinizi buldum. Doğrulama için telefon numaranızın son 4 hanesini rica ederim.",
+        "msg3": "1234",
+        "msg4": "Doğrulama başarılı. #ORD-23423 numaralı siparişiniz kargoya verildi. Takip numaranız: YK-832402."
+      },
+      "tabs": {
+        "tab1": { "title": "Sipariş Takibi", "contentTitle": "Gerçek Zamanlı Sipariş Durumu", "contentDesc": "Müşterileriniz sipariş numarasıyla anında durum sorgulayabilir. AI, ERP ve kargo sistemlerinizden veri çekerek güncel bilgiyi sunar.", "bullet1": "Otomatik kargo takip linki oluşturma", "bullet2": "Teslimat tahmini hesaplama", "bullet3": "Gecikme durumunda proaktif bilgilendirme" },
+        "tab2": { "title": "İade & Değişim", "contentTitle": "Sorunsuz İade Süreci", "contentDesc": "İade taleplerini otomatik sınıflandırın, form oluşturun ve müşteriyi her adımda bilgilendirin.", "bullet1": "Tek adımda iade talebi oluşturma", "bullet2": "Otomatik etiket ve kargo talimatı", "bullet3": "İade durumu takibi" },
+        "tab3": { "title": "Ürün Danışmanlığı", "contentTitle": "Kişisel Alışveriş Asistanı", "contentDesc": "Müşteri tercihlerine göre ürün önerileri, stok kontrolü ve beden/renk rehberliği sunun.", "bullet1": "Geçmiş alışverişlere göre öneri", "bullet2": "Anlık stok durumu bilgisi", "bullet3": "Beden ve uyumluluk rehberi" }
       }
     },
     "restaurant": {
@@ -706,6 +717,17 @@
         "step1": "Rezervasyon talebi -> takvim uygunluğunu kontrol et -> uygun saatleri sun.",
         "step2": "Menü sorusu -> alerjen/porsiyon bilgisi ver -> uygun ürün öner.",
         "step3": "Sipariş sorusu -> POS/entegrasyondan durumu çek -> müşteriyi bilgilendir."
+      },
+      "chatDemo": {
+        "msg1": "Merhaba, bu akşam için rezervasyon yapabilir miyim?",
+        "msg2": "Tabii, memnuniyetle. Kaç kişilik ve saat kaçı tercih edersiniz?",
+        "msg3": "4 kişi, saat 20:00 civarı olsa.",
+        "msg4": "20:00 için 4 kişilik masanız uygun. İsim ve telefon numaranızı alabilir miyim?"
+      },
+      "tabs": {
+        "tab1": { "title": "Rezervasyon", "contentTitle": "Akıllı Masa Yönetimi", "contentDesc": "Takvim entegrasyonuyla gerçek zamanlı doluluk kontrolü. Müşteriler 7/24 WhatsApp'tan veya web'den masa ayırtabilir.", "bullet1": "Google Calendar entegrasyonu", "bullet2": "Otomatik onay ve hatırlatma", "bullet3": "No-show koruması" },
+        "tab2": { "title": "Menü Rehberi", "contentTitle": "İnteraktif Menü Asistanı", "contentDesc": "Alerjen bilgisi, porsiyon detayları ve fiyatlarla birlikte menünüzü dijital olarak sunun.", "bullet1": "Alerjen ve diyet filtreleri", "bullet2": "Şefin önerisi ve günün menüsü", "bullet3": "Çoklu dil desteği" },
+        "tab3": { "title": "Geri Bildirim", "contentTitle": "Misafir Deneyimi Takibi", "contentDesc": "Yemek sonrası otomatik memnuniyet anketi gönderin, olumsuz geri bildirimleri anında yöneticiye iletin.", "bullet1": "Otomatik anket gönderimi", "bullet2": "Anlık yönetici bildirimi", "bullet3": "Trend analizi paneli" }
       }
     },
     "salon": {
@@ -766,6 +788,17 @@
         "step1": "Randevu talebi -> personel + süre eşleştirmesi yap -> en uygun saati öner.",
         "step2": "Ön görüşme sorusu -> hizmet içeriği ve hazırlık bilgisini paylaş.",
         "step3": "No-show riski -> hatırlatma gönder ve katılım onayı al."
+      },
+      "chatDemo": {
+        "msg1": "Yarın saç kesimi için randevu alabilir miyim?",
+        "msg2": "Tabii. Yarın öğleden sonra Ayşe Hanım 14:00'te, Elif Hanım 15:30'da müsait. Hangisini tercih edersiniz?",
+        "msg3": "Ayşe Hanım 14:00 olsun lütfen.",
+        "msg4": "Randevunuz oluşturuldu. Yarın 14:00'te Ayşe Hanım ile saç kesimi. 1 saat önce hatırlatma mesajı alacaksınız."
+      },
+      "tabs": {
+        "tab1": { "title": "Randevu", "contentTitle": "Akıllı Randevu Sistemi", "contentDesc": "Personel müsaitliği, hizmet süresi ve müşteri tercihlerini otomatik eşleştirin. 7/24 randevu alımı.", "bullet1": "Personel bazlı takvim yönetimi", "bullet2": "Hizmet süresine göre slot hesaplama", "bullet3": "Çakışma önleme sistemi" },
+        "tab2": { "title": "Hatırlatmalar", "contentTitle": "Otomatik Hatırlatma Sistemi", "contentDesc": "Randevu öncesi WhatsApp hatırlatmaları ile no-show oranınızı %50'ye kadar düşürün.", "bullet1": "24 saat ve 1 saat önce hatırlatma", "bullet2": "Tek tıkla onay/iptal", "bullet3": "İptal durumunda bekleme listesi" },
+        "tab3": { "title": "Hizmet Kataloğu", "contentTitle": "Dijital Hizmet Rehberi", "contentDesc": "Tüm hizmetlerinizi, sürelerini, fiyatlarını ve örnek görselleri müşterilerle paylaşın.", "bullet1": "Detaylı hizmet açıklamaları", "bullet2": "Fiyat ve süre bilgisi", "bullet3": "Personel uzmanlık eşleştirme" }
       }
     },
     "support": {
@@ -826,6 +859,17 @@
         "step1": "Gelen sorun -> niyet ve öncelik tespiti yap.",
         "step2": "Bilgi tabanı araması -> dayanaklı yanıtla çözüm sun.",
         "step3": "Çözülemezse -> ticket oluştur ve konuşma özetiyle temsilciye devret."
+      },
+      "chatDemo": {
+        "msg1": "Şifremi sıfırlayamıyorum, hata veriyor.",
+        "msg2": "Size yardımcı olayım. Hangi e-posta adresi ile kayıtlısınız?",
+        "msg3": "info@sirketim.com",
+        "msg4": "Şifre sıfırlama bağlantısı info@sirketim.com adresine gönderildi. Bağlantı 15 dakika geçerlidir."
+      },
+      "tabs": {
+        "tab1": { "title": "Sorun Çözme", "contentTitle": "Akıllı Sorun Tespiti", "contentDesc": "AI müşteri mesajından niyeti ve önceliği otomatik belirler, bilgi tabanınızdan dayanaklı yanıt üretir.", "bullet1": "Niyet ve öncelik sınıflandırma", "bullet2": "Bilgi tabanından dayanaklı yanıt", "bullet3": "Çoklu dil desteği" },
+        "tab2": { "title": "Eskalasyon", "contentTitle": "Akıllı Yönlendirme", "contentDesc": "AI çözemediği soruları tam bağlam özetiyle birlikte doğru departman ve temsilciye yönlendirir.", "bullet1": "Departman bazlı yönlendirme", "bullet2": "Konuşma özeti aktarımı", "bullet3": "Öncelik bazlı kuyruk" },
+        "tab3": { "title": "Analitik", "contentTitle": "Performans Paneli", "contentDesc": "Çözüm oranları, müşteri memnuniyeti, ortalama yanıt süreleri ve trend analizlerini tek panelden izleyin.", "bullet1": "Gerçek zamanlı metrikler", "bullet2": "Temsilci performans karşılaştırma", "bullet3": "Haftalık trend raporları" }
       }
     },
     "channels": {
@@ -1007,7 +1051,7 @@
     "sendResetLink": "Sıfırlama Linki Gönder",
     "checkYourEmail": "E-postanızı Kontrol Edin",
     "resetLinkSent": "{email} adresine şifre sıfırlama linki gönderdik. Link 1 saat geçerlidir.",
-    "tryDifferentEmail": "Farklı E-posta Dene",
+    "tryDifferentEmail": "Farklı E-posta Deneyin",
     "resetPasswordTitle": "Yeni Şifre Belirle",
     "resetPasswordSubtitle": "Yeni şifrenizi girin.",
     "newPassword": "Yeni Şifre",
@@ -1921,7 +1965,7 @@
       "upgradeFailed": "Yükseltme başarısız oldu",
       "popular": "Popüler",
       "contactUs": "Bize Ulaşın",
-      "getStarted": "Hemen Başla",
+      "getStarted": "Hemen Başlayın",
       "processing": "İşleniyor...",
       "overage": "Aşım",
       "perMinute": "/dk",
@@ -2262,7 +2306,7 @@
       "employeeCost": "Çalışan Maliyeti",
       "cheaper": "daha ucuz",
       "youSave": "Tasarruf",
-      "startFreeTrial": "Ücretsiz Denemeye Başla",
+      "startFreeTrial": "Ücretsiz Denemeye Başlayın",
       "costBreakdown": "Maliyet Dağılımı",
       "baseFee": "Temel Ücret",
       "usageCost": "Kullanım Maliyeti",
@@ -3070,7 +3114,7 @@
     "thankYouFeedback": "Geri bildiriminiz için teşekkürler!",
     "invalidPhoneNumber": "Geçersiz telefon numarası",
     "demoCallFailed": "Demo araması başlatılamadı",
-    "tryAgain": "Tekrar Dene"
+    "tryAgain": "Tekrar Deneyin"
   },
   "templates": {
     "title": "Hazır Şablonlar",
@@ -3082,7 +3126,7 @@
     "salonAppointmentDesc": "Randevu alan ve onaylayan AI asistan",
     "ecommerceSupport": "E-ticaret Desteği",
     "ecommerceSupportDesc": "Sipariş takibi ve müşteri desteği",
-    "startFromScratch": "Sıfırdan Başla",
+    "startFromScratch": "Sıfırdan Başlayın",
     "createCustomAssistant": "Kendi yapılandırmanızla tamamen özel bir asistan oluşturun",
     "chooseTemplate": "Şablon Seçin",
     "startWithTemplateOrScratch": "Hazır bir şablonla başlayın veya sıfırdan oluşturun",
