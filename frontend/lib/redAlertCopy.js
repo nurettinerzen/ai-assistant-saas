@@ -53,7 +53,8 @@ const tr = {
       whatsapp: 'WhatsApp',
       email: 'E-posta',
       instagram: 'Instagram',
-      api: 'API'
+      api: 'API',
+      admin_draft: 'Yönetici Taslağı'
     }
   },
   filters: {
@@ -240,17 +241,17 @@ const tr = {
     }
   },
   incidentActions: {
-    ASSISTANT_BLOCKED: 'Bloklama gerekçesinin gerçekten gerekli olup olmadığını ve kullanıcının ne sorduğunu kontrol et.',
-    ASSISTANT_SANITIZED: 'Maskelenen alanın beklenen bir hassas veri olup olmadığını kontrol et.',
-    ASSISTANT_INTERVENTION: 'Guardrail gerekçesini incele; gereksiz sert bir müdahale olup olmadığına bak.',
-    ASSISTANT_NEGATIVE_FEEDBACK: 'Konuşmayı açıp kullanıcının neye itiraz ettiğini ve doğru cevabın ne olması gerektiğini kontrol et.',
-    ASSISTANT_POSITIVE_FEEDBACK: 'Bu yanıt örnek iyi davranış olarak referans alınabilir.',
-    TEMPLATE_FALLBACK_USED: 'Asistanın neden serbest yanıt veremediğini ve yedek yanıta neden düştüğünü incele.',
-    LLM_BYPASSED: 'Bu turda kurallı akışın neden devreye girdiğini kontrol et.',
-    TOOL_NOT_CALLED_WHEN_EXPECTED: 'Planlanan araç seçimini ve araç çağrı akışını kontrol et.',
-    VERIFICATION_INCONSISTENT: 'Doğrulama durumu ile verilen ifadelerin uyumlu olup olmadığını kontrol et.',
-    HALLUCINATION_RISK: 'Araç kaydı veya bilgi tabanı dayanağı olmadan kesin bilgi verilmiş mi bak.',
-    RESPONSE_STUCK: 'Aynı oturumdaki önceki yanıtlarla karşılaştırıp tekrarın neden oluştuğunu kontrol et.'
+    ASSISTANT_BLOCKED: 'Kontrol: Blok gerçekten gerekli miydi?',
+    ASSISTANT_SANITIZED: 'Kontrol: Maskelenen alan gerçekten hassas mıydı?',
+    ASSISTANT_INTERVENTION: 'Kontrol: Müdahale gereğinden sert miydi?',
+    ASSISTANT_NEGATIVE_FEEDBACK: 'Kontrol: Kullanıcı tam olarak neye itiraz etti?',
+    ASSISTANT_POSITIVE_FEEDBACK: 'Not: Bu yanıt iyi örnek olabilir.',
+    TEMPLATE_FALLBACK_USED: 'Kontrol: Neden yedek yanıta düşüldü?',
+    LLM_BYPASSED: 'Kontrol: Neden kurallı akış devreye girdi?',
+    TOOL_NOT_CALLED_WHEN_EXPECTED: 'Kontrol: Araç neden çalışmadı?',
+    VERIFICATION_INCONSISTENT: 'Kontrol: Doğrulama durumu ile ifade uyumlu mu?',
+    HALLUCINATION_RISK: 'Kontrol: Kesin ifade için dayanak var mı?',
+    RESPONSE_STUCK: 'Kontrol: Aynı oturumda tekrar neden oluştu?'
   },
   ops: {
     title: 'Operasyon Olayları',
@@ -262,10 +263,10 @@ const tr = {
     pagination: '{start} - {end} / toplam {total} olay',
     metrics: {
       bypassRate: 'Atlama Oranı',
-      fallbackRate: 'Yedek Yanıt Oranı',
+      repeatRate: 'Tekrar Oranı',
       toolSuccess: 'Araç Başarı Oranı',
       bypassHint: 'LLM atlanan turlar / toplam tur',
-      fallbackHint: 'şablon ve yedek yanıt kaynakları',
+      repeatHint: 'aynı oturumda tekrar eden yanıtlar',
       toolSuccessHint: 'araç çağrılan turlarda başarı'
     },
     table: {
@@ -292,16 +293,16 @@ const tr = {
     toolsCalled: 'Araç Çağrısı Sayısı',
     toolSuccess: 'Araçlar Başarılı mı',
     session: 'Oturum Kimliği',
-    incidentSummaryTitle: 'Bu kaydı neden görüyorsun?',
-    incidentSummaryDescription: 'Öne çıkan sinyalleri sade ve operasyonel bir dille gösteriyoruz.',
-    overviewTitle: 'Hızlı Durum Özeti',
-    overviewDescription: 'Önce bakılması gereken kısa bilgiler.',
+    incidentSummaryTitle: 'Sinyaller',
+    incidentSummaryDescription: '',
+    overviewTitle: 'Özet',
+    overviewDescription: '',
     technicalDetails: 'Teknik Alanlar',
     technicalDescription: 'Gerekirse açabileceğin düşük seviye iz bilgileri.',
     payloadTitle: 'İz Kaydı İçeriği',
-    payloadDescription: 'Kullanıcıya giden yanıt ve temel kontrol sonuçları',
-    guardrailNote: 'Son güvenlik kontrolü tek başına hata anlamına gelmez. Önce kullanıcıya giden yanıta ve sinyallere bak.',
-    responsePreview: 'Kullanıcıya Giden Yanıt',
+    payloadDescription: '',
+    guardrailNote: '',
+    responsePreview: 'Yanıt',
     guardrail: 'Son Güvenlik Kontrolü',
     grounding: 'Yanıt Dayanağı',
     messageType: 'Yanıt Türü',
@@ -411,7 +412,8 @@ const en = {
       whatsapp: 'WhatsApp',
       email: 'Email',
       instagram: 'Instagram',
-      api: 'API'
+      api: 'API',
+      admin_draft: 'Admin Draft'
     }
   },
   filters: {
@@ -598,17 +600,17 @@ const en = {
     }
   },
   incidentActions: {
-    ASSISTANT_BLOCKED: 'Check whether the block reason was actually necessary for what the user asked.',
-    ASSISTANT_SANITIZED: 'Check whether the masked span was expected to be sensitive.',
-    ASSISTANT_INTERVENTION: 'Review the guardrail reason and whether the intervention was too aggressive.',
-    ASSISTANT_NEGATIVE_FEEDBACK: 'Open the conversation and review what the user objected to.',
-    ASSISTANT_POSITIVE_FEEDBACK: 'This can be used as a reference for a good reply pattern.',
-    TEMPLATE_FALLBACK_USED: 'Check why the assistant could not produce a normal answer and fell back.',
-    LLM_BYPASSED: 'Check why the rule-based path was used for this turn.',
-    TOOL_NOT_CALLED_WHEN_EXPECTED: 'Review the planner decision and the tool execution path.',
-    VERIFICATION_INCONSISTENT: 'Check whether the wording matches the verification state.',
-    HALLUCINATION_RISK: 'Check whether the reply made a definite claim without tool or KB evidence.',
-    RESPONSE_STUCK: 'Compare this reply with earlier turns in the same session.'
+    ASSISTANT_BLOCKED: 'Check: Was the block actually necessary?',
+    ASSISTANT_SANITIZED: 'Check: Was the masked span truly sensitive?',
+    ASSISTANT_INTERVENTION: 'Check: Was the intervention too aggressive?',
+    ASSISTANT_NEGATIVE_FEEDBACK: 'Check: What exactly did the user object to?',
+    ASSISTANT_POSITIVE_FEEDBACK: 'Note: This may be a good reference reply.',
+    TEMPLATE_FALLBACK_USED: 'Check: Why did it fall back?',
+    LLM_BYPASSED: 'Check: Why did the rule-based path run?',
+    TOOL_NOT_CALLED_WHEN_EXPECTED: 'Check: Why was the tool not run?',
+    VERIFICATION_INCONSISTENT: 'Check: Does wording match verification state?',
+    HALLUCINATION_RISK: 'Check: Is there evidence for the definite claim?',
+    RESPONSE_STUCK: 'Check: Why did the reply repeat in the same session?'
   },
   ops: {
     title: 'Operational Events',
@@ -620,10 +622,10 @@ const en = {
     pagination: '{start} - {end} / {total} total events',
     metrics: {
       bypassRate: 'Bypass Rate',
-      fallbackRate: 'Fallback Rate',
+      repeatRate: 'Repeat Rate',
       toolSuccess: 'Tool Success Rate',
       bypassHint: 'LLM bypass / total turns',
-      fallbackHint: 'template and fallback sources',
+      repeatHint: 'replies repeated in the same session',
       toolSuccessHint: 'success on turns with tool calls'
     },
     table: {
@@ -650,16 +652,16 @@ const en = {
     toolsCalled: 'Tool Call Count',
     toolSuccess: 'Were Tools Successful?',
     session: 'Session ID',
-    incidentSummaryTitle: 'Why are you seeing this record?',
-    incidentSummaryDescription: 'We summarize the key signals in plain operational language.',
-    overviewTitle: 'Quick Overview',
-    overviewDescription: 'The short list of things to read first.',
+    incidentSummaryTitle: 'Signals',
+    incidentSummaryDescription: '',
+    overviewTitle: 'Overview',
+    overviewDescription: '',
     technicalDetails: 'Technical Fields',
     technicalDescription: 'Lower-level trace fields you can expand if needed.',
     payloadTitle: 'Trace Payload',
-    payloadDescription: 'The reply that reached the user and the main control outputs',
-    guardrailNote: 'The final guardrail result alone does not tell the whole story. Start with the user-facing reply and the signals.',
-    responsePreview: 'Reply Shown to User',
+    payloadDescription: '',
+    guardrailNote: '',
+    responsePreview: 'Reply',
     guardrail: 'Final Safety Check',
     grounding: 'Grounding',
     messageType: 'Reply Type',

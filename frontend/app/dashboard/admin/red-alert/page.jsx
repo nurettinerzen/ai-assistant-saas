@@ -52,8 +52,6 @@ const ASSISTANT_PANEL_CATEGORY_KEYS = [
 const OPS_PANEL_CATEGORY_KEYS = [
   'LLM_BYPASSED',
   'TOOL_NOT_CALLED_WHEN_EXPECTED',
-  'VERIFICATION_INCONSISTENT',
-  'HALLUCINATION_RISK',
   'RESPONSE_STUCK'
 ];
 
@@ -769,6 +767,19 @@ export default function RedAlertPage() {
   const emptyTraceSignalText = traceContext === 'assistant'
     ? copy.traceModal.noAssistantSignals
     : copy.traceModal.noOpsSignals;
+  const traceGuardrailAction = assistantTraceDetail?.trace?.payload?.guardrail?.action;
+  const traceGuardrailReason = assistantTraceDetail?.trace?.payload?.guardrail?.reason;
+  const traceGrounding = formatGrounding(assistantTraceDetail?.trace?.payload?.details?.response_grounding);
+  const traceMessageType = formatMessageType(assistantTraceDetail?.trace?.payload?.details?.message_type);
+  const responseMetaItems = [
+    { label: copy.traceModal.createdAt, value: formatDateTime(assistantTraceDetail?.trace?.createdAt) },
+    { label: copy.traceModal.channel, value: formatChannel(assistantTraceDetail?.trace?.channel) },
+    { label: copy.traceModal.responseSource, value: formatResponseSource(assistantTraceDetail?.trace?.responseSource) },
+    { label: copy.traceModal.guardrail, value: formatGuardrailAction(traceGuardrailAction) },
+    traceGuardrailReason ? { label: copy.traceModal.guardrailReason, value: traceGuardrailReason } : null,
+    traceGrounding !== '-' ? { label: copy.traceModal.grounding, value: traceGrounding } : null,
+    traceMessageType !== '-' ? { label: copy.traceModal.messageType, value: traceMessageType } : null
+  ].filter(Boolean);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -1620,13 +1631,13 @@ export default function RedAlertPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">{copy.ops.metrics.fallbackRate}</CardTitle>
+                <CardTitle className="text-sm font-medium">{copy.ops.metrics.repeatRate}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-600">
-                  {opsSummary?.cards?.fallbackRate ?? 0}%
+                  {opsSummary?.cards?.repeatRate ?? 0}%
                 </div>
-                <p className="text-xs text-muted-foreground">{copy.ops.metrics.fallbackHint}</p>
+                <p className="text-xs text-muted-foreground">{copy.ops.metrics.repeatHint}</p>
               </CardContent>
             </Card>
             <Card>
@@ -1852,19 +1863,15 @@ export default function RedAlertPage() {
 
           {assistantTraceDetail?.trace ? (
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{traceModalTitle}</CardTitle>
-                  <CardDescription>{traceModalDescription}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="rounded-xl border bg-muted/20 p-4">
-                    <div className="text-sm font-medium leading-6">
-                      {assistantSignalItems.length > 0 ? traceHeadline : emptyTraceSignalText}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
+              {assistantSignalItems.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">{traceModalTitle}</CardTitle>
+                    {traceModalDescription ? (
+                      <CardDescription>{traceModalDescription}</CardDescription>
+                    ) : null}
+                  </CardHeader>
+                  <CardContent className="space-y-2">
                     {assistantSignalItems.map((incident) => (
                       <div key={incident.id} className="rounded-lg border p-3">
                         <div className="flex items-start justify-between gap-3">
@@ -1875,7 +1882,7 @@ export default function RedAlertPage() {
                             <div className="mt-2 text-sm leading-6">
                               {getIncidentDescription(incident)}
                             </div>
-                            <div className="mt-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                            <div className="mt-2 text-xs text-muted-foreground">
                               {getIncidentAction(incident)}
                             </div>
                             {(incident.details?.reason || incident.details?.comment || incident.details?.guardrail_reason) && (
@@ -1898,73 +1905,26 @@ export default function RedAlertPage() {
                         </div>
                       </div>
                     ))}
-                    {assistantSignalItems.length === 0 && (
-                      <div className="text-sm text-muted-foreground">
-                        {emptyTraceSignalText}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{copy.traceModal.overviewTitle}</CardTitle>
-                  <CardDescription>{copy.traceModal.overviewDescription}</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <div className="text-muted-foreground text-xs">{copy.traceModal.createdAt}</div>
-                    <div>{formatDateTime(assistantTraceDetail.trace.createdAt)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">{copy.traceModal.channel}</div>
-                    <div>{formatChannel(assistantTraceDetail.trace.channel)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">{copy.traceModal.responseSource}</div>
-                    <div>{formatResponseSource(assistantTraceDetail.trace.responseSource)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">{copy.traceModal.guardrail}</div>
-                    <div>{formatGuardrailAction(assistantTraceDetail.trace.payload?.guardrail?.action)}</div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">{copy.traceModal.responsePreview}</CardTitle>
-                  <CardDescription>{copy.traceModal.payloadDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="rounded-xl border bg-muted/20 p-3 text-xs text-muted-foreground">
-                    {copy.traceModal.guardrailNote}
+                  <div className="rounded-md border bg-muted/30 p-3 whitespace-pre-wrap text-sm">
+                    {assistantTraceDetail.trace.responsePreview || assistantTraceDetail.trace.payload?.details?.response_preview || '-'}
                   </div>
 
-                  <div className="text-sm">
-                    <div className="text-muted-foreground text-xs mb-1">{copy.traceModal.responsePreview}</div>
-                    <div className="rounded-md border bg-muted/30 p-3 whitespace-pre-wrap">
-                      {assistantTraceDetail.trace.responsePreview || assistantTraceDetail.trace.payload?.details?.response_preview || '-'}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground text-xs">{copy.traceModal.guardrail}</div>
-                      <div>{formatGuardrailAction(assistantTraceDetail.trace.payload?.guardrail?.action)}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {assistantTraceDetail.trace.payload?.guardrail?.reason || '-'}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    {responseMetaItems.map((item) => (
+                      <div key={`${item.label}-${item.value}`}>
+                        <div className="text-muted-foreground text-xs">{item.label}</div>
+                        <div className="break-words">{item.value}</div>
                       </div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground text-xs">{copy.traceModal.grounding}</div>
-                      <div>{formatGrounding(assistantTraceDetail.trace.payload?.details?.response_grounding)}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground text-xs">{copy.traceModal.messageType}</div>
-                      <div>{formatMessageType(assistantTraceDetail.trace.payload?.details?.message_type)}</div>
-                    </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

@@ -427,7 +427,6 @@ router.get('/ops/summary', async (req, res) => {
     const [
       totalTurns,
       bypassTurns,
-      fallbackTurns,
       toolCalledTurns,
       toolSuccessTurns,
       incidentsByCategory,
@@ -438,12 +437,6 @@ router.get('/ops/summary', async (req, res) => {
         where: {
           ...traceWhere,
           llmUsed: false
-        }
-      }),
-      prisma.responseTrace.count({
-        where: {
-          ...traceWhere,
-          responseSource: { in: ['template', 'fallback', 'policy_append'] }
         }
       }),
       prisma.responseTrace.count({
@@ -472,6 +465,11 @@ router.get('/ops/summary', async (req, res) => {
     ]);
 
     const pct = (num, den) => den > 0 ? Number(((num / den) * 100).toFixed(2)) : 0;
+    const categoryCounts = incidentsByCategory.reduce((acc, item) => {
+      acc[item.category] = item._count;
+      return acc;
+    }, {});
+    const responseStuck = categoryCounts[OP_INCIDENT_CATEGORY.RESPONSE_STUCK] || 0;
 
     res.json({
       range: String(range),
@@ -482,13 +480,10 @@ router.get('/ops/summary', async (req, res) => {
       },
       cards: {
         bypassRate: pct(bypassTurns, totalTurns),
-        fallbackRate: pct(fallbackTurns, totalTurns),
+        repeatRate: pct(responseStuck, totalTurns),
         toolSuccessRate: pct(toolSuccessTurns, toolCalledTurns),
       },
-      byCategory: incidentsByCategory.reduce((acc, item) => {
-        acc[item.category] = item._count;
-        return acc;
-      }, {}),
+      byCategory: categoryCounts,
       bySeverity: incidentsBySeverity.reduce((acc, item) => {
         acc[item.severity] = item._count;
         return acc;
