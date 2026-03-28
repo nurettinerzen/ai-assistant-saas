@@ -117,11 +117,7 @@ const tr = {
   },
   opsCategories: {
     LLM_BYPASSED: 'LLM Atlandı',
-    TEMPLATE_FALLBACK_USED: 'Yedek Yanıt Kullanıldı',
-    TOOL_NOT_CALLED_WHEN_EXPECTED: 'Gerekli Araç Çağrılmadı',
-    VERIFICATION_INCONSISTENT: 'Doğrulama Kayması',
-    HALLUCINATION_RISK: 'Halüsinasyon Riski',
-    RESPONSE_STUCK: 'Tekrarlayan Yanıt'
+    TOOL_NOT_CALLED_WHEN_EXPECTED: 'Gerekli Araç Çağrılmadı'
   },
   errors: {
     title: 'Uygulama Hataları',
@@ -221,9 +217,9 @@ const tr = {
       ASSISTANT_INTERVENTION: 'Yanıt son anda kural veya son işlem katmanı tarafından değiştirildi.',
       ASSISTANT_NEGATIVE_FEEDBACK: 'Kullanıcı bu yanıtı faydalı bulmadığını işaretledi.',
       ASSISTANT_POSITIVE_FEEDBACK: 'Kullanıcı bu yanıtı faydalı bulduğunu işaretledi.',
-      LLM_BYPASSED: 'Bu tur serbest yanıt yerine kurallı akışla tamamlandı.',
+      LLM_BYPASSED: 'Bu turda modelden normal bir yanıt üretilmedi; sistem kurallı akış kullandı.',
       TEMPLATE_FALLBACK_USED: 'Asıl yanıt yerine hazır veya yedek yanıt kullanıldı.',
-      TOOL_NOT_CALLED_WHEN_EXPECTED: 'Sistem araç çalıştırmalıydı ancak çalıştırmadan devam etti.',
+      TOOL_NOT_CALLED_WHEN_EXPECTED: 'Sistem araç kullanmalıydı ancak kullanmadan devam etti.',
       VERIFICATION_INCONSISTENT: 'Doğrulama tamamlanmadan fazla kesin bir ifade kullanılmış olabilir.',
       HALLUCINATION_RISK: 'Araç ya da kayıt dayanağı olmadan kesin bilgi verilmiş olabilir.',
       RESPONSE_STUCK: 'Aynı oturumda benzer bir yanıt tekrar etmiş görünüyor.'
@@ -270,16 +266,28 @@ const tr = {
       toolSuccessHint: 'araç çağrılan turlarda başarı'
     },
     table: {
-      hash: 'Özet',
+      hash: 'İmza',
       channel: 'Kanal',
       session: 'Oturum',
-      count: 'Sayı',
-      sample: 'Örnek Metin',
-      trace: 'İz Kaydı',
+      count: 'Tekrar',
+      sample: 'Örnek Yanıt',
+      trace: 'İşlem',
       time: 'Zaman',
       category: 'Kategori',
       severity: 'Önem',
-      summary: 'Özet'
+      summary: 'Sinyal',
+      status: 'Durum',
+      action: 'İşlem'
+    },
+    actions: {
+      viewTrace: 'İncele',
+      resolve: 'Çözüldü olarak işaretle',
+      reopen: 'Tekrar aç'
+    },
+    notifications: {
+      resolved: 'Operasyon olayı çözüldü olarak işaretlendi',
+      reopened: 'Operasyon olayı tekrar açıldı',
+      updateFailed: 'Operasyon olayı güncellenemedi'
     }
   },
   traceModal: {
@@ -476,11 +484,7 @@ const en = {
   },
   opsCategories: {
     LLM_BYPASSED: 'LLM Bypassed',
-    TEMPLATE_FALLBACK_USED: 'Fallback Used',
-    TOOL_NOT_CALLED_WHEN_EXPECTED: 'Required Tool Was Skipped',
-    VERIFICATION_INCONSISTENT: 'Verification Drift',
-    HALLUCINATION_RISK: 'Hallucination Risk',
-    RESPONSE_STUCK: 'Repeated Response'
+    TOOL_NOT_CALLED_WHEN_EXPECTED: 'Required Tool Was Skipped'
   },
   errors: {
     title: 'App Errors',
@@ -580,9 +584,9 @@ const en = {
       ASSISTANT_INTERVENTION: 'The reply was changed at the last stage by rules or post-processing.',
       ASSISTANT_NEGATIVE_FEEDBACK: 'The user marked this response as not helpful.',
       ASSISTANT_POSITIVE_FEEDBACK: 'The user marked this response as helpful.',
-      LLM_BYPASSED: 'This turn used a rule-based path instead of a free-form model reply.',
+      LLM_BYPASSED: 'The system did not generate a normal model reply for this turn and used a rule-based path instead.',
       TEMPLATE_FALLBACK_USED: 'A ready-made or fallback reply was used instead of a normal answer.',
-      TOOL_NOT_CALLED_WHEN_EXPECTED: 'The system should have called a tool but continued without it.',
+      TOOL_NOT_CALLED_WHEN_EXPECTED: 'The system should have used a tool but continued without it.',
       VERIFICATION_INCONSISTENT: 'The reply may sound too certain before verification finished.',
       HALLUCINATION_RISK: 'The reply may contain a definite claim without tool or record evidence.',
       RESPONSE_STUCK: 'A very similar reply repeated in the same session.'
@@ -629,16 +633,28 @@ const en = {
       toolSuccessHint: 'success on turns with tool calls'
     },
     table: {
-      hash: 'Hash',
+      hash: 'Fingerprint',
       channel: 'Channel',
       session: 'Session',
-      count: 'Count',
-      sample: 'Sample Text',
-      trace: 'Trace',
+      count: 'Repeats',
+      sample: 'Sample Reply',
+      trace: 'Action',
       time: 'Time',
       category: 'Category',
       severity: 'Severity',
-      summary: 'Summary'
+      summary: 'Signal',
+      status: 'Status',
+      action: 'Action'
+    },
+    actions: {
+      viewTrace: 'Review',
+      resolve: 'Mark as resolved',
+      reopen: 'Reopen'
+    },
+    notifications: {
+      resolved: 'Operational event marked as resolved',
+      reopened: 'Operational event reopened',
+      updateFailed: 'Failed to update operational event'
     }
   },
   traceModal: {

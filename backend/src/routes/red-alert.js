@@ -44,6 +44,7 @@ function buildAssistantIncidentWhere({ businessId, since, category, severity, re
   return {
     createdAt: { gte: since },
     ...(businessId && { businessId }),
+    channel: { not: 'ADMIN_DRAFT' },
     category: {
       in: category ? [String(category)] : [...ASSISTANT_INCIDENT_CATEGORIES]
     },
@@ -54,15 +55,35 @@ function buildAssistantIncidentWhere({ businessId, since, category, severity, re
   };
 }
 
-function buildOpsIncidentWhere({ businessId, since, category, severity } = {}) {
+function buildOpsIncidentWhere({ businessId, since, category, severity, excludedTraceIds = [] } = {}) {
   return {
     createdAt: { gte: since },
     ...(businessId && { businessId }),
+    channel: { not: 'ADMIN_DRAFT' },
+    ...(excludedTraceIds.length > 0 ? { traceId: { notIn: excludedTraceIds } } : {}),
     category: {
       in: category ? [String(category)] : [...OPS_INCIDENT_CATEGORIES]
     },
     ...(severity && { severity: String(severity).toUpperCase() })
   };
+}
+
+async function listAssistantTraceIds({ businessId, since }) {
+  const rows = await prisma.operationalIncident.findMany({
+    where: {
+      createdAt: { gte: since },
+      ...(businessId && { businessId }),
+      channel: { not: 'ADMIN_DRAFT' },
+      traceId: { not: null },
+      category: { in: [...ASSISTANT_INCIDENT_CATEGORIES] }
+    },
+    distinct: ['traceId'],
+    select: { traceId: true }
+  });
+
+  return rows
+    .map((row) => row.traceId)
+    .filter(Boolean);
 }
 
 function toPercent(part, total) {
@@ -417,12 +438,14 @@ router.get('/ops/summary', async (req, res) => {
     const { businessId } = req;
     const { range = '24h' } = req.query;
     const since = parseRangeToSince(range);
+    const assistantTraceIds = await listAssistantTraceIds({ businessId, since });
 
     const traceWhere = {
       createdAt: { gte: since },
       ...(businessId && { businessId }),
+      channel: { not: 'ADMIN_DRAFT' }
     };
-    const incidentWhere = buildOpsIncidentWhere({ businessId, since });
+    const incidentWhere = buildOpsIncidentWhere({ businessId, since, excludedTraceIds: assistantTraceIds });
 
     const [
       totalTurns,
@@ -430,7 +453,8 @@ router.get('/ops/summary', async (req, res) => {
       toolCalledTurns,
       toolSuccessTurns,
       incidentsByCategory,
-      incidentsBySeverity
+      incidentsBySeverity,
+      repeatIncidentCount
     ] = await Promise.all([
       prisma.responseTrace.count({ where: traceWhere }),
       prisma.responseTrace.count({
@@ -461,6 +485,14 @@ router.get('/ops/summary', async (req, res) => {
         by: ['severity'],
         where: incidentWhere,
         _count: true
+      }),
+      prisma.operationalIncident.count({
+        where: {
+          createdAt: { gte: since },
+          ...(businessId && { businessId }),
+          channel: { not: 'ADMIN_DRAFT' },
+          category: OP_INCIDENT_CATEGORY.RESPONSE_STUCK
+        }
       })
     ]);
 
@@ -469,7 +501,6 @@ router.get('/ops/summary', async (req, res) => {
       acc[item.category] = item._count;
       return acc;
     }, {});
-    const responseStuck = categoryCounts[OP_INCIDENT_CATEGORY.RESPONSE_STUCK] || 0;
 
     res.json({
       range: String(range),
@@ -480,7 +511,7 @@ router.get('/ops/summary', async (req, res) => {
       },
       cards: {
         bypassRate: pct(bypassTurns, totalTurns),
-        repeatRate: pct(responseStuck, totalTurns),
+        repeatRate: pct(repeatIncidentCount, totalTurns),
         toolSuccessRate: pct(toolSuccessTurns, toolCalledTurns),
       },
       byCategory: categoryCounts,
@@ -513,8 +544,8 @@ router.get('/ops/events', async (req, res) => {
       offset = 0
     } = req.query;
     const since = parseRangeToSince(range);
-
-    const where = buildOpsIncidentWhere({ businessId, since, category, severity });
+    const assistantTraceIds = await listAssistantTraceIds({ businessId, since });
+    const where = buildOpsIncidentWhere({ businessId, since, category, severity, excludedTraceIds: assistantTraceIds });
 
     const [events, total] = await Promise.all([
       prisma.operationalIncident.findMany({
@@ -574,6 +605,7 @@ router.get('/ops/repeat-responses', async (req, res) => {
       where: {
         createdAt: { gte: since },
         ...(businessId && { businessId }),
+        channel: { not: 'ADMIN_DRAFT' },
         responseHash: { not: null }
       },
       select: {
@@ -640,7 +672,8 @@ router.get('/assistant/summary', async (req, res) => {
 
     const traceWhere = {
       createdAt: { gte: since },
-      ...(businessId && { businessId })
+      ...(businessId && { businessId }),
+      channel: { not: 'ADMIN_DRAFT' }
     };
     const incidentWhere = buildAssistantIncidentWhere({ businessId, since });
 
@@ -774,6 +807,44 @@ router.get('/assistant/events', async (req, res) => {
   } catch (error) {
     console.error('Red Alert assistant events error:', error);
     res.status(500).json({ error: 'Failed to fetch assistant events' });
+  }
+});
+
+/**
+ * PATCH /api/red-alert/ops/events/:id/resolve
+ */
+router.patch('/ops/events/:id/resolve', async (req, res) => {
+  try {
+    if (!isOpsPanelAllowed(req)) {
+      return res.status(404).json({ error: 'Operational panel disabled' });
+    }
+
+    const { businessId } = req;
+    const { id } = req.params;
+    const { resolved = true } = req.body || {};
+
+    const updated = await prisma.operationalIncident.updateMany({
+      where: {
+        id,
+        ...(businessId && { businessId }),
+        channel: { not: 'ADMIN_DRAFT' },
+        category: { in: [...OPS_INCIDENT_CATEGORIES] }
+      },
+      data: {
+        resolved: resolved === true,
+        resolvedAt: resolved === true ? new Date() : null,
+        resolvedBy: resolved === true ? `user:${req.user?.id || 'unknown'}` : null
+      }
+    });
+
+    if (updated.count === 0) {
+      return res.status(404).json({ error: 'Operational event not found' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Red Alert ops resolve error:', error);
+    res.status(500).json({ error: 'Failed to update ops event' });
   }
 });
 

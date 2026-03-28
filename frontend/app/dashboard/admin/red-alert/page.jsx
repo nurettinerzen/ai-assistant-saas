@@ -51,8 +51,7 @@ const ASSISTANT_PANEL_CATEGORY_KEYS = [
 
 const OPS_PANEL_CATEGORY_KEYS = [
   'LLM_BYPASSED',
-  'TOOL_NOT_CALLED_WHEN_EXPECTED',
-  'RESPONSE_STUCK'
+  'TOOL_NOT_CALLED_WHEN_EXPECTED'
 ];
 
 
@@ -215,7 +214,6 @@ export default function RedAlertPage() {
       ASSISTANT_NEEDS_CLARIFICATION: 80,
       ASSISTANT_INTERVENTION: 70,
       ASSISTANT_SANITIZED: 60,
-      RESPONSE_STUCK: 50,
       LLM_BYPASSED: 40,
       ASSISTANT_POSITIVE_FEEDBACK: 30
     };
@@ -547,6 +545,18 @@ export default function RedAlertPage() {
     } catch (error) {
       console.error('Failed to resolve assistant group:', error);
       toast.error(copy.assistant.notifications.updateFailed);
+    }
+  };
+
+  const handleResolveOpsEvent = async (eventId, resolved) => {
+    try {
+      await apiClient.patch(`/api/red-alert/ops/events/${eventId}/resolve`, { resolved });
+      toast.success(resolved ? copy.ops.notifications.resolved : copy.ops.notifications.reopened);
+      loadOpsEvents();
+      loadOpsSummary();
+    } catch (error) {
+      console.error('Failed to resolve ops event:', error);
+      toast.error(copy.ops.notifications.updateFailed);
     }
   };
 
@@ -1664,7 +1674,7 @@ export default function RedAlertPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{copy.ops.table.hash}</TableHead>
+                    <TableHead>{copy.ops.table.time}</TableHead>
                     <TableHead>{copy.ops.table.channel}</TableHead>
                     <TableHead>{copy.ops.table.session}</TableHead>
                     <TableHead>{copy.ops.table.count}</TableHead>
@@ -1682,7 +1692,7 @@ export default function RedAlertPage() {
                   ) : (
                     repeatResponses.map((item) => (
                       <TableRow key={`${item.responseHash}-${item.channel}-${item.sessionId || 'no-session'}`}>
-                        <TableCell className="font-mono text-xs">{item.responseHash?.slice(0, 12)}...</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs">{formatDateTime(item.latestAt)}</TableCell>
                         <TableCell>{formatChannel(item.channel)}</TableCell>
                         <TableCell className="font-mono text-xs">{item.sessionId ? `${item.sessionId.slice(0, 12)}...` : '-'}</TableCell>
                         <TableCell>
@@ -1691,14 +1701,14 @@ export default function RedAlertPage() {
                         <TableCell className="max-w-md truncate" title={item.sample || ''}>
                           {item.sample || '-'}
                         </TableCell>
-                        <TableCell className="font-mono text-xs">
+                        <TableCell>
                           {item.latestTraceId ? (
                             <button
                               type="button"
-                              className="text-blue-600 hover:underline"
+                              className="text-blue-600 hover:underline text-sm"
                               onClick={() => loadAssistantTraceDetail(item.latestTraceId, null, 'repeat')}
                             >
-                              {item.latestTraceId.slice(0, 12)}...
+                              {copy.ops.actions.viewTrace}
                             </button>
                           ) : '-'}
                         </TableCell>
@@ -1763,10 +1773,10 @@ export default function RedAlertPage() {
                 <TableRow>
                   <TableHead>{copy.ops.table.time}</TableHead>
                   <TableHead>{copy.ops.table.category}</TableHead>
-                  <TableHead>{copy.ops.table.severity}</TableHead>
                   <TableHead>{copy.ops.table.summary}</TableHead>
-                  <TableHead>{copy.ops.table.channel}</TableHead>
-                  <TableHead>{copy.ops.table.trace}</TableHead>
+                  <TableHead>{copy.ops.table.severity}</TableHead>
+                  <TableHead>{copy.ops.table.status}</TableHead>
+                  <TableHead>{copy.ops.table.action}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1780,31 +1790,60 @@ export default function RedAlertPage() {
                   opsEvents.map((event) => (
                     <TableRow key={event.id}>
                       <TableCell className="whitespace-nowrap text-xs">
-                          {formatDateTime(event.createdAt)}
+                        <div>{formatDateTime(event.createdAt)}</div>
+                        <div className="text-[11px] text-muted-foreground mt-1">
+                          {formatChannel(event.channel)}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs">
-                          {opsCategoryLabels[event.category] || event.category}
+                        {opsCategoryLabels[event.category] || event.category}
+                      </TableCell>
+                      <TableCell className="max-w-md">
+                        <div className="text-sm leading-5" title={getIncidentDescription(event)}>
+                          {getIncidentDescription(event)}
+                        </div>
                       </TableCell>
                       <TableCell>
-                          <Badge className={SEVERITY_COLORS[(event.severity || '').toLowerCase()] || 'bg-muted text-foreground'}>
-                            {formatSeverityLabel(event.severity)}
-                          </Badge>
+                        <Badge className={SEVERITY_COLORS[(event.severity || '').toLowerCase()] || 'bg-muted text-foreground'}>
+                          {formatSeverityLabel(event.severity)}
+                        </Badge>
                       </TableCell>
-                        <TableCell className="max-w-md truncate" title={getIncidentDescription(event)}>
-                          {getIncidentDescription(event)}
-                        </TableCell>
-                        <TableCell>{formatChannel(event.channel)}</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {event.traceId ? (
-                            <button
-                              type="button"
-                              className="text-blue-600 hover:underline"
-                              onClick={() => loadAssistantTraceDetail(event.traceId, null, 'ops')}
-                            >
-                              {event.traceId.slice(0, 12)}...
-                            </button>
-                          ) : '-'}
-                        </TableCell>
+                      <TableCell>
+                        {event.resolved ? (
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            {copy.common.resolved}
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            {copy.common.open}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="w-28">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => loadAssistantTraceDetail(event.traceId, null, 'ops')}
+                            disabled={!event.traceId || assistantTraceLoading}
+                            title={copy.ops.actions.viewTrace}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResolveOpsEvent(event.id, !event.resolved)}
+                            title={event.resolved ? copy.ops.actions.reopen : copy.ops.actions.resolve}
+                          >
+                            {event.resolved ? (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
                       </TableRow>
                     ))
                   )}
