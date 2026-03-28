@@ -15,6 +15,7 @@ import {
 } from '../config/feature-flags.js';
 import {
   ASSISTANT_INCIDENT_CATEGORIES,
+  OPS_INCIDENT_CATEGORIES,
   OP_INCIDENT_CATEGORY
 } from '../services/operationalIncidentLogger.js';
 
@@ -50,6 +51,17 @@ function buildAssistantIncidentWhere({ businessId, since, category, severity, re
     ...(resolved === 'true' || resolved === 'false'
       ? { resolved: resolved === 'true' }
       : {})
+  };
+}
+
+function buildOpsIncidentWhere({ businessId, since, category, severity } = {}) {
+  return {
+    createdAt: { gte: since },
+    ...(businessId && { businessId }),
+    category: {
+      in: category ? [String(category)] : [...OPS_INCIDENT_CATEGORIES]
+    },
+    ...(severity && { severity: String(severity).toUpperCase() })
   };
 }
 
@@ -410,10 +422,7 @@ router.get('/ops/summary', async (req, res) => {
       createdAt: { gte: since },
       ...(businessId && { businessId }),
     };
-    const incidentWhere = {
-      createdAt: { gte: since },
-      ...(businessId && { businessId }),
-    };
+    const incidentWhere = buildOpsIncidentWhere({ businessId, since });
 
     const [
       totalTurns,
@@ -510,12 +519,7 @@ router.get('/ops/events', async (req, res) => {
     } = req.query;
     const since = parseRangeToSince(range);
 
-    const where = {
-      createdAt: { gte: since },
-      ...(businessId && { businessId }),
-      ...(category && { category: String(category) }),
-      ...(severity && { severity: String(severity).toUpperCase() })
-    };
+    const where = buildOpsIncidentWhere({ businessId, since, category, severity });
 
     const [events, total] = await Promise.all([
       prisma.operationalIncident.findMany({
@@ -675,10 +679,8 @@ router.get('/assistant/summary', async (req, res) => {
     const feedbackTotal = positiveFeedback + negativeFeedback;
     const blocked = categoryCounts[OP_INCIDENT_CATEGORY.ASSISTANT_BLOCKED] || 0;
     const sanitized = categoryCounts[OP_INCIDENT_CATEGORY.ASSISTANT_SANITIZED] || 0;
-    const clarification = categoryCounts[OP_INCIDENT_CATEGORY.ASSISTANT_NEEDS_CLARIFICATION] || 0;
     const fallback = categoryCounts[OP_INCIDENT_CATEGORY.TEMPLATE_FALLBACK_USED] || 0;
     const intervention = categoryCounts[OP_INCIDENT_CATEGORY.ASSISTANT_INTERVENTION] || 0;
-    const toolSkipped = categoryCounts[OP_INCIDENT_CATEGORY.TOOL_NOT_CALLED_WHEN_EXPECTED] || 0;
 
     res.json({
       range: String(range),
@@ -693,7 +695,6 @@ router.get('/assistant/summary', async (req, res) => {
         blockedRate: toPercent(blocked, totalTurns),
         sanitizeRate: toPercent(sanitized, totalTurns),
         fallbackRate: toPercent(fallback, totalTurns),
-        clarificationRate: toPercent(clarification, totalTurns),
         interventionRate: toPercent(intervention, totalTurns),
         negativeFeedbackRate: toPercent(negativeFeedback, Math.max(feedbackTotal, 1))
       },
@@ -701,15 +702,9 @@ router.get('/assistant/summary', async (req, res) => {
         blocked,
         sanitized,
         fallback,
-        clarification,
         intervention,
-        toolSkipped,
         positiveFeedback,
-        negativeFeedback,
-        llmBypassed: categoryCounts[OP_INCIDENT_CATEGORY.LLM_BYPASSED] || 0,
-        hallucinationRisk: categoryCounts[OP_INCIDENT_CATEGORY.HALLUCINATION_RISK] || 0,
-        verificationDrift: categoryCounts[OP_INCIDENT_CATEGORY.VERIFICATION_INCONSISTENT] || 0,
-        responseStuck: categoryCounts[OP_INCIDENT_CATEGORY.RESPONSE_STUCK] || 0
+        negativeFeedback
       },
       byCategory: categoryCounts,
       bySeverity: incidentsBySeverity.reduce((acc, item) => {

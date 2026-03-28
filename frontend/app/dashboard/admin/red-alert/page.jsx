@@ -40,6 +40,23 @@ const ERROR_CATEGORY_ICONS = {
   webhook_error: Activity,
 };
 
+const ASSISTANT_PANEL_CATEGORY_KEYS = [
+  'ASSISTANT_BLOCKED',
+  'ASSISTANT_SANITIZED',
+  'TEMPLATE_FALLBACK_USED',
+  'ASSISTANT_INTERVENTION',
+  'ASSISTANT_NEGATIVE_FEEDBACK',
+  'ASSISTANT_POSITIVE_FEEDBACK'
+];
+
+const OPS_PANEL_CATEGORY_KEYS = [
+  'LLM_BYPASSED',
+  'TOOL_NOT_CALLED_WHEN_EXPECTED',
+  'VERIFICATION_INCONSISTENT',
+  'HALLUCINATION_RISK',
+  'RESPONSE_STUCK'
+];
+
 
 export default function RedAlertPage() {
   const { locale } = useLanguage();
@@ -117,6 +134,7 @@ export default function RedAlertPage() {
   const [assistantTraceOpen, setAssistantTraceOpen] = useState(false);
   const [assistantTraceLoading, setAssistantTraceLoading] = useState(false);
   const [selectedAssistantGroup, setSelectedAssistantGroup] = useState(null);
+  const [traceContext, setTraceContext] = useState('assistant');
   const [opsCapabilities, setOpsCapabilities] = useState({
     loaded: false,
     redAlertOpsPanelEnabled: false,
@@ -226,6 +244,24 @@ export default function RedAlertPage() {
     }
 
     return base;
+  };
+
+  const getIncidentAction = (incident) => {
+    if (!incident) return copy.common.none;
+    return copy.incidentActions?.[incident.category] || copy.common.none;
+  };
+
+  const isClarificationLikeTrace = (trace) => {
+    const payload = trace?.payload || {};
+    const guardrailAction = String(payload?.guardrail?.action || '').toUpperCase();
+    const responsePreview = String(trace?.responsePreview || payload?.details?.response_preview || '');
+    const responseGrounding = String(payload?.details?.response_grounding || '').toUpperCase();
+
+    return (
+      responseGrounding === 'CLARIFICATION'
+      || guardrailAction === 'NEED_MIN_INFO_FOR_TOOL'
+      || /(teyit|doğrula|dogrula|verify|confirm|rica edebilir miyim|paylaşır mısınız|paylasir misiniz|sipariş numaranızı|siparis numaranizi|son dört han|last four)/i.test(responsePreview)
+    );
   };
 
   const groupedAssistantEvents = useMemo(() => {
@@ -481,10 +517,11 @@ export default function RedAlertPage() {
     }
   };
 
-  const loadAssistantTraceDetail = async (traceId, assistantGroup = null) => {
+  const loadAssistantTraceDetail = async (traceId, assistantGroup = null, context = 'assistant') => {
     if (!traceId) return;
     setAssistantTraceLoading(true);
     setSelectedAssistantGroup(assistantGroup);
+    setTraceContext(context);
     try {
       const response = await apiClient.get(`/api/red-alert/assistant/trace/${traceId}`);
       setAssistantTraceDetail(response.data);
@@ -696,9 +733,45 @@ export default function RedAlertPage() {
   const totalEvents = summary?.summary?.total || 0;
   const opsIncidentCount = opsSummary?.totals?.incidents || 0;
   const assistantIncidentCount = assistantSummary?.totals?.incidents || 0;
-  const assistantSignalItems = selectedAssistantGroup?.incidents?.length
-    ? selectedAssistantGroup.incidents
-    : (assistantTraceDetail?.incidents || []);
+  const traceIncidents = assistantTraceDetail?.incidents || [];
+  const assistantSignalItems = useMemo(() => {
+    if (selectedAssistantGroup?.incidents?.length) {
+      return selectedAssistantGroup.incidents;
+    }
+
+    const sourceItems = traceIncidents;
+    const clarificationLike = isClarificationLikeTrace(assistantTraceDetail?.trace);
+
+    if (traceContext === 'assistant') {
+      return sourceItems.filter((incident) => ASSISTANT_PANEL_CATEGORY_KEYS.includes(incident.category));
+    }
+
+    const opsItems = sourceItems.filter((incident) => OPS_PANEL_CATEGORY_KEYS.includes(incident.category));
+    if (!clarificationLike) {
+      return opsItems;
+    }
+
+    return opsItems.filter((incident) => (
+      incident.category !== 'HALLUCINATION_RISK'
+      && incident.category !== 'VERIFICATION_INCONSISTENT'
+      && incident.category !== 'ASSISTANT_NEEDS_CLARIFICATION'
+    ));
+  }, [assistantTraceDetail?.trace, selectedAssistantGroup, traceContext, traceIncidents]);
+  const traceModalTitle = traceContext === 'repeat'
+    ? copy.ops.repeatTitle
+    : traceContext === 'ops'
+      ? copy.ops.title
+      : copy.traceModal.incidentSummaryTitle;
+  const traceModalDescription = traceContext === 'repeat'
+    ? copy.ops.repeatDescription
+    : traceContext === 'ops'
+      ? copy.ops.description
+      : copy.traceModal.incidentSummaryDescription;
+  const traceHeadline = selectedAssistantGroup?.primaryDescription
+    || getIncidentDescription(assistantSignalItems[0]);
+  const emptyTraceSignalText = traceContext === 'assistant'
+    ? copy.traceModal.noAssistantSignals
+    : copy.traceModal.noOpsSignals;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -1329,9 +1402,9 @@ export default function RedAlertPage() {
                   <div className="text-xs text-muted-foreground">{assistantSummary?.counts?.fallback ?? 0} {copy.assistant.metrics.turn}</div>
                 </div>
                 <div className="rounded-xl border p-4">
-                  <div className="text-xs text-muted-foreground">{copy.assistant.metrics.clarification}</div>
-                  <div className="mt-1 text-2xl font-bold text-blue-600">{assistantSummary?.cards?.clarificationRate ?? 0}%</div>
-                  <div className="text-xs text-muted-foreground">{assistantSummary?.counts?.clarification ?? 0} {copy.assistant.metrics.turn}</div>
+                  <div className="text-xs text-muted-foreground">{copy.assistant.metrics.intervention}</div>
+                  <div className="mt-1 text-2xl font-bold text-blue-600">{assistantSummary?.cards?.interventionRate ?? 0}%</div>
+                  <div className="text-xs text-muted-foreground">{assistantSummary?.counts?.intervention ?? 0} {copy.assistant.metrics.turn}</div>
                 </div>
                 <div className="rounded-xl border p-4">
                   <div className="text-xs text-muted-foreground">{copy.assistant.metrics.negativeFeedback}</div>
@@ -1361,8 +1434,8 @@ export default function RedAlertPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{copy.filters.allCategories}</SelectItem>
-                    {Object.entries(assistantCategoryLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {ASSISTANT_PANEL_CATEGORY_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>{assistantCategoryLabels[key] || key}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1472,7 +1545,7 @@ export default function RedAlertPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => loadAssistantTraceDetail(group.traceId, group)}
+                              onClick={() => loadAssistantTraceDetail(group.traceId, group, 'assistant')}
                               disabled={!group.traceId || assistantTraceLoading}
                               title={copy.assistant.actions.viewTrace}
                             >
@@ -1611,7 +1684,15 @@ export default function RedAlertPage() {
                           {item.sample || '-'}
                         </TableCell>
                         <TableCell className="font-mono text-xs">
-                          {item.latestTraceId ? `${item.latestTraceId.slice(0, 12)}...` : '-'}
+                          {item.latestTraceId ? (
+                            <button
+                              type="button"
+                              className="text-blue-600 hover:underline"
+                              onClick={() => loadAssistantTraceDetail(item.latestTraceId, null, 'repeat')}
+                            >
+                              {item.latestTraceId.slice(0, 12)}...
+                            </button>
+                          ) : '-'}
                         </TableCell>
                       </TableRow>
                     ))
@@ -1642,8 +1723,8 @@ export default function RedAlertPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{copy.filters.allCategories}</SelectItem>
-                    {Object.entries(opsCategoryLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {OPS_PANEL_CATEGORY_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>{opsCategoryLabels[key] || key}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1706,12 +1787,15 @@ export default function RedAlertPage() {
                         </TableCell>
                         <TableCell>{formatChannel(event.channel)}</TableCell>
                         <TableCell className="font-mono text-xs">
-                          <a
-                            href={`/dashboard/admin/red-alert?traceId=${event.traceId}`}
-                            className="text-blue-600 hover:underline"
-                          >
-                            {event.traceId?.slice(0, 12)}...
-                          </a>
+                          {event.traceId ? (
+                            <button
+                              type="button"
+                              className="text-blue-600 hover:underline"
+                              onClick={() => loadAssistantTraceDetail(event.traceId, null, 'ops')}
+                            >
+                              {event.traceId.slice(0, 12)}...
+                            </button>
+                          ) : '-'}
                         </TableCell>
                       </TableRow>
                     ))
@@ -1773,13 +1857,13 @@ export default function RedAlertPage() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">{copy.traceModal.incidentSummaryTitle}</CardTitle>
-                  <CardDescription>{copy.traceModal.incidentSummaryDescription}</CardDescription>
+                  <CardTitle className="text-base">{traceModalTitle}</CardTitle>
+                  <CardDescription>{traceModalDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="rounded-xl border bg-muted/20 p-4">
                     <div className="text-sm font-medium leading-6">
-                      {selectedAssistantGroup?.primaryDescription || getIncidentDescription(assistantSignalItems[0])}
+                      {assistantSignalItems.length > 0 ? traceHeadline : emptyTraceSignalText}
                     </div>
                   </div>
 
@@ -1793,6 +1877,9 @@ export default function RedAlertPage() {
                             </div>
                             <div className="mt-2 text-sm leading-6">
                               {getIncidentDescription(incident)}
+                            </div>
+                            <div className="mt-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                              {getIncidentAction(incident)}
                             </div>
                             {(incident.details?.reason || incident.details?.comment || incident.details?.guardrail_reason) && (
                               <div className="mt-2 space-y-1 text-xs text-muted-foreground">
@@ -1815,7 +1902,9 @@ export default function RedAlertPage() {
                       </div>
                     ))}
                     {assistantSignalItems.length === 0 && (
-                      <div className="text-sm text-muted-foreground">{copy.traceModal.noLinkedIncidents}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {emptyTraceSignalText}
+                      </div>
                     )}
                   </div>
                 </CardContent>

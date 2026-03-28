@@ -86,7 +86,7 @@ describe('assistant quality incident evaluation', () => {
     expect(incidents.map(item => item.category)).toContain(OP_INCIDENT_CATEGORY.ASSISTANT_SANITIZED);
   });
 
-  it('emits clarification incident when assistant cannot finish the turn', () => {
+  it('does not emit an incident for normal clarification and verification prompts', () => {
     const incidents = evaluateIncidents(buildTracePayload({
       guardrail: {
         action: 'NEED_MIN_INFO_FOR_TOOL',
@@ -99,7 +99,9 @@ describe('assistant quality incident evaluation', () => {
       }
     }));
 
-    expect(incidents.map(item => item.category)).toContain(OP_INCIDENT_CATEGORY.ASSISTANT_NEEDS_CLARIFICATION);
+    expect(incidents.map(item => item.category)).not.toContain(OP_INCIDENT_CATEGORY.ASSISTANT_NEEDS_CLARIFICATION);
+    expect(incidents.map(item => item.category)).not.toContain(OP_INCIDENT_CATEGORY.HALLUCINATION_RISK);
+    expect(incidents.map(item => item.category)).not.toContain(OP_INCIDENT_CATEGORY.VERIFICATION_INCONSISTENT);
   });
 
   it('keeps existing tool skipped and hallucination signals', () => {
@@ -149,6 +151,6 @@ describe('assistant quality incident evaluation', () => {
     }));
 
     expect(incidents.map(item => item.category)).not.toContain(OP_INCIDENT_CATEGORY.HALLUCINATION_RISK);
-    expect(incidents.map(item => item.category)).toContain(OP_INCIDENT_CATEGORY.ASSISTANT_NEEDS_CLARIFICATION);
+    expect(incidents.map(item => item.category)).not.toContain(OP_INCIDENT_CATEGORY.ASSISTANT_NEEDS_CLARIFICATION);
   });
 });

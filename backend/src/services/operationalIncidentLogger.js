@@ -30,12 +30,14 @@ const UNCERTAIN_PATTERN = /(bilmiyorum|emin değilim|bilemem|i cannot|can't|unab
 export const ASSISTANT_INCIDENT_CATEGORIES = Object.freeze([
   OP_INCIDENT_CATEGORY.ASSISTANT_BLOCKED,
   OP_INCIDENT_CATEGORY.ASSISTANT_SANITIZED,
-  OP_INCIDENT_CATEGORY.ASSISTANT_NEEDS_CLARIFICATION,
   OP_INCIDENT_CATEGORY.ASSISTANT_INTERVENTION,
   OP_INCIDENT_CATEGORY.ASSISTANT_NEGATIVE_FEEDBACK,
   OP_INCIDENT_CATEGORY.ASSISTANT_POSITIVE_FEEDBACK,
+  OP_INCIDENT_CATEGORY.TEMPLATE_FALLBACK_USED
+]);
+
+export const OPS_INCIDENT_CATEGORIES = Object.freeze([
   OP_INCIDENT_CATEGORY.LLM_BYPASSED,
-  OP_INCIDENT_CATEGORY.TEMPLATE_FALLBACK_USED,
   OP_INCIDENT_CATEGORY.TOOL_NOT_CALLED_WHEN_EXPECTED,
   OP_INCIDENT_CATEGORY.VERIFICATION_INCONSISTENT,
   OP_INCIDENT_CATEGORY.HALLUCINATION_RISK,
@@ -146,18 +148,6 @@ export function evaluateIncidents(tracePayload) {
     });
   }
 
-  if (guardAction === 'NEED_MIN_INFO_FOR_TOOL' || responseGrounding === 'CLARIFICATION') {
-    pushIncident(incidents, payload, {
-      category: OP_INCIDENT_CATEGORY.ASSISTANT_NEEDS_CLARIFICATION,
-      severity: OP_INCIDENT_SEVERITY.MEDIUM,
-      summary: 'Assistant could not complete the turn and asked for clarification/minimum info',
-      details: {
-        guardrail_reason: guardReason,
-        response_grounding: responseGrounding || null
-      }
-    });
-  }
-
   if (
     postprocessors.length > 0
     || responseSource === 'template'
@@ -235,7 +225,7 @@ export function evaluateIncidents(tracePayload) {
   ) {
     pushIncident(incidents, payload, {
       category: OP_INCIDENT_CATEGORY.HALLUCINATION_RISK,
-      severity: OP_INCIDENT_SEVERITY.CRITICAL,
+      severity: OP_INCIDENT_SEVERITY.HIGH,
       summary: 'LLM response has claim-like content without any tool evidence',
       details: {
         verification_state: verificationState
@@ -419,5 +409,6 @@ export default {
   logAssistantFeedback,
   OP_INCIDENT_CATEGORY,
   OP_INCIDENT_SEVERITY,
-  ASSISTANT_INCIDENT_CATEGORIES
+  ASSISTANT_INCIDENT_CATEGORIES,
+  OPS_INCIDENT_CATEGORIES
 };
