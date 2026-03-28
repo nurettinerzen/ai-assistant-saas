@@ -108,7 +108,7 @@ const tr = {
     ASSISTANT_NEGATIVE_FEEDBACK: 'Negatif Geri Bildirim',
     ASSISTANT_POSITIVE_FEEDBACK: 'Pozitif Geri Bildirim',
     LLM_BYPASSED: 'LLM Atlandı',
-    TEMPLATE_FALLBACK_USED: 'Fallback Kullanıldı',
+    TEMPLATE_FALLBACK_USED: 'Yedek Yanıt Kullanıldı',
     TOOL_NOT_CALLED_WHEN_EXPECTED: 'Gerekli Araç Çağrılmadı',
     VERIFICATION_INCONSISTENT: 'Doğrulama Kayması',
     HALLUCINATION_RISK: 'Halüsinasyon Riski',
@@ -116,7 +116,7 @@ const tr = {
   },
   opsCategories: {
     LLM_BYPASSED: 'LLM Atlandı',
-    TEMPLATE_FALLBACK_USED: 'Fallback Kullanıldı',
+    TEMPLATE_FALLBACK_USED: 'Yedek Yanıt Kullanıldı',
     TOOL_NOT_CALLED_WHEN_EXPECTED: 'Gerekli Araç Çağrılmadı',
     VERIFICATION_INCONSISTENT: 'Doğrulama Kayması',
     HALLUCINATION_RISK: 'Halüsinasyon Riski',
@@ -206,10 +206,26 @@ const tr = {
     pagination: '{start} - {end} / toplam {total} olay',
     table: {
       time: 'Zaman',
-      event: 'Olay',
+      summary: 'Ne Oldu?',
+      signals: 'Sinyaller',
       severity: 'Önem',
       status: 'Durum',
       action: 'İşlem'
+    },
+    additionalSignals: '+{count} ek sinyal',
+    signalDescriptions: {
+      ASSISTANT_BLOCKED: 'Yanıt kullanıcıya ulaşmadan önce güvenlik katmanı tarafından durduruldu.',
+      ASSISTANT_SANITIZED: 'Yanıttaki hassas alanlar maskelemeyle düzenlenerek gönderildi.',
+      ASSISTANT_NEEDS_CLARIFICATION: 'Asistan işlem yapmak yerine ek bilgi isteyerek devam etti.',
+      ASSISTANT_INTERVENTION: 'Yanıt, guardrail veya son işlem katmanı tarafından değiştirildi.',
+      ASSISTANT_NEGATIVE_FEEDBACK: 'Kullanıcı bu yanıtı faydalı bulmadığını işaretledi.',
+      ASSISTANT_POSITIVE_FEEDBACK: 'Kullanıcı bu yanıtı faydalı bulduğunu işaretledi.',
+      LLM_BYPASSED: 'Bu tur LLM kullanılmadan kurallı akışla tamamlandı.',
+      TEMPLATE_FALLBACK_USED: 'Asıl yanıt yerine şablon ya da yedek yanıt kullanıldı.',
+      TOOL_NOT_CALLED_WHEN_EXPECTED: 'Araç çağrılması beklenirken yanıt araçsız üretildi.',
+      VERIFICATION_INCONSISTENT: 'Doğrulama eksikken yanıt fazla kesin görünüyor.',
+      HALLUCINATION_RISK: 'Araç kanıtı olmadan doğrulanmamış iddia riski algılandı.',
+      RESPONSE_STUCK: 'Aynı ya da çok benzer yanıtın tekrarlandığı görüldü.'
     },
     actions: {
       viewTrace: 'İz kaydını aç',
@@ -227,7 +243,7 @@ const tr = {
     title: 'Operasyon Olayları',
     description: 'Kategori ve önem düzeyine göre operasyon sinyal akışı.',
     repeatTitle: 'Tekrarlayan Yanıtlar',
-    repeatDescription: 'Aynı ya da benzer özetle tekrar eden yanıtlar.',
+    repeatDescription: 'Aynı oturum içinde birden fazla kez tekrar eden yanıtlar.',
     repeatEmpty: 'Tekrarlayan yanıt bulunamadı',
     eventsEmpty: 'Operasyon olayı bulunamadı',
     pagination: '{start} - {end} / toplam {total} olay',
@@ -242,6 +258,7 @@ const tr = {
     table: {
       hash: 'Özet',
       channel: 'Kanal',
+      session: 'Oturum',
       count: 'Sayı',
       sample: 'Örnek Metin',
       trace: 'İz Kaydı',
@@ -256,11 +273,18 @@ const tr = {
     trace: 'İz Kimliği',
     channel: 'Kanal',
     responseSource: 'Yanıt Kaynağı',
+    createdAt: 'Zaman',
     latency: 'Gecikme',
     llmUsed: 'LLM Kullanıldı',
     toolsCalled: 'Araç Çağrısı',
     toolSuccess: 'Araç Başarısı',
     session: 'Oturum',
+    incidentSummaryTitle: 'Bu yanıtta ne oldu?',
+    incidentSummaryDescription: 'Aynı yanıta bağlı kalite sinyallerini birlikte gösteriyoruz.',
+    overviewTitle: 'Kısa Özet',
+    overviewDescription: 'Okunması gereken temel durum bilgileri',
+    technicalDetails: 'Teknik Detaylar',
+    technicalDescription: 'İhtiyaç olduğunda açabileceğin trace alanları',
     payloadTitle: 'İz Kaydı İçeriği',
     payloadDescription: 'Guardrail, kaynak, grounding ve son işlem detayları',
     guardrailNote: 'Guardrail sonucu yalnızca son yanıtın bloklanıp bloklanmadığını ya da değiştirildiğini gösterir. Burada PASS görsen bile aşağıdaki bağlı olay alanında kalite veya doğrulama sinyali düşmüş olabilir.',
@@ -297,6 +321,17 @@ const tr = {
       tool: 'Araç Sonucu',
       workflow: 'İş Akışı',
       system: 'Sistem'
+    },
+    groundingValues: {
+      GROUNDED: 'Doğrulandı',
+      CLARIFICATION: 'Netleştirme',
+      UNGROUNDED: 'Dayanak Zayıf'
+    },
+    messageTypes: {
+      true_clarification: 'Netleştirme Yanıtı',
+      clarification: 'Netleştirme Yanıtı',
+      normal: 'Normal Yanıt',
+      fallback: 'Yedek Yanıt'
     },
     roles: {
       user: 'Kullanıcı',
@@ -514,10 +549,26 @@ const en = {
     pagination: '{start} - {end} / {total} total events',
     table: {
       time: 'Time',
-      event: 'Event',
+      summary: 'What Happened?',
+      signals: 'Signals',
       severity: 'Severity',
       status: 'Status',
       action: 'Action'
+    },
+    additionalSignals: '+{count} more signals',
+    signalDescriptions: {
+      ASSISTANT_BLOCKED: 'The response was stopped by a safety layer before reaching the user.',
+      ASSISTANT_SANITIZED: 'Sensitive parts of the response were masked before delivery.',
+      ASSISTANT_NEEDS_CLARIFICATION: 'The assistant asked for more information instead of completing the action.',
+      ASSISTANT_INTERVENTION: 'The reply was altered by guardrails or postprocessing.',
+      ASSISTANT_NEGATIVE_FEEDBACK: 'The user marked this response as not helpful.',
+      ASSISTANT_POSITIVE_FEEDBACK: 'The user marked this response as helpful.',
+      LLM_BYPASSED: 'This turn completed through a rule-based path without using the LLM.',
+      TEMPLATE_FALLBACK_USED: 'A template or fallback reply was used instead of a normal answer.',
+      TOOL_NOT_CALLED_WHEN_EXPECTED: 'A tool was expected but the reply was generated without tool execution.',
+      VERIFICATION_INCONSISTENT: 'The reply appears too confident while verification is incomplete.',
+      HALLUCINATION_RISK: 'A potentially unsupported claim was detected without tool evidence.',
+      RESPONSE_STUCK: 'The same or a very similar response appears to be repeating.'
     },
     actions: {
       viewTrace: 'Open trace',
@@ -535,7 +586,7 @@ const en = {
     title: 'Operational Events',
     description: 'Operational signal stream grouped by category and severity.',
     repeatTitle: 'Repeated Responses',
-    repeatDescription: 'Responses that repeated with the same or similar summary.',
+    repeatDescription: 'Responses repeated multiple times within the same session.',
     repeatEmpty: 'No repeated responses found',
     eventsEmpty: 'No operational events found',
     pagination: '{start} - {end} / {total} total events',
@@ -550,6 +601,7 @@ const en = {
     table: {
       hash: 'Hash',
       channel: 'Channel',
+      session: 'Session',
       count: 'Count',
       sample: 'Sample Text',
       trace: 'Trace',
@@ -564,11 +616,18 @@ const en = {
     trace: 'Trace ID',
     channel: 'Channel',
     responseSource: 'Response Source',
+    createdAt: 'Time',
     latency: 'Latency',
     llmUsed: 'LLM Used',
     toolsCalled: 'Tools Called',
     toolSuccess: 'Tool Success',
     session: 'Session',
+    incidentSummaryTitle: 'What happened in this reply?',
+    incidentSummaryDescription: 'All quality signals linked to the same answer are shown together.',
+    overviewTitle: 'Quick Overview',
+    overviewDescription: 'The core status details worth reading first',
+    technicalDetails: 'Technical Details',
+    technicalDescription: 'Trace fields you can expand only when needed',
     payloadTitle: 'Trace Payload',
     payloadDescription: 'Guardrail, source, grounding, and postprocessor details',
     guardrailNote: 'The guardrail result only shows whether the final response was blocked or altered. You may still see quality incidents below even when the guardrail says PASS.',
@@ -605,6 +664,17 @@ const en = {
       tool: 'Tool Result',
       workflow: 'Workflow',
       system: 'System'
+    },
+    groundingValues: {
+      GROUNDED: 'Verified',
+      CLARIFICATION: 'Clarification',
+      UNGROUNDED: 'Weak Grounding'
+    },
+    messageTypes: {
+      true_clarification: 'Clarification Reply',
+      clarification: 'Clarification Reply',
+      normal: 'Normal Reply',
+      fallback: 'Fallback Reply'
     },
     roles: {
       user: 'User',

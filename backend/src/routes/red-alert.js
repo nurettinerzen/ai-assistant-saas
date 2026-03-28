@@ -581,6 +581,7 @@ router.get('/ops/repeat-responses', async (req, res) => {
         responseHash: true,
         responsePreview: true,
         channel: true,
+        sessionId: true,
         traceId: true,
         createdAt: true
       },
@@ -590,10 +591,11 @@ router.get('/ops/repeat-responses', async (req, res) => {
 
     const grouped = new Map();
     for (const row of traces) {
-      const key = `${row.responseHash}::${row.channel}`;
+      const key = `${row.responseHash}::${row.channel}::${row.sessionId || 'no-session'}`;
       const current = grouped.get(key) || {
         responseHash: row.responseHash,
         channel: row.channel,
+        sessionId: row.sessionId || null,
         count: 0,
         sample: row.responsePreview || '',
         latestTraceId: row.traceId,

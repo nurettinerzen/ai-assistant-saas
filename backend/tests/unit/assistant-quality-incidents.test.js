@@ -138,4 +138,17 @@ describe('assistant quality incident evaluation', () => {
 
     expect(incidents.map(item => item.category)).not.toContain(OP_INCIDENT_CATEGORY.VERIFICATION_INCONSISTENT);
   });
+
+  it('does not emit hallucination risk for clarification-style prompts without tool evidence', () => {
+    const incidents = evaluateIncidents(buildTracePayload({
+      details: {
+        response_preview: 'Elbette, siparişinizin durumunu öğrenmek için sipariş numaranızı rica edebilir miyim?',
+        response_grounding: 'CLARIFICATION',
+        origin_id: 'toolLoop.unknown'
+      }
+    }));
+
+    expect(incidents.map(item => item.category)).not.toContain(OP_INCIDENT_CATEGORY.HALLUCINATION_RISK);
+    expect(incidents.map(item => item.category)).toContain(OP_INCIDENT_CATEGORY.ASSISTANT_NEEDS_CLARIFICATION);
+  });
 });

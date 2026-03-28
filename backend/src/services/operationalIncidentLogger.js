@@ -226,7 +226,13 @@ export function evaluateIncidents(tracePayload) {
     });
   }
 
-  if (payload.response_source === 'LLM' && tools.length === 0 && hasConfidentClaim) {
+  if (
+    payload.response_source === 'LLM'
+    && tools.length === 0
+    && hasConfidentClaim
+    && !hasUncertainClaim
+    && !isClarificationLike
+  ) {
     pushIncident(incidents, payload, {
       category: OP_INCIDENT_CATEGORY.HALLUCINATION_RISK,
       severity: OP_INCIDENT_SEVERITY.CRITICAL,

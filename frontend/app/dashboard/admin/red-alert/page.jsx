@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -116,6 +116,7 @@ export default function RedAlertPage() {
   const [assistantTraceDetail, setAssistantTraceDetail] = useState(null);
   const [assistantTraceOpen, setAssistantTraceOpen] = useState(false);
   const [assistantTraceLoading, setAssistantTraceLoading] = useState(false);
+  const [selectedAssistantGroup, setSelectedAssistantGroup] = useState(null);
   const [opsCapabilities, setOpsCapabilities] = useState({
     loaded: false,
     redAlertOpsPanelEnabled: false,
@@ -167,6 +168,116 @@ export default function RedAlertPage() {
     const normalized = String(role || '').toLowerCase();
     return copy.traceModal.roles[normalized] || role || copy.common.unknown;
   };
+
+  const formatGrounding = (value) => {
+    const normalized = String(value || '').toUpperCase();
+    return copy.traceModal.groundingValues[normalized] || value || '-';
+  };
+
+  const formatMessageType = (value) => {
+    const normalized = String(value || '').toLowerCase();
+    return copy.traceModal.messageTypes[normalized] || value || '-';
+  };
+
+  const getSeverityRank = (severity) => {
+    const normalized = String(severity || '').toUpperCase();
+    if (normalized === 'CRITICAL') return 4;
+    if (normalized === 'HIGH') return 3;
+    if (normalized === 'MEDIUM') return 2;
+    if (normalized === 'LOW') return 1;
+    return 0;
+  };
+
+  const getIncidentPriority = (category) => {
+    const priorities = {
+      ASSISTANT_NEGATIVE_FEEDBACK: 120,
+      ASSISTANT_BLOCKED: 110,
+      HALLUCINATION_RISK: 105,
+      VERIFICATION_INCONSISTENT: 100,
+      TOOL_NOT_CALLED_WHEN_EXPECTED: 95,
+      TEMPLATE_FALLBACK_USED: 90,
+      ASSISTANT_NEEDS_CLARIFICATION: 80,
+      ASSISTANT_INTERVENTION: 70,
+      ASSISTANT_SANITIZED: 60,
+      RESPONSE_STUCK: 50,
+      LLM_BYPASSED: 40,
+      ASSISTANT_POSITIVE_FEEDBACK: 30
+    };
+    return priorities[String(category || '')] || 0;
+  };
+
+  const getIncidentDescription = (incident) => {
+    if (!incident) return copy.common.unknown;
+
+    const category = String(incident.category || '');
+    const details = incident.details && typeof incident.details === 'object' ? incident.details : {};
+    const base = copy.assistant.signalDescriptions[category] || incident.summary || assistantCategoryLabels[category] || category;
+
+    if (category === 'ASSISTANT_NEGATIVE_FEEDBACK' && details.comment) {
+      return `${base} ${details.comment}`;
+    }
+
+    if (category === 'ASSISTANT_INTERVENTION' && details.guardrail_reason) {
+      return `${base} ${details.guardrail_reason}`;
+    }
+
+    if (category === 'TOOL_NOT_CALLED_WHEN_EXPECTED' && details.tool_selected) {
+      return `${base} ${details.tool_selected}`;
+    }
+
+    return base;
+  };
+
+  const groupedAssistantEvents = useMemo(() => {
+    const groups = new Map();
+
+    for (const event of assistantEvents) {
+      const groupKey = event.traceId || event.sessionId || event.id;
+      const existing = groups.get(groupKey) || {
+        id: groupKey,
+        traceId: event.traceId || null,
+        sessionId: event.sessionId || null,
+        channel: event.channel || null,
+        createdAt: event.createdAt,
+        incidents: [],
+        resolved: true
+      };
+
+      existing.incidents.push(event);
+      existing.resolved = existing.resolved && Boolean(event.resolved);
+
+      if (new Date(event.createdAt).getTime() > new Date(existing.createdAt).getTime()) {
+        existing.createdAt = event.createdAt;
+      }
+
+      groups.set(groupKey, existing);
+    }
+
+    return Array.from(groups.values())
+      .map((group) => {
+        const incidents = [...group.incidents].sort((a, b) => {
+          const severityDiff = getSeverityRank(b.severity) - getSeverityRank(a.severity);
+          if (severityDiff !== 0) return severityDiff;
+          return getIncidentPriority(b.category) - getIncidentPriority(a.category);
+        });
+
+        const categories = [...new Set(incidents.map((incident) => incident.category))];
+        const highestSeverity = incidents.reduce((highest, incident) => (
+          getSeverityRank(incident.severity) > getSeverityRank(highest) ? incident.severity : highest
+        ), incidents[0]?.severity || 'LOW');
+
+        return {
+          ...group,
+          incidents,
+          categories,
+          highestSeverity,
+          primaryIncident: incidents[0] || null,
+          primaryDescription: getIncidentDescription(incidents[0]),
+          additionalSignalCount: Math.max(categories.length - 1, 0)
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [assistantEvents, copy]);
 
   // Check admin access
   useEffect(() => {
@@ -370,9 +481,10 @@ export default function RedAlertPage() {
     }
   };
 
-  const loadAssistantTraceDetail = async (traceId) => {
+  const loadAssistantTraceDetail = async (traceId, assistantGroup = null) => {
     if (!traceId) return;
     setAssistantTraceLoading(true);
+    setSelectedAssistantGroup(assistantGroup);
     try {
       const response = await apiClient.get(`/api/red-alert/assistant/trace/${traceId}`);
       setAssistantTraceDetail(response.data);
@@ -385,14 +497,20 @@ export default function RedAlertPage() {
     }
   };
 
-  const handleResolveAssistantEvent = async (eventId, resolved) => {
+  const handleResolveAssistantGroup = async (group, resolved) => {
+    if (!group?.incidents?.length) return;
+
     try {
-      await apiClient.patch(`/api/red-alert/assistant/events/${eventId}/resolve`, { resolved });
+      await Promise.all(
+        group.incidents.map((incident) => (
+          apiClient.patch(`/api/red-alert/assistant/events/${incident.id}/resolve`, { resolved })
+        ))
+      );
       toast.success(resolved ? copy.assistant.notifications.resolved : copy.assistant.notifications.reopened);
       loadAssistantEvents();
       loadAssistantSummary();
     } catch (error) {
-      console.error('Failed to resolve assistant event:', error);
+      console.error('Failed to resolve assistant group:', error);
       toast.error(copy.assistant.notifications.updateFailed);
     }
   };
@@ -578,6 +696,9 @@ export default function RedAlertPage() {
   const totalEvents = summary?.summary?.total || 0;
   const opsIncidentCount = opsSummary?.totals?.incidents || 0;
   const assistantIncidentCount = assistantSummary?.totals?.incidents || 0;
+  const assistantSignalItems = selectedAssistantGroup?.incidents?.length
+    ? selectedAssistantGroup.incidents
+    : (assistantTraceDetail?.incidents || []);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -1286,45 +1407,57 @@ export default function RedAlertPage() {
             <CardContent>
               <Table>
                 <TableHeader>
-                <TableRow>
-                  <TableHead>{copy.assistant.table.time}</TableHead>
-                  <TableHead>{copy.assistant.table.event}</TableHead>
-                  <TableHead>{copy.assistant.table.severity}</TableHead>
-                  <TableHead>{copy.assistant.table.status}</TableHead>
-                  <TableHead>{copy.assistant.table.action}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assistantEvents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        {copy.assistant.empty}
-                    </TableCell>
+                    <TableHead>{copy.assistant.table.time}</TableHead>
+                    <TableHead>{copy.assistant.table.summary}</TableHead>
+                    <TableHead>{copy.assistant.table.signals}</TableHead>
+                    <TableHead>{copy.assistant.table.severity}</TableHead>
+                    <TableHead>{copy.assistant.table.status}</TableHead>
+                    <TableHead>{copy.assistant.table.action}</TableHead>
                   </TableRow>
-                ) : (
-                  assistantEvents.map((event) => (
-                    <TableRow key={event.id}>
-                      <TableCell className="whitespace-nowrap text-xs">
-                          {formatDateTime(event.createdAt)}
+                </TableHeader>
+                <TableBody>
+                  {groupedAssistantEvents.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        {copy.assistant.empty}
                       </TableCell>
-                      <TableCell className="max-w-xl">
-                        <div className="text-xs font-medium">
-                            {assistantCategoryLabels[event.category] || event.category}
-                        </div>
-                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {event.summary}
-                          </div>
+                    </TableRow>
+                  ) : (
+                    groupedAssistantEvents.map((group) => (
+                      <TableRow key={group.id}>
+                        <TableCell className="whitespace-nowrap text-xs">
+                          <div>{formatDateTime(group.createdAt)}</div>
                           <div className="text-[11px] text-muted-foreground mt-1">
-                            {formatChannel(event.channel)}{event.sessionId ? ` • ${event.sessionId.slice(0, 14)}...` : ''}
+                            {formatChannel(group.channel)}{group.sessionId ? ` • ${group.sessionId.slice(0, 14)}...` : ''}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-sm">
+                          <div className="text-sm font-medium leading-5">
+                            {group.primaryDescription}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.categories.slice(0, 2).map((category) => (
+                              <Badge key={category} variant="outline" className="text-[11px]">
+                                {assistantCategoryLabels[category] || category}
+                              </Badge>
+                            ))}
+                            {group.additionalSignalCount > 0 && (
+                              <Badge variant="outline" className="text-[11px]">
+                                {interpolate(copy.assistant.additionalSignals, { count: group.additionalSignalCount })}
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="w-28">
-                          <Badge className={SEVERITY_COLORS[(event.severity || '').toLowerCase()] || 'bg-muted text-foreground'}>
-                            {formatSeverityLabel(event.severity)}
+                          <Badge className={SEVERITY_COLORS[(group.highestSeverity || '').toLowerCase()] || 'bg-muted text-foreground'}>
+                            {formatSeverityLabel(group.highestSeverity)}
                           </Badge>
                         </TableCell>
                         <TableCell className="w-28">
-                          {event.resolved ? (
+                          {group.resolved ? (
                             <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                               {copy.common.resolved}
                             </Badge>
@@ -1339,8 +1472,8 @@ export default function RedAlertPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => loadAssistantTraceDetail(event.traceId)}
-                              disabled={!event.traceId || assistantTraceLoading}
+                              onClick={() => loadAssistantTraceDetail(group.traceId, group)}
+                              disabled={!group.traceId || assistantTraceLoading}
                               title={copy.assistant.actions.viewTrace}
                             >
                               <Eye className="h-4 w-4" />
@@ -1348,10 +1481,10 @@ export default function RedAlertPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleResolveAssistantEvent(event.id, !event.resolved)}
-                              title={event.resolved ? copy.assistant.actions.reopen : copy.assistant.actions.resolve}
+                              onClick={() => handleResolveAssistantGroup(group, !group.resolved)}
+                              title={group.resolved ? copy.assistant.actions.reopen : copy.assistant.actions.resolve}
                             >
-                              {event.resolved ? (
+                              {group.resolved ? (
                                 <XCircle className="h-4 w-4 text-red-500" />
                               ) : (
                                 <CheckCircle className="h-4 w-4 text-green-500" />
@@ -1452,6 +1585,7 @@ export default function RedAlertPage() {
                   <TableRow>
                     <TableHead>{copy.ops.table.hash}</TableHead>
                     <TableHead>{copy.ops.table.channel}</TableHead>
+                    <TableHead>{copy.ops.table.session}</TableHead>
                     <TableHead>{copy.ops.table.count}</TableHead>
                     <TableHead>{copy.ops.table.sample}</TableHead>
                     <TableHead>{copy.ops.table.trace}</TableHead>
@@ -1460,15 +1594,16 @@ export default function RedAlertPage() {
                 <TableBody>
                   {repeatResponses.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         {copy.ops.repeatEmpty}
                       </TableCell>
                     </TableRow>
                   ) : (
                     repeatResponses.map((item) => (
-                      <TableRow key={`${item.responseHash}-${item.channel}`}>
+                      <TableRow key={`${item.responseHash}-${item.channel}-${item.sessionId || 'no-session'}`}>
                         <TableCell className="font-mono text-xs">{item.responseHash?.slice(0, 12)}...</TableCell>
                         <TableCell>{formatChannel(item.channel)}</TableCell>
+                        <TableCell className="font-mono text-xs">{item.sessionId ? `${item.sessionId.slice(0, 12)}...` : '-'}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="font-mono">{item.count}</Badge>
                         </TableCell>
@@ -1566,8 +1701,8 @@ export default function RedAlertPage() {
                             {formatSeverityLabel(event.severity)}
                           </Badge>
                       </TableCell>
-                        <TableCell className="max-w-md truncate" title={event.summary}>
-                          {event.summary}
+                        <TableCell className="max-w-md truncate" title={getIncidentDescription(event)}>
+                          {getIncidentDescription(event)}
                         </TableCell>
                         <TableCell>{formatChannel(event.channel)}</TableCell>
                         <TableCell className="font-mono text-xs">
@@ -1620,7 +1755,15 @@ export default function RedAlertPage() {
         </div>
       )}
 
-      <Dialog open={assistantTraceOpen} onOpenChange={setAssistantTraceOpen}>
+      <Dialog
+        open={assistantTraceOpen}
+        onOpenChange={(open) => {
+          setAssistantTraceOpen(open);
+          if (!open) {
+            setSelectedAssistantGroup(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{copy.traceModal.title}</DialogTitle>
@@ -1628,47 +1771,85 @@ export default function RedAlertPage() {
 
           {assistantTraceDetail?.trace ? (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="text-muted-foreground text-xs">{copy.traceModal.trace}</div>
-                  <div className="font-mono text-xs break-all">{assistantTraceDetail.trace.traceId}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">{copy.traceModal.channel}</div>
-                  <div>{formatChannel(assistantTraceDetail.trace.channel)}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">{copy.traceModal.responseSource}</div>
-                  <div>{formatResponseSource(assistantTraceDetail.trace.responseSource)}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">{copy.traceModal.latency}</div>
-                  <div>{assistantTraceDetail.trace.latencyMs || 0} ms</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">{copy.traceModal.llmUsed}</div>
-                  <div>{assistantTraceDetail.trace.llmUsed ? copy.common.yes : copy.common.no}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">{copy.traceModal.toolsCalled}</div>
-                  <div>{assistantTraceDetail.trace.toolsCalledCount || 0}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">{copy.traceModal.toolSuccess}</div>
-                  <div>{assistantTraceDetail.trace.toolSuccess ? copy.common.yes : copy.common.no}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">{copy.traceModal.session}</div>
-                  <div className="font-mono text-xs break-all">{assistantTraceDetail.trace.sessionId || '-'}</div>
-                </div>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">{copy.traceModal.incidentSummaryTitle}</CardTitle>
+                  <CardDescription>{copy.traceModal.incidentSummaryDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="rounded-xl border bg-muted/20 p-4">
+                    <div className="text-sm font-medium leading-6">
+                      {selectedAssistantGroup?.primaryDescription || getIncidentDescription(assistantSignalItems[0])}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {assistantSignalItems.map((incident) => (
+                      <div key={incident.id} className="rounded-lg border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline">{assistantCategoryLabels[incident.category] || incident.category}</Badge>
+                            </div>
+                            <div className="mt-2 text-sm leading-6">
+                              {getIncidentDescription(incident)}
+                            </div>
+                            {(incident.details?.reason || incident.details?.comment || incident.details?.guardrail_reason) && (
+                              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                {incident.details?.reason && (
+                                  <div>{copy.traceModal.reason}: <code>{incident.details.reason}</code></div>
+                                )}
+                                {incident.details?.guardrail_reason && (
+                                  <div>{copy.traceModal.guardrailReason}: <code>{incident.details.guardrail_reason}</code></div>
+                                )}
+                                {incident.details?.comment && (
+                                  <div className="whitespace-pre-wrap">{copy.traceModal.comment}: {incident.details.comment}</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <Badge className={SEVERITY_COLORS[(incident.severity || '').toLowerCase()] || 'bg-muted text-foreground'}>
+                            {formatSeverityLabel(incident.severity)}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                    {assistantSignalItems.length === 0 && (
+                      <div className="text-sm text-muted-foreground">{copy.traceModal.noLinkedIncidents}</div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">{copy.traceModal.payloadTitle}</CardTitle>
-                  <CardDescription>
-                    {copy.traceModal.payloadDescription}
-                  </CardDescription>
+                  <CardTitle className="text-base">{copy.traceModal.overviewTitle}</CardTitle>
+                  <CardDescription>{copy.traceModal.overviewDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground text-xs">{copy.traceModal.createdAt}</div>
+                    <div>{formatDateTime(assistantTraceDetail.trace.createdAt)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground text-xs">{copy.traceModal.channel}</div>
+                    <div>{formatChannel(assistantTraceDetail.trace.channel)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground text-xs">{copy.traceModal.responseSource}</div>
+                    <div>{formatResponseSource(assistantTraceDetail.trace.responseSource)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground text-xs">{copy.traceModal.guardrail}</div>
+                    <div>{formatGuardrailAction(assistantTraceDetail.trace.payload?.guardrail?.action)}</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">{copy.traceModal.responsePreview}</CardTitle>
+                  <CardDescription>{copy.traceModal.payloadDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-xl border bg-muted/20 p-3 text-xs text-muted-foreground">
@@ -1692,74 +1873,73 @@ export default function RedAlertPage() {
                     </div>
                     <div>
                       <div className="text-muted-foreground text-xs">{copy.traceModal.grounding}</div>
-                      <div>{assistantTraceDetail.trace.payload?.details?.response_grounding || '-'}</div>
+                      <div>{formatGrounding(assistantTraceDetail.trace.payload?.details?.response_grounding)}</div>
                     </div>
                     <div>
                       <div className="text-muted-foreground text-xs">{copy.traceModal.messageType}</div>
-                      <div>{assistantTraceDetail.trace.payload?.details?.message_type || '-'}</div>
+                      <div>{formatMessageType(assistantTraceDetail.trace.payload?.details?.message_type)}</div>
                     </div>
-                  </div>
-
-                  <div className="text-sm">
-                    <div className="text-muted-foreground text-xs mb-1">{copy.traceModal.postprocessors}</div>
-                    <div className="flex flex-wrap gap-2">
-                      {(assistantTraceDetail.trace.payload?.postprocessors_applied || []).length === 0 ? (
-                        <Badge variant="outline">{copy.common.none}</Badge>
-                      ) : (
-                        (assistantTraceDetail.trace.payload?.postprocessors_applied || []).map((item) => (
-                          <Badge key={item} variant="outline">{item}</Badge>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="text-sm">
-                    <div className="text-muted-foreground text-xs mb-1">{copy.traceModal.tools}</div>
-                    <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
-                      {JSON.stringify(assistantTraceDetail.trace.payload?.tools_called || [], null, 2)}
-                    </pre>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">{copy.traceModal.linkedIncidents}</CardTitle>
+                  <CardTitle className="text-base">{copy.traceModal.technicalDetails}</CardTitle>
+                  <CardDescription>{copy.traceModal.technicalDescription}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {(assistantTraceDetail.incidents || []).map((incident) => (
-                      <div key={incident.id} className="rounded-md border p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="font-medium text-sm">
-                              {assistantCategoryLabels[incident.category] || incident.category}
-                            </div>
-                            <div className="text-xs text-muted-foreground">{incident.summary}</div>
-                            {(incident.details?.reason || incident.details?.comment || incident.details?.guardrail_reason) && (
-                              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                                {incident.details?.reason && (
-                                  <div>{copy.traceModal.reason}: <code>{incident.details.reason}</code></div>
-                                )}
-                                {incident.details?.guardrail_reason && (
-                                  <div>{copy.traceModal.guardrailReason}: <code>{incident.details.guardrail_reason}</code></div>
-                                )}
-                                {incident.details?.comment && (
-                                  <div className="whitespace-pre-wrap">{copy.traceModal.comment}: {incident.details.comment}</div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <Badge className={SEVERITY_COLORS[(incident.severity || '').toLowerCase()] || 'bg-muted text-foreground'}>
-                            {formatSeverityLabel(incident.severity)}
-                          </Badge>
+                  <details className="rounded-lg border bg-muted/10 p-4">
+                    <summary className="cursor-pointer text-sm font-medium">{copy.common.details}</summary>
+                    <div className="mt-4 space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="text-muted-foreground text-xs">{copy.traceModal.trace}</div>
+                          <div className="font-mono text-xs break-all">{assistantTraceDetail.trace.traceId}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">{copy.traceModal.session}</div>
+                          <div className="font-mono text-xs break-all">{assistantTraceDetail.trace.sessionId || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">{copy.traceModal.latency}</div>
+                          <div>{assistantTraceDetail.trace.latencyMs || 0} ms</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">{copy.traceModal.llmUsed}</div>
+                          <div>{assistantTraceDetail.trace.llmUsed ? copy.common.yes : copy.common.no}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">{copy.traceModal.toolsCalled}</div>
+                          <div>{assistantTraceDetail.trace.toolsCalledCount || 0}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">{copy.traceModal.toolSuccess}</div>
+                          <div>{assistantTraceDetail.trace.toolSuccess ? copy.common.yes : copy.common.no}</div>
                         </div>
                       </div>
-                    ))}
-                    {(assistantTraceDetail.incidents || []).length === 0 && (
-                      <div className="text-sm text-muted-foreground">{copy.traceModal.noLinkedIncidents}</div>
-                    )}
-                  </div>
+
+                      <div className="text-sm">
+                        <div className="text-muted-foreground text-xs mb-1">{copy.traceModal.postprocessors}</div>
+                        <div className="flex flex-wrap gap-2">
+                          {(assistantTraceDetail.trace.payload?.postprocessors_applied || []).length === 0 ? (
+                            <Badge variant="outline">{copy.common.none}</Badge>
+                          ) : (
+                            (assistantTraceDetail.trace.payload?.postprocessors_applied || []).map((item) => (
+                              <Badge key={item} variant="outline">{item}</Badge>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-sm">
+                        <div className="text-muted-foreground text-xs mb-1">{copy.traceModal.tools}</div>
+                        <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                          {JSON.stringify(assistantTraceDetail.trace.payload?.tools_called || [], null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  </details>
                 </CardContent>
               </Card>
 

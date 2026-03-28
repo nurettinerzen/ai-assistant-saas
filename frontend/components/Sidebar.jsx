@@ -119,7 +119,7 @@ export default function Sidebar({ user, credits, business }) {
     {
       label: t('dashboard.sidebar.product'),
       items: [
-        { icon: BookMarked, label: locale === 'tr' ? 'Rehber' : 'Guide', href: NAVIGATION_ITEMS.guides.href, permission: 'assistants:view' },
+        { icon: BookMarked, label: t('dashboard.sidebar.guides'), href: NAVIGATION_ITEMS.guides.href, permission: 'assistants:view' },
         { icon: Bot, label: t('dashboard.assistants'), href: NAVIGATION_ITEMS.assistants.href, permission: 'assistants:view' },
         { icon: BookOpen, label: t('dashboard.knowledgeBase'), href: NAVIGATION_ITEMS.knowledgeBase.href, permission: 'knowledge:view' },
         { icon: MessageSquare, label: t('dashboard.sidebar.chatWidget'), href: NAVIGATION_ITEMS.chatWidget.href, permission: 'assistants:view' },
@@ -131,7 +131,7 @@ export default function Sidebar({ user, credits, business }) {
         { icon: Database, label: t('dashboard.sidebar.inbox'), href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
         { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
         { icon: Mail, label: t('dashboard.sidebar.email'), href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
-        { icon: Zap, label: locale === 'tr' ? 'Hızlı Yanıtlar' : 'Quick Replies', href: NAVIGATION_ITEMS.emailSnippets.href, permission: 'campaigns:view' },
+        { icon: Zap, label: t('dashboard.sidebar.quickReplies'), href: NAVIGATION_ITEMS.emailSnippets.href, permission: 'campaigns:view' },
       ],
     },
     {
@@ -158,16 +158,16 @@ export default function Sidebar({ user, credits, business }) {
   const isUserAdmin = user?.isAdmin === true;
   const ADMIN_NAVIGATION = isUserAdmin ? [
     {
-      label: 'Admin',
+      label: t('dashboard.sidebar.adminSection'),
       items: [
-        { icon: Shield, label: 'Admin Panel', href: '/dashboard/admin' },
-        { icon: AlertTriangle, label: 'Red Alert', href: '/dashboard/admin/red-alert' },
-        { icon: Users, label: 'Kullanıcılar', href: '/dashboard/admin/users' },
-        { icon: Bot, label: 'Asistanlar', href: '/dashboard/admin/assistants' },
-        { icon: Phone, label: 'Aramalar', href: '/dashboard/admin/calls' },
-        { icon: CreditCard, label: 'Abonelikler', href: '/dashboard/admin/subscriptions' },
-        { icon: Database, label: 'Kurumsal', href: '/dashboard/admin/enterprise' },
-        { icon: BarChart3, label: 'Audit Log', href: '/dashboard/admin/audit-log' },
+        { icon: Shield, label: t('dashboard.sidebar.adminPanel'), href: '/dashboard/admin' },
+        { icon: AlertTriangle, label: t('dashboard.sidebar.redAlert'), href: '/dashboard/admin/red-alert' },
+        { icon: Users, label: t('dashboard.sidebar.adminUsers'), href: '/dashboard/admin/users' },
+        { icon: Bot, label: t('dashboard.sidebar.adminAssistants'), href: '/dashboard/admin/assistants' },
+        { icon: Phone, label: t('dashboard.sidebar.adminCalls'), href: '/dashboard/admin/calls' },
+        { icon: CreditCard, label: t('dashboard.sidebar.adminSubscriptions'), href: '/dashboard/admin/subscriptions' },
+        { icon: Database, label: t('dashboard.sidebar.adminEnterprise'), href: '/dashboard/admin/enterprise' },
+        { icon: BarChart3, label: t('dashboard.sidebar.adminAuditLog'), href: '/dashboard/admin/audit-log' },
       ],
     },
   ] : [];
@@ -317,11 +317,11 @@ export default function Sidebar({ user, credits, business }) {
               </Avatar>
               <div className="flex-1 text-left min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {user?.name || 'User'}
+                  {user?.name || t('dashboard.userFallback')}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                   <Sparkles className="h-3 w-3" />
-                  {getPlanDisplay()} Plan
+                  {getPlanDisplay()} {t('dashboard.planLabel')}
                 </p>
               </div>
               <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
