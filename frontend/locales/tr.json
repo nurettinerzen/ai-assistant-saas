@@ -1691,6 +1691,7 @@
       "failedToLoadVoices": "Sesler yüklenemedi",
       "playSample": "Örnek Dinle",
       "pauseSample": "Durdur",
+      "loadingSample": "Yükleniyor...",
       "sampleNotAvailable": "Örnek Mevcut Değil",
       "genders": {
         "male": "Erkek",

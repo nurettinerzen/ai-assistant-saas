@@ -370,8 +370,7 @@ router.get('/preview/:voiceId', async (req, res) => {
     const cached = previewAudioCache.get(voiceId);
     if (cached && Date.now() - cached.timestamp < PREVIEW_CACHE_TTL) {
       res.set('Content-Type', 'audio/mpeg');
-      res.set('Cache-Control', 'no-store');
-      res.set('Pragma', 'no-cache');
+      res.set('Cache-Control', 'public, max-age=86400');
       return res.send(cached.audio);
     }
 
@@ -421,8 +420,7 @@ router.get('/preview/:voiceId', async (req, res) => {
     });
 
     res.set('Content-Type', 'audio/mpeg');
-    res.set('Cache-Control', 'no-store');
-    res.set('Pragma', 'no-cache');
+    res.set('Cache-Control', 'public, max-age=86400');
     res.send(Buffer.from(response.data));
 
   } catch (error) {

@@ -1691,6 +1691,7 @@
       "failedToLoadVoices": "Failed to load voices",
       "playSample": "Play Sample",
       "pauseSample": "Pause",
+      "loadingSample": "Loading...",
       "sampleNotAvailable": "Sample Not Available",
       "genders": {
         "male": "Male",
