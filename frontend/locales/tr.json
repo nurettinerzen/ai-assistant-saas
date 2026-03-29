@@ -343,7 +343,13 @@
     "solutionsRestaurant": "Restoran",
     "solutionsSalon": "Kuaför/Salon",
     "solutionsSupport": "Müşteri Desteği",
-    "dashboard": "Panel"
+    "dashboard": "Panel",
+    "resources": "Kaynaklar",
+    "blog": "Blog",
+    "integrations": "Entegrasyonlar",
+    "changelog": "Changelog",
+    "security": "Güvenlik",
+    "help": "Yardım"
   },
   "pricing": {
     "title": "Fiyatlandırma",
@@ -3553,6 +3559,53 @@
     "hoursAgo": "{count} saat önce",
     "dayAgo": "{count} gün önce",
     "daysAgo": "{count} gün önce"
+  },
+  "changelog": {
+    "badge": "Geliştirme Günlüğü",
+    "title": "Neler Değişiyor?",
+    "subtitle": "Telyx'i her gün daha iyi hale getiriyoruz. Geliştirme sürecimizi şeffaf bir şekilde sizinle paylaşıyoruz.",
+    "typeNew": "Yeni",
+    "typeImprovement": "İyileştirme",
+    "typeFix": "Düzeltme",
+    "ctaTitle": "Geliştirme sürecimizin bir parçası olun",
+    "ctaSubtitle": "Erken erişim programımıza katılın, yeni özellikleri ilk siz deneyin ve ürünün yönünü birlikte belirleyelim.",
+    "ctaApply": "Erken erişim için başvurun",
+    "ctaContact": "Bize ulaşın"
+  },
+  "security": {
+    "badge": "Güvenlik & Uyumluluk",
+    "heroTitle": "Verileriniz Güvende",
+    "heroSubtitle": "İşletmenizin ve müşterilerinizin verilerini en yüksek güvenlik standartlarıyla koruyoruz. KVKK ve GDPR uyumlu altyapımızla güvenle çalışın.",
+    "dataSecurityTitle": "Veri Güvenliği",
+    "dataSecuritySubtitle": "Verileriniz endüstri lideri güvenlik protokolleriyle korunur.",
+    "complianceTitle": "Yasal Uyumluluk",
+    "complianceSubtitle": "Türkiye ve Avrupa veri koruma düzenlemelerine tam uyum.",
+    "aiSecurityTitle": "AI Güvenliği",
+    "aiSecuritySubtitle": "Yapay zeka asistanımız çoklu güvenlik katmanıyla korunur.",
+    "opsTitle": "Operasyonel Güvenlik",
+    "opsSubtitle": "Sistemlerimiz 7/24 izlenir ve korunur.",
+    "ctaTitle": "Güvenlik hakkında sorularınız mı var?",
+    "ctaSubtitle": "Güvenlik ekibimiz sorularınızı yanıtlamak ve işletmenize özel güvenlik çözümlerini anlatmak için hazır.",
+    "ctaContact": "Bize Ulaşın",
+    "ctaApply": "Erken Erişim Başvurusu"
+  },
+  "blog": {
+    "badge": "Blog",
+    "heroTitle": "Telyx Blog",
+    "heroSubtitle": "AI ve müşteri hizmetleri hakkında en güncel içerikler",
+    "readMore": "Devamını Oku",
+    "allPosts": "Tüm Yazılar",
+    "relatedPosts": "İlgili Yazılar",
+    "notFound": "Yazı bulunamadı",
+    "backToBlog": "Bloga Dön",
+    "ctaTitle": "Yeni içeriklerden haberdar olun",
+    "ctaSubtitle": "AI, müşteri hizmetleri ve e-ticaret hakkında en son gelişmeleri takip edin. Erken erişim listesine katılarak özel içeriklerimize ulaşabilirsiniz.",
+    "ctaJoinList": "Erken Erişim Listesine Katıl",
+    "ctaContact": "Bize Ulaşın",
+    "postCtaTitle": "Telyx'i Deneyin",
+    "postCtaSubtitle": "Yapay zeka destekli müşteri hizmetleri platformuyla işletmenizi bir üst seviyeye taşıyın. Erken erişim için hemen başvurun.",
+    "postCtaApply": "Erken Erişim Başvurusu",
+    "postCtaContact": "Bize Ulaşın"
   },
   "marketingFaq": {
     "title": "Sık sorulan sorular",

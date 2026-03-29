@@ -343,7 +343,13 @@
     "solutionsRestaurant": "Restaurant",
     "solutionsSalon": "Salon/Spa",
     "solutionsSupport": "Customer Support",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "resources": "Resources",
+    "blog": "Blog",
+    "integrations": "Integrations",
+    "changelog": "Changelog",
+    "security": "Security",
+    "help": "Help"
   },
   "pricing": {
     "title": "Pricing",
@@ -3553,6 +3559,53 @@
     "hoursAgo": "{count} hours ago",
     "dayAgo": "{count} day ago",
     "daysAgo": "{count} days ago"
+  },
+  "changelog": {
+    "badge": "Development Log",
+    "title": "What's Changing?",
+    "subtitle": "We're making Telyx better every day. We share our development process transparently with you.",
+    "typeNew": "New",
+    "typeImprovement": "Improvement",
+    "typeFix": "Fix",
+    "ctaTitle": "Be part of our development journey",
+    "ctaSubtitle": "Join our early access program, be the first to try new features and help shape the product direction together.",
+    "ctaApply": "Apply for early access",
+    "ctaContact": "Contact us"
+  },
+  "security": {
+    "badge": "Security & Compliance",
+    "heroTitle": "Your Data is Secure",
+    "heroSubtitle": "We protect your business and customer data with the highest security standards. Work confidently with our KVKK and GDPR compliant infrastructure.",
+    "dataSecurityTitle": "Data Security",
+    "dataSecuritySubtitle": "Your data is protected with industry-leading security protocols.",
+    "complianceTitle": "Legal Compliance",
+    "complianceSubtitle": "Full compliance with Turkish and European data protection regulations.",
+    "aiSecurityTitle": "AI Security",
+    "aiSecuritySubtitle": "Our AI assistant is protected with multiple security layers.",
+    "opsTitle": "Operational Security",
+    "opsSubtitle": "Our systems are monitored and protected 24/7.",
+    "ctaTitle": "Have questions about security?",
+    "ctaSubtitle": "Our security team is ready to answer your questions and explain security solutions tailored to your business.",
+    "ctaContact": "Contact Us",
+    "ctaApply": "Apply for Early Access"
+  },
+  "blog": {
+    "badge": "Blog",
+    "heroTitle": "Telyx Blog",
+    "heroSubtitle": "The latest content on AI and customer service",
+    "readMore": "Read More",
+    "allPosts": "All Posts",
+    "relatedPosts": "Related Posts",
+    "notFound": "Post not found",
+    "backToBlog": "Back to Blog",
+    "ctaTitle": "Stay updated with new content",
+    "ctaSubtitle": "Follow the latest developments in AI, customer service, and e-commerce. Join our early access list to get exclusive content.",
+    "ctaJoinList": "Join Early Access List",
+    "ctaContact": "Contact Us",
+    "postCtaTitle": "Try Telyx",
+    "postCtaSubtitle": "Take your business to the next level with an AI-powered customer service platform. Apply for early access now.",
+    "postCtaApply": "Apply for Early Access",
+    "postCtaContact": "Contact Us"
   },
   "marketingFaq": {
     "title": "Frequently asked questions",

@@ -35,6 +35,17 @@ export default function Navigation() {
       ]
     },
     { name: t('navigation.pricing'), href: '/pricing' },
+    {
+      name: t('navigation.resources') || 'Kaynaklar',
+      href: '/blog',
+      items: [
+        { nameKey: 'navigation.blog', href: '/blog' },
+        { nameKey: 'navigation.integrations', href: '/integrations' },
+        { nameKey: 'navigation.changelog', href: '/changelog' },
+        { nameKey: 'navigation.security', href: '/security' },
+        { nameKey: 'navigation.help', href: '/help' },
+      ]
+    },
     { name: t('navigation.contact'), href: '/contact' },
   ];
 
