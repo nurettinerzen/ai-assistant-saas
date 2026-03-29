@@ -6,16 +6,26 @@
 import React from 'react';
 import Image from 'next/image';
 
-// Full logo with icon and text (for light backgrounds)
+// Full logo with icon and text
 export function TelyxLogoFull({ className = '', width = 260, height = 75, darkMode = false }) {
   return (
     <div className={`relative ${className}`}>
+      {/* Light mode logo (dark text) */}
       <Image
         src="/telyx-logo-full.png"
         alt="Telyx AI"
         width={width}
         height={height}
-        className={`object-contain ${darkMode ? 'brightness-0 invert' : ''}`}
+        className={`object-contain ${darkMode ? 'hidden' : 'block'} dark:hidden`}
+        priority
+      />
+      {/* Dark mode logo (inverted to white) */}
+      <Image
+        src="/telyx-logo-full.png"
+        alt="Telyx AI"
+        width={width}
+        height={height}
+        className={`object-contain brightness-0 invert ${darkMode ? 'block' : 'hidden'} dark:block`}
         priority
       />
     </div>
