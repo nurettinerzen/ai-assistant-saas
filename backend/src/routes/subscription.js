@@ -22,6 +22,10 @@ import paymentProvider from '../services/paymentProvider.js';
 import { getEffectivePlanConfig } from '../services/planConfig.js';
 import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
 import { buildPhoneEntitlements } from '../services/phonePlanEntitlements.js';
+import {
+  resolvePlanFromStripePriceId,
+  resolveStripePriceIdForPlan,
+} from '../services/stripePlanCatalog.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -38,6 +42,28 @@ function getStripe() {
 function hashValue(value) {
   if (!value) return null;
   return crypto.createHash('sha256').update(String(value), 'utf8').digest('hex').slice(0, 12);
+}
+
+async function resolvePlanFromPriceId(priceId) {
+  const knownPlan = resolvePlanFromStripePriceId(priceId);
+  if (knownPlan) {
+    return knownPlan;
+  }
+
+  if (!priceId || !getStripe()) {
+    return null;
+  }
+
+  try {
+    const price = await getStripe().prices.retrieve(priceId);
+    if (price?.metadata?.type === 'enterprise') {
+      return 'ENTERPRISE';
+    }
+  } catch (error) {
+    console.log('⚠️ Could not resolve Stripe price metadata:', error.message);
+  }
+
+  return null;
 }
 
 function resolveUsageCycleStart(subscription) {
@@ -270,9 +296,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const priceId = session.line_items?.data[0]?.price?.id || session.metadata?.priceId;
 
         // Determine plan from price ID
-        let plan = 'STARTER';
-        if (priceId === PLAN_CONFIG.PRO.stripePriceId) plan = 'PRO';
-        if (priceId === PLAN_CONFIG.ENTERPRISE.stripePriceId) plan = 'ENTERPRISE';
+        const plan = await resolvePlanFromPriceId(priceId) || 'STARTER';
 
         const planConfig = PLAN_CONFIG[plan];
 
@@ -321,10 +345,14 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
           // Send payment success email
           if (ownerEmail) {
+            const paidAmount = Number.isFinite(session.amount_total)
+              ? session.amount_total / 100
+              : planConfig.priceTRY;
+
             await emailService.sendPaymentSuccessEmail(
               ownerEmail,
               sub.business.name,
-              planConfig.price * 100,
+              paidAmount,
               plan
             );
           }
@@ -339,9 +367,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         console.log('🔄 Subscription updated:', subscription.id);
 
         const priceId = subscription.items.data[0]?.price?.id;
-        let plan = 'STARTER';
-        if (priceId === PLAN_CONFIG.PRO.stripePriceId) plan = 'PRO';
-        if (priceId === PLAN_CONFIG.ENTERPRISE.stripePriceId) plan = 'ENTERPRISE';
+        const plan = await resolvePlanFromPriceId(priceId) || 'STARTER';
 
         const planConfig = PLAN_CONFIG[plan];
 
@@ -1087,9 +1113,7 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
 
     // ========== IYZICO CHECKOUT ==========
     if (provider === 'iyzico') {
-      const finalPlanId = planId || Object.keys(PLAN_CONFIG).find(
-        key => PLAN_CONFIG[key].stripePriceId === priceId
-      );
+      const finalPlanId = planId || resolvePlanFromStripePriceId(priceId);
 
       if (!finalPlanId || finalPlanId === 'FREE') {
         return res.status(400).json({ error: 'Invalid plan for iyzico' });
@@ -1116,7 +1140,11 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
     // Get price ID from plan ID if not provided
     let finalPriceId = priceId;
     if (!finalPriceId && planId) {
-      finalPriceId = PLAN_CONFIG[planId]?.stripePriceId;
+      finalPriceId = resolveStripePriceIdForPlan(
+        planId,
+        user.business.country,
+        PLAN_CONFIG[planId]?.stripePriceId
+      );
     }
 
     if (!finalPriceId) {
@@ -1425,16 +1453,11 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
     const planConfig = PLAN_CONFIG[normalizedPlanId];
 
     // Determine price ID based on country
-    const country = user.business.country?.toUpperCase();
-    let priceId;
-
-    if (country === 'TR') {
-      // Use TRY pricing for Turkey
-      priceId = process.env[`STRIPE_${normalizedPlanId}_PRICE_ID_TRY`] || planConfig.stripePriceId;
-    } else {
-      // Use USD pricing for other countries
-      priceId = planConfig.stripePriceId;
-    }
+    const priceId = resolveStripePriceIdForPlan(
+      normalizedPlanId,
+      user.business.country,
+      planConfig.stripePriceId
+    );
 
     if (!priceId) {
       return res.status(400).json({ error: 'Stripe price not configured for this plan' });
