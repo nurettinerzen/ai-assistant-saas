@@ -19,6 +19,7 @@ import crypto from 'crypto';
 import emailService from '../services/emailService.js';
 import iyzicoSubscription from '../services/iyzicoSubscription.js';
 import paymentProvider from '../services/paymentProvider.js';
+import balanceService from '../services/balanceService.js';
 import { getEffectivePlanConfig } from '../services/planConfig.js';
 import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
 import { buildPhoneEntitlements } from '../services/phonePlanEntitlements.js';
@@ -223,6 +224,46 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const session = event.data.object;
         console.log('💳 Checkout completed:', session.id);
         console.log('📋 Session metadata:', JSON.stringify(session.metadata));
+
+        if (session.metadata?.type === 'credit_purchase') {
+          const paymentIntentId = session.payment_intent ? String(session.payment_intent) : null;
+          const businessIdFromMetadata = session.metadata?.businessId
+            ? parseInt(session.metadata.businessId, 10)
+            : null;
+
+          const existingTopup = paymentIntentId
+            ? await prisma.balanceTransaction.findFirst({
+              where: {
+                type: 'TOPUP',
+                stripePaymentIntentId: paymentIntentId
+              }
+            })
+            : null;
+
+          if (!existingTopup) {
+            const targetSubscription = businessIdFromMetadata
+              ? await prisma.subscription.findUnique({ where: { businessId: businessIdFromMetadata } })
+              : await prisma.subscription.findFirst({ where: { stripeCustomerId: session.customer } });
+
+            if (!targetSubscription) {
+              throw new Error(`Balance top-up target subscription not found for checkout session ${session.id}`);
+            }
+
+            const amountPaid = Number.isFinite(session.amount_total) ? session.amount_total / 100 : 0;
+            const minutes = session.metadata?.minutes || '0';
+
+            await balanceService.topUp(
+              targetSubscription.id,
+              amountPaid,
+              { stripePaymentIntentId: paymentIntentId },
+              `${minutes} dakika bakiye yüklendi`
+            );
+          } else {
+            console.log(`ℹ️ Balance top-up already processed for payment intent ${paymentIntentId}`);
+          }
+
+          break;
+        }
 
         // Check if this is an enterprise payment link
         // Try session metadata first, then line items

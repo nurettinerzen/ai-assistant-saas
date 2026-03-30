@@ -159,6 +159,20 @@ export default function SubscriptionPage() {
     const status = params.get('status');
     const success = params.get('success');
     const session_id = params.get('session_id');
+    const walletTopup = params.get('wallet_topup');
+
+    if (walletTopup === 'success') {
+      toast.success(locale === 'tr' ? 'Bakiye yukleme tamamlandi' : 'Balance top-up completed');
+      refetchSubscription();
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    if (walletTopup === 'cancel') {
+      toast.error(locale === 'tr' ? 'Bakiye yukleme iptal edildi' : 'Balance top-up canceled');
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
 
     // Verify Stripe session if present
     if (success === 'true' && session_id) {
@@ -188,7 +202,7 @@ export default function SubscriptionPage() {
       toast.error(decodeURIComponent(errorMsg));
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [refetchSubscription]);
+  }, [locale, refetchSubscription, t]);
 
   const handleUpgrade = async (planId) => {
     // Get plan name from translation keys

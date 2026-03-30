@@ -17,6 +17,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import balanceService from '../services/balanceService.js';
+import stripeService from '../services/stripe.js';
 import {
   getPricePerMinute,
   getMinTopupMinutes,
@@ -31,6 +32,32 @@ import {
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+async function ensureStripeCustomerForSubscription(subscription, ownerEmail) {
+  if (subscription.stripeCustomerId) {
+    return subscription.stripeCustomerId;
+  }
+
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('Stripe not configured');
+  }
+
+  const customer = await stripeService.createCustomer(
+    ownerEmail,
+    subscription.business?.name || `Business ${subscription.businessId}`,
+    subscription.business?.country || 'TR'
+  );
+
+  await prisma.subscription.update({
+    where: { id: subscription.id },
+    data: {
+      stripeCustomerId: customer.id,
+      paymentProvider: 'stripe'
+    }
+  });
+
+  return customer.id;
+}
 
 // Helper: Get chat/whatsapp token usage for current period
 async function getTokenUsage(businessId, country, plan) {
@@ -113,10 +140,10 @@ router.use(authenticateToken);
 router.post('/topup', async (req, res) => {
   try {
     const { businessId } = req.user;
-    const { minutes } = req.body; // Dakika cinsinden yükleme miktarı
+    const amount = Number(req.body?.amount || 0);
 
-    if (!minutes || minutes <= 0) {
-      return res.status(400).json({ error: 'Geçersiz dakika miktarı' });
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Geçersiz yükleme tutarı' });
     }
 
     // Get subscription
@@ -124,7 +151,15 @@ router.post('/topup', async (req, res) => {
       where: { businessId },
       include: {
         business: {
-          select: { country: true }
+          select: {
+            country: true,
+            name: true,
+            users: {
+              where: { role: 'OWNER' },
+              take: 1,
+              select: { email: true }
+            }
+          }
         }
       }
     });
@@ -142,38 +177,44 @@ router.post('/topup', async (req, res) => {
     }
 
     const country = subscription.business?.country || 'TR';
+    const pricePerMinute = getPricePerMinute(subscription.plan, country);
+    const minutes = Math.floor(amount / pricePerMinute);
 
     // Check minimum topup for PAYG
     const minMinutes = getMinTopupMinutes(country);
     if (minutes < minMinutes) {
       return res.status(400).json({
-        error: `Minimum ${minMinutes} dakika yükleme yapılabilir`,
-        minMinutes
+        error: `Minimum ${minMinutes} dakika karsiligi yukleme yapilabilir`,
+        minMinutes,
+        minAmount: minMinutes * pricePerMinute
       });
     }
 
-    // Calculate amount in TL
-    const pricePerMinute = getPricePerMinute(subscription.plan, country);
-    const amountTL = minutes * pricePerMinute;
-
-    // For now, we'll create a pending payment
-    // In production, this would create a Stripe PaymentIntent or iyzico checkout
-    // TODO: Implement actual payment processing
-
-    // Mock: Direct topup for testing
-    const result = await balanceService.topUp(
-      subscription.id,
-      amountTL,
-      { /* payment info would go here */ },
-      `${minutes} dakika bakiye yüklendi`
+    const stripeCustomerId = await ensureStripeCustomerForSubscription(
+      subscription,
+      subscription.business?.users?.[0]?.email || req.user?.email
     );
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.telyx.ai';
+    const session = await stripeService.createCreditPurchaseSession({
+      stripeCustomerId,
+      minutes,
+      amount,
+      currency: country === 'TR' ? 'TRY' : country === 'BR' ? 'BRL' : 'USD',
+      countryCode: country,
+      successUrl: `${frontendUrl}/dashboard/subscription?wallet_topup=success`,
+      cancelUrl: `${frontendUrl}/dashboard/subscription?wallet_topup=cancel`,
+      businessId: businessId.toString()
+    });
 
     res.json({
       success: true,
-      balance: result.balance,
-      balanceMinutes: result.balanceMinutes,
-      transaction: result.transaction,
-      message: `${minutes} dakika (${amountTL} TL) bakiye yüklendi`
+      provider: 'stripe',
+      sessionUrl: session.url,
+      sessionId: session.id,
+      amount,
+      minutes,
+      message: `${minutes} dakika icin odeme oturumu olusturuldu`
     });
 
   } catch (error) {
@@ -404,7 +445,15 @@ router.post('/create-checkout', async (req, res) => {
       where: { businessId },
       include: {
         business: {
-          select: { country: true, name: true }
+          select: {
+            country: true,
+            name: true,
+            users: {
+              where: { role: 'OWNER' },
+              take: 1,
+              select: { email: true }
+            }
+          }
         }
       }
     });
@@ -438,12 +487,28 @@ router.post('/create-checkout', async (req, res) => {
 
     // Create payment session based on provider
     if (paymentProvider === 'stripe') {
-      // TODO: Implement Stripe checkout session
-      // const stripe = (await import('../services/stripe.js')).default;
-      // const session = await stripe.createCheckoutSession({...});
-      // return res.json({ sessionUrl: session.url });
+      const stripeCustomerId = await ensureStripeCustomerForSubscription(
+        subscription,
+        subscription.business?.users?.[0]?.email || req.user?.email
+      );
+      const frontendUrl = process.env.FRONTEND_URL || 'https://app.telyx.ai';
+      const session = await stripeService.createCreditPurchaseSession({
+        stripeCustomerId,
+        minutes,
+        amount: amountTL,
+        currency: country === 'TR' ? 'TRY' : country === 'BR' ? 'BRL' : 'USD',
+        countryCode: country,
+        successUrl: `${frontendUrl}/dashboard/subscription?wallet_topup=success`,
+        cancelUrl: `${frontendUrl}/dashboard/subscription?wallet_topup=cancel`,
+        businessId: businessId.toString()
+      });
 
-      return res.status(501).json({ error: 'Stripe ödeme henüz aktif değil' });
+      return res.json({
+        success: true,
+        provider: 'stripe',
+        sessionUrl: session.url,
+        sessionId: session.id
+      });
     }
 
     if (paymentProvider === 'iyzico') {
