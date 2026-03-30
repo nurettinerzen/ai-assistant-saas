@@ -16,6 +16,36 @@ import { getPricePerMinute, calculateTLToMinutes } from '../config/plans.js';
 
 const prisma = new PrismaClient();
 
+const COUNTRY_BUSINESS_SELECT = {
+  business: {
+    select: { country: true }
+  }
+};
+
+const OWNER_EMAIL_BUSINESS_SELECT = {
+  business: {
+    select: {
+      name: true,
+      users: {
+        where: { role: 'OWNER' },
+        take: 1,
+        select: { email: true }
+      }
+    }
+  }
+};
+
+const BASE_BALANCE_SUBSCRIPTION_SELECT = {
+  id: true,
+  plan: true,
+  balance: true,
+  autoReloadEnabled: true,
+  autoReloadThreshold: true,
+  autoReloadAmount: true,
+  stripeCustomerId: true,
+  iyzicoCardToken: true
+};
+
 /**
  * Bakiyeye TL ekle
  * @param {number} subscriptionId - Subscription ID
@@ -33,10 +63,9 @@ export async function topUp(subscriptionId, amountTL, paymentInfo = {}, descript
     // Get current subscription
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
-      include: {
-        business: {
-          select: { country: true }
-        }
+      select: {
+        ...BASE_BALANCE_SUBSCRIPTION_SELECT,
+        ...COUNTRY_BUSINESS_SELECT
       }
     });
 
@@ -105,10 +134,9 @@ export async function deduct(subscriptionId, amountTL, usageRecordId = null, des
     // Get current subscription
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
-      include: {
-        business: {
-          select: { country: true }
-        }
+      select: {
+        ...BASE_BALANCE_SUBSCRIPTION_SELECT,
+        ...COUNTRY_BUSINESS_SELECT
       }
     });
 
@@ -171,10 +199,9 @@ export async function checkAutoReload(subscriptionId) {
   try {
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
-      include: {
-        business: {
-          select: { country: true }
-        }
+      select: {
+        ...BASE_BALANCE_SUBSCRIPTION_SELECT,
+        ...COUNTRY_BUSINESS_SELECT
       }
     });
 
@@ -219,17 +246,9 @@ export async function processAutoReload(subscriptionId, amountTL) {
 
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
-      include: {
-        business: {
-          select: {
-            name: true,
-            users: {
-              where: { role: 'OWNER' },
-              take: 1,
-              select: { email: true }
-            }
-          }
-        }
+      select: {
+        ...BASE_BALANCE_SUBSCRIPTION_SELECT,
+        ...OWNER_EMAIL_BUSINESS_SELECT
       }
     });
 
@@ -306,10 +325,9 @@ export async function getBalanceInMinutes(subscriptionId) {
   try {
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
-      include: {
-        business: {
-          select: { country: true }
-        }
+      select: {
+        ...BASE_BALANCE_SUBSCRIPTION_SELECT,
+        ...COUNTRY_BUSINESS_SELECT
       }
     });
 
@@ -404,7 +422,11 @@ export async function refund(subscriptionId, amountTL, description = 'İade') {
     console.log(`💰 Balance refund: Subscription ${subscriptionId}, Amount: ${amountTL} TL`);
 
     const subscription = await prisma.subscription.findUnique({
-      where: { id: subscriptionId }
+      where: { id: subscriptionId },
+      select: {
+        id: true,
+        balance: true
+      }
     });
 
     if (!subscription) {

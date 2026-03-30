@@ -18,6 +18,8 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import balanceService from '../services/balanceService.js';
 import stripeService from '../services/stripe.js';
+import { getWrittenUsageSummary } from '../services/writtenUsageService.js';
+import { getBillingPlanDefinition } from '../config/billingCatalog.js';
 import {
   getPricePerMinute,
   getMinTopupMinutes,
@@ -32,6 +34,53 @@ import {
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+const BALANCE_SUBSCRIPTION_SELECT = {
+  id: true,
+  businessId: true,
+  plan: true,
+  status: true,
+  paymentProvider: true,
+  stripeCustomerId: true,
+  iyzicoCardToken: true,
+  currentPeriodStart: true,
+  currentPeriodEnd: true,
+  balance: true,
+  minutesLimit: true,
+  minutesUsed: true,
+  trialMinutesUsed: true,
+  trialChatExpiry: true,
+  includedMinutesUsed: true,
+  overageMinutes: true,
+  overageRate: true,
+  overageLimit: true,
+  overageLimitReached: true,
+  creditMinutes: true,
+  creditMinutesUsed: true,
+  packageWarningAt80: true,
+  creditWarningAt80: true,
+  autoReloadEnabled: true,
+  autoReloadThreshold: true,
+  autoReloadAmount: true,
+  enterpriseMinutes: true,
+  enterpriseSupportInteractions: true,
+  enterprisePrice: true,
+  enterpriseConcurrent: true,
+  enterpriseStartDate: true,
+  enterpriseEndDate: true,
+  enterprisePaymentStatus: true,
+  business: {
+    select: {
+      country: true,
+      name: true,
+      users: {
+        where: { role: 'OWNER' },
+        take: 1,
+        select: { email: true }
+      }
+    }
+  }
+};
 
 async function ensureStripeCustomerForSubscription(subscription, ownerEmail) {
   if (subscription.stripeCustomerId) {
@@ -149,19 +198,7 @@ router.post('/topup', async (req, res) => {
     // Get subscription
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
-      include: {
-        business: {
-          select: {
-            country: true,
-            name: true,
-            users: {
-              where: { role: 'OWNER' },
-              take: 1,
-              select: { email: true }
-            }
-          }
-        }
-      }
+      select: BALANCE_SUBSCRIPTION_SELECT
     });
 
     if (!subscription) {
@@ -232,11 +269,7 @@ router.get('/', async (req, res) => {
 
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
-      include: {
-        business: {
-          select: { country: true }
-        }
-      }
+      select: BALANCE_SUBSCRIPTION_SELECT
     });
 
     if (!subscription) {
@@ -248,6 +281,8 @@ router.get('/', async (req, res) => {
     const pricePerMinute = getPricePerMinute(plan, country);
     const paymentModel = getPaymentModel(plan);
     const overageRate = getFixedOveragePrice(country); // Sabit aşım fiyatı
+    const writtenUsage = await getWrittenUsageSummary(subscription, { includeReserved: false });
+    const billingPlan = getBillingPlanDefinition(subscription);
 
     // ENTERPRISE için dakika limiti database'den, diğerleri için plan config'den al
     const isEnterprise = plan === 'ENTERPRISE';
@@ -323,6 +358,16 @@ router.get('/', async (req, res) => {
       // Enterprise bilgileri
       enterprise: enterpriseInfo,
 
+      // Written support usage
+      writtenInteractions: writtenUsage ? {
+        used: Number(writtenUsage.used || 0),
+        limit: Number.isFinite(writtenUsage.total) ? Number(writtenUsage.total || 0) : 0,
+        remaining: Number.isFinite(writtenUsage.remaining) ? Number(writtenUsage.remaining || 0) : 0,
+        addOnRemaining: Number(writtenUsage.addOnRemaining || 0),
+        overage: Number(writtenUsage.overage || 0),
+        unitPrice: Number(writtenUsage.unitPrice || billingPlan.writtenInteractionUnitPrice || 0)
+      } : null,
+
       // Period info
       periodEnd: subscription.currentPeriodEnd,
 
@@ -345,7 +390,8 @@ router.get('/transactions', async (req, res) => {
     const { limit = 20, offset = 0, type } = req.query;
 
     const subscription = await prisma.subscription.findUnique({
-      where: { businessId }
+      where: { businessId },
+      select: { id: true, businessId: true }
     });
 
     if (!subscription) {
@@ -384,7 +430,12 @@ router.put('/auto-reload', async (req, res) => {
     }
 
     const subscription = await prisma.subscription.findUnique({
-      where: { businessId }
+      where: { businessId },
+      select: {
+        id: true,
+        businessId: true,
+        plan: true
+      }
     });
 
     if (!subscription) {
@@ -443,19 +494,7 @@ router.post('/create-checkout', async (req, res) => {
 
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
-      include: {
-        business: {
-          select: {
-            country: true,
-            name: true,
-            users: {
-              where: { role: 'OWNER' },
-              take: 1,
-              select: { email: true }
-            }
-          }
-        }
-      }
+      select: BALANCE_SUBSCRIPTION_SELECT
     });
 
     if (!subscription) {

@@ -14,6 +14,27 @@ import { getCreditUnitPrice, calculateCreditPrice, getRegionalPricing, getPlanCo
 const router = express.Router();
 const prisma = new PrismaClient();
 
+const CREDITS_SUBSCRIPTION_SELECT = {
+  id: true,
+  businessId: true,
+  plan: true,
+  currentPeriodEnd: true,
+  minutesLimit: true,
+  minutesUsed: true,
+  creditMinutes: true,
+  creditMinutesUsed: true,
+  overageMinutes: true,
+  overageRate: true,
+  overageLimit: true,
+  overageLimitReached: true,
+  packageWarningAt80: true,
+  creditWarningAt80: true,
+  iyzicoCardToken: true,
+  business: {
+    select: { country: true }
+  }
+};
+
 // All routes require authentication
 router.use(authenticateToken);
 
@@ -26,11 +47,7 @@ router.get('/balance', async (req, res) => {
 
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
-      include: {
-        business: {
-          select: { country: true }
-        }
-      }
+      select: CREDITS_SUBSCRIPTION_SELECT
     });
 
     if (!subscription) {
@@ -141,7 +158,17 @@ router.post('/purchase', async (req, res) => {
     // Business ve kayıtlı kart bilgisini al
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      include: { subscription: true }
+      select: {
+        id: true,
+        subscription: {
+          select: {
+            id: true,
+            iyzicoCardToken: true,
+            creditMinutes: true,
+            creditMinutesUsed: true
+          }
+        }
+      }
     });
 
     if (!business?.subscription) {
@@ -343,7 +370,16 @@ router.get('/can-make-call', async (req, res) => {
     const businessId = req.businessId;
 
     const subscription = await prisma.subscription.findUnique({
-      where: { businessId }
+      where: { businessId },
+      select: {
+        minutesLimit: true,
+        minutesUsed: true,
+        creditMinutes: true,
+        creditMinutesUsed: true,
+        overageLimit: true,
+        overageMinutes: true,
+        overageLimitReached: true
+      }
     });
 
     if (!subscription) {
