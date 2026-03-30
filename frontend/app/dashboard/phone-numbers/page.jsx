@@ -85,6 +85,31 @@ function NumberMeta({ label, value }) {
   );
 }
 
+function SummaryMetric({ label, value, detail, tone = 'default' }) {
+  const toneClasses = {
+    default: 'bg-neutral-50 dark:bg-neutral-800/70',
+    info: 'bg-blue-50 dark:bg-blue-950/30',
+    success: 'bg-emerald-50 dark:bg-emerald-950/30',
+    warning: 'bg-amber-50 dark:bg-amber-950/30'
+  };
+
+  return (
+    <div className={`rounded-2xl px-4 py-3 ${toneClasses[tone] || toneClasses.default}`}>
+      <div className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+        {label}
+      </div>
+      <div className="mt-1 text-lg font-semibold text-neutral-900 dark:text-white">
+        {value}
+      </div>
+      {detail ? (
+        <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          {detail}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function getLockReasonText(reason, locale, fallback) {
   const copy = {
     tr: {
@@ -232,6 +257,7 @@ export default function PhoneNumbersPage() {
   const voiceUsage = snapshot?.includedUsage?.voiceMinutes || null;
   const addOns = snapshot?.addOns || {};
   const wallet = snapshot?.wallet || {};
+  const supportUsageSummary = subscription?.supportUsage || null;
 
   const formatCount = (value, maximumFractionDigits = 0) => (
     Number(value || 0).toLocaleString(localeCode, { maximumFractionDigits })
@@ -346,9 +372,59 @@ export default function PhoneNumbersPage() {
     ? (Number(voiceUsage.used || 0) / Number(voiceUsage.total || 1)) * 100
     : 0;
 
-  const writtenFooter = snapshot?.plan === 'PAYG'
-    ? pageCopy.paygWrittenHint
-    : `${pageCopy.usagePoolLabel}: ${billingCopy.pricing.channelLabels.webchat}, ${billingCopy.pricing.channelLabels.whatsapp}, ${billingCopy.pricing.channelLabels.email}`;
+  const observedSupportChannels = supportUsageSummary?.channels || {};
+  const hasConfiguredWrittenLimit = Number(writtenUsage?.total || 0) > 0;
+  const supportStatusTone = hasConfiguredWrittenLimit
+    ? 'success'
+    : (snapshot?.plan === 'ENTERPRISE' ? 'warning' : 'info');
+  const assistantLimit = subscription?.usage?.assistants?.limit
+    ?? snapshot?.entitlements?.assistants
+    ?? subscription?.limits?.assistants
+    ?? subscription?.assistantsLimit
+    ?? 0;
+  const assistantsUsed = subscription?.usage?.assistants?.used
+    ?? subscription?.assistantsCreated
+    ?? 0;
+  const supportObservedCount = supportUsageSummary?.used ?? writtenUsage?.used ?? 0;
+  const supportStatusValue = hasConfiguredWrittenLimit
+    ? pageCopy.configuredShort
+    : (snapshot?.plan === 'ENTERPRISE' ? pageCopy.notConfiguredShort : pageCopy.observedShort);
+  const supportStatusDetail = hasConfiguredWrittenLimit
+    ? `${formatCount(writtenUsage?.used || 0)} / ${formatCount(writtenUsage?.total || 0)}`
+    : `${formatCount(supportObservedCount)} ${pageCopy.cycleObserved.toLowerCase()}`;
+  const voiceSummaryValue = snapshot?.channels?.phone
+    ? (voiceUsage?.total > 0 ? formatCount(voiceUsage?.remaining || 0, 1) : '—')
+    : pageCopy.voiceAccessDisabled;
+  const voiceSummaryDetail = snapshot?.channels?.phone
+    ? (voiceUsage?.total > 0
+      ? `${formatCount(voiceUsage?.used || 0, 1)} / ${formatCount(voiceUsage?.total || 0, 1)}`
+      : pageCopy.notIncluded)
+    : pageCopy.notIncluded;
+  const phoneLimitValue = isPhoneNumberLimitUnlimited ? '∞' : formatCount(phoneNumberLimit ?? 0);
+  const phoneLimitDetail = `${phoneNumbers.length}/${isPhoneNumberLimitUnlimited ? '∞' : (phoneNumberLimit ?? 0)} ${t('dashboard.phoneNumbersPage.numbersUsed')}`;
+  const writtenFooter = hasConfiguredWrittenLimit
+    ? (snapshot?.plan === 'PAYG'
+      ? pageCopy.paygWrittenHint
+      : pageCopy.supportConfiguredFooter)
+    : (snapshot?.plan === 'ENTERPRISE'
+      ? pageCopy.supportLimitMissingDescription
+      : pageCopy.supportTrackingOnly);
+  const supportCardSubtitle = hasConfiguredWrittenLimit
+    ? pageCopy.supportSubtitle
+    : pageCopy.supportObservedSubtitle;
+  const supportCardStats = hasConfiguredWrittenLimit
+    ? [
+      { label: pageCopy.total, value: formatCount(writtenUsage?.total || 0) },
+      { label: pageCopy.used, value: formatCount(writtenUsage?.used || 0) },
+      { label: pageCopy.remaining, value: formatCount(writtenUsage?.remaining || 0) },
+      { label: pageCopy.overage, value: formatCount(writtenUsage?.overage || 0) }
+    ]
+    : [
+      { label: pageCopy.cycleObserved, value: formatCount(supportObservedCount) },
+      { label: billingCopy.pricing.channelLabels.webchat, value: formatCount(observedSupportChannels.webchat || 0) },
+      { label: billingCopy.pricing.channelLabels.whatsapp, value: formatCount(observedSupportChannels.whatsapp || 0) },
+      { label: billingCopy.pricing.channelLabels.email, value: formatCount(observedSupportChannels.email || 0) }
+    ];
 
   let voiceFooter = null;
   if (snapshot?.plan === 'PAYG') {
@@ -391,7 +467,7 @@ export default function PhoneNumbersPage() {
                 {getPlanDisplayName(snapshot?.plan || subscription?.plan, locale)}
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-neutral-600 dark:text-neutral-300">
-                {pageCopy.usageSectionSubtitle}
+                {hasConfiguredWrittenLimit ? pageCopy.usageSectionSubtitle : pageCopy.observedUsageSubtitle}
               </p>
             </div>
 
@@ -409,6 +485,36 @@ export default function PhoneNumbersPage() {
                 </Badge>
               )}
             </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <SummaryMetric
+              label={pageCopy.supportStatus}
+              value={supportStatusValue}
+              detail={supportStatusDetail}
+              tone={supportStatusTone}
+            />
+            <SummaryMetric
+              label={pageCopy.voiceTitle}
+              value={voiceSummaryValue}
+              detail={voiceSummaryDetail}
+              tone={snapshot?.channels?.phone ? 'default' : 'warning'}
+            />
+            <SummaryMetric
+              label={pageCopy.concurrentCalls}
+              value={formatCount(snapshot?.entitlements?.concurrentCalls || subscription?.entitlements?.concurrentCalls || 0)}
+              detail={pageCopy.accessSubtitle}
+            />
+            <SummaryMetric
+              label={pageCopy.assistantLimit}
+              value={formatCount(assistantLimit)}
+              detail={`${formatCount(assistantsUsed)} ${pageCopy.used.toLowerCase()}`}
+            />
+            <SummaryMetric
+              label={pageCopy.phoneNumberLimit}
+              value={phoneLimitValue}
+              detail={phoneLimitDetail}
+            />
           </div>
 
           {isLocked ? (
@@ -432,6 +538,13 @@ export default function PhoneNumbersPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
+            </div>
+          ) : snapshot?.plan === 'ENTERPRISE' && !hasConfiguredWrittenLimit ? (
+            <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/60 dark:bg-amber-950/30">
+              <h3 className="text-base font-semibold text-neutral-900 dark:text-white">{pageCopy.supportLimitMissingTitle}</h3>
+              <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
+                {pageCopy.supportLimitMissingDescription}
+              </p>
             </div>
           ) : null}
         </div>
@@ -483,14 +596,9 @@ export default function PhoneNumbersPage() {
         <UsageCard
           icon={Wallet}
           title={pageCopy.supportTitle}
-          subtitle={pageCopy.supportSubtitle}
-          stats={[
-            { label: pageCopy.total, value: formatCount(writtenUsage?.total || 0) },
-            { label: pageCopy.used, value: formatCount(writtenUsage?.used || 0) },
-            { label: pageCopy.remaining, value: formatCount(writtenUsage?.remaining || 0) },
-            { label: pageCopy.overage, value: formatCount(writtenUsage?.overage || 0) }
-          ]}
-          progress={writtenUsage?.total > 0 ? writtenProgress : null}
+          subtitle={supportCardSubtitle}
+          stats={supportCardStats}
+          progress={hasConfiguredWrittenLimit && writtenUsage?.total > 0 ? writtenProgress : null}
           progressColorClass="bg-blue-500"
           footer={writtenFooter}
         />

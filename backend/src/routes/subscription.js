@@ -40,6 +40,76 @@ function hashValue(value) {
   return crypto.createHash('sha256').update(String(value), 'utf8').digest('hex').slice(0, 12);
 }
 
+function resolveUsageCycleStart(subscription) {
+  if (subscription?.currentPeriodStart) {
+    return new Date(subscription.currentPeriodStart);
+  }
+
+  if (subscription?.trialStartDate) {
+    return new Date(subscription.trialStartDate);
+  }
+
+  if (subscription?.includedMinutesResetAt) {
+    const derivedStart = new Date(subscription.includedMinutesResetAt);
+    derivedStart.setDate(derivedStart.getDate() - 30);
+    return derivedStart;
+  }
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  return startOfMonth;
+}
+
+async function buildSupportUsageSummary({ businessId, subscription }) {
+  const periodStart = resolveUsageCycleStart(subscription);
+
+  const [webchatSessions, whatsappSessions, answeredEmails] = await Promise.all([
+    prisma.chatLog.count({
+      where: {
+        businessId,
+        channel: 'CHAT',
+        createdAt: { gte: periodStart }
+      }
+    }),
+    prisma.chatLog.count({
+      where: {
+        businessId,
+        channel: 'WHATSAPP',
+        createdAt: { gte: periodStart }
+      }
+    }),
+    prisma.emailDraft.count({
+      where: {
+        businessId,
+        status: 'SENT',
+        createdAt: { gte: periodStart }
+      }
+    })
+  ]);
+
+  const used = webchatSessions + whatsappSessions + answeredEmails;
+  const hasExplicitSupportLimit = false;
+
+  return {
+    metric: 'support_interactions',
+    configured: hasExplicitSupportLimit,
+    total: null,
+    used,
+    remaining: null,
+    overage: 0,
+    periodStart,
+    channels: {
+      webchat: webchatSessions,
+      whatsapp: whatsappSessions,
+      email: answeredEmails
+    },
+    note: subscription?.plan === 'ENTERPRISE'
+      ? 'ENTERPRISE_SUPPORT_LIMIT_NOT_CONFIGURED'
+      : 'SUPPORT_USAGE_TRACKED_WITHOUT_EXPLICIT_LIMIT'
+  };
+}
+
 // Plan configurations with both Stripe and iyzico pricing
 // Updated: January 2026 - synced with pricing.js
 const PLAN_CONFIG = {
@@ -899,6 +969,7 @@ router.get('/current', verifyBusinessAccess, async (req, res) => {
       plan: subscription.plan,
       inboundEnabled: effectiveInboundEnabled
     });
+    const supportUsage = await buildSupportUsageSummary({ businessId, subscription });
     const effectiveMinutesLimit = effectivePlanConfig.includedMinutes ?? subscription.minutesLimit;
     const effectiveAssistantsLimit = effectivePlanConfig.assistantsLimit ?? subscription.assistantsLimit;
     const effectivePhoneNumbersLimit = effectivePlanConfig.phoneNumbersLimit ?? subscription.phoneNumbersLimit;
@@ -908,6 +979,12 @@ router.get('/current', verifyBusinessAccess, async (req, res) => {
     const response = {
       ...subscription,
       entitlements,
+      supportUsage,
+      writtenChannelsEnabled: Boolean(
+        effectivePlanConfig.features?.chat
+        || effectivePlanConfig.features?.whatsapp
+        || effectivePlanConfig.features?.email
+      ),
       limits: {
         minutes: effectiveMinutesLimit,
         assistants: effectiveAssistantsLimit,
