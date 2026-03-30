@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Lock, Phone, PhoneCall, Plus, Settings, Trash2, Wallet, MessageSquare, Zap } from 'lucide-react';
+import { ArrowRight, Lock, Phone, PhoneCall, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
@@ -13,7 +13,6 @@ import { toast, toastHelpers } from '@/lib/toast';
 import { formatPhone, formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getPageHelp } from '@/content/pageHelp';
-import { getBillingPageCopy, formatTl } from '@/lib/billingCopy';
 import { getPlanDisplayName } from '@/lib/planConfig';
 import { getPhoneNumbersCopy } from '@/lib/phoneNumbersCopy';
 
@@ -114,7 +113,6 @@ function Metric({ label, value, sub, className = '' }) {
 export default function PhoneNumbersPage() {
   const { t, locale } = useLanguage();
   const pageCopy = getPhoneNumbersCopy(locale);
-  const billingCopy = getBillingPageCopy(locale);
   const pageHelp = getPageHelp('phoneNumbers', locale);
   const isTR = locale !== 'en';
 
@@ -129,10 +127,6 @@ export default function PhoneNumbersPage() {
   const localeCode = locale === 'en' ? 'en-US' : 'tr-TR';
   const snapshot = subscription?.billingSnapshot || buildLegacyBillingSnapshot(subscription);
   const voiceUsage = snapshot?.includedUsage?.voiceMinutes || null;
-  const writtenUsage = snapshot?.includedUsage?.writtenInteractions || null;
-  const addOns = snapshot?.addOns || {};
-  const wallet = snapshot?.wallet || {};
-  const supportUsageSummary = subscription?.supportUsage || null;
 
   const fmt = (v, d = 0) => Number(v || 0).toLocaleString(localeCode, { maximumFractionDigits: d });
 
@@ -191,12 +185,6 @@ export default function PhoneNumbersPage() {
 
   const voiceProgress = voiceUsage?.total > 0 ? (toNumber(voiceUsage.used) / toNumber(voiceUsage.total, 1)) * 100 : 0;
   const concurrentCalls = toNumber(snapshot?.entitlements?.concurrentCalls || subscription?.entitlements?.concurrentCalls, 0);
-
-  const observedChannels = supportUsageSummary?.channels || {};
-  const hasWrittenLimit = Boolean(supportUsageSummary?.configured || toNumber(writtenUsage?.total) > 0);
-  const supportUsed = hasWrittenLimit ? toNumber(supportUsageSummary?.used || writtenUsage?.used) : toNumber(supportUsageSummary?.used || writtenUsage?.used);
-  const supportTotal = hasWrittenLimit ? toNumber(supportUsageSummary?.total || writtenUsage?.total) : 0;
-  const supportProgress = hasWrittenLimit && supportTotal > 0 ? (supportUsed / supportTotal) * 100 : null;
 
   const actionButton = (
     <Button onClick={() => setShowProvisionModal(true)} disabled={!canAdd()}>
@@ -288,114 +276,39 @@ export default function PhoneNumbersPage() {
         )}
       </section>
 
-      {/* ═══ 2. Usage Overview ═══ */}
+      {/* ═══ 2. Compact Usage Summary Bar ═══ */}
       {!loading && snapshot && (
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              {isTR ? 'Kullanım Özeti' : 'Usage Overview'}
-            </h2>
-            <Link href="/dashboard/subscription">
-              <Button variant="ghost" size="sm" className="text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white">
-                <Settings className="mr-1.5 h-3.5 w-3.5" />
-                {isTR ? 'Paket & Faturalandırma' : 'Plan & Billing'}
-              </Button>
-            </Link>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Voice Minutes */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 dark:bg-teal-900/30">
-                  <PhoneCall className="h-4.5 w-4.5 text-teal-600 dark:text-teal-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{isTR ? 'Ses Dakikaları' : 'Voice Minutes'}</h3>
-                  <p className="text-xs text-neutral-400">{isTR ? 'Aylık telefon kullanımı' : 'Monthly phone usage'}</p>
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white px-5 py-3 dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/30">
+              <PhoneCall className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+            </div>
+            <Badge variant="outline" className="shrink-0 rounded-full text-xs font-semibold">
+              {getPlanDisplayName(snapshot?.plan || subscription?.plan, locale)}
+            </Badge>
+            {voiceUsage && voiceUsage.total > 0 ? (
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+                  {fmt(voiceUsage.used, 1)} / {fmt(voiceUsage.total, 1)} {isTR ? 'dk kullanıldı' : 'min used'}
+                </span>
+                <div className="w-20 shrink-0">
+                  <ProgressBar value={voiceProgress} colorClass="bg-teal-500" />
                 </div>
               </div>
-
-              {snapshot?.channels?.phone ? (
-                <>
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <Metric label={isTR ? 'Toplam' : 'Total'} value={fmt(voiceUsage?.total || 0, 1)} />
-                    <Metric label={isTR ? 'Kullanılan' : 'Used'} value={fmt(voiceUsage?.used || 0, 1)} />
-                    <Metric label={isTR ? 'Kalan' : 'Remaining'} value={fmt(voiceUsage?.remaining || 0, 1)} />
-                  </div>
-                  {voiceUsage?.total > 0 && <ProgressBar value={voiceProgress} colorClass="bg-teal-500" />}
-                </>
-              ) : (
-                <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
-                  {isTR ? 'Ses dakikası bu pakete dahil değil.' : 'Voice minutes not included in this plan.'}
-                </div>
-              )}
-
-              {voiceUsage?.overage > 0 && (
-                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                  {isTR ? 'Aşım' : 'Overage'}: {fmt(voiceUsage.overage, 1)} {isTR ? 'dk' : 'min'}
-                </p>
-              )}
-            </div>
-
-            {/* Support Interactions */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                  <MessageSquare className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{isTR ? 'Destek Etkileşimleri' : 'Support Interactions'}</h3>
-                  <p className="text-xs text-neutral-400">{isTR ? 'Chat, WhatsApp ve e-posta' : 'Chat, WhatsApp and email'}</p>
-                </div>
-              </div>
-
-              {hasWrittenLimit ? (
-                <>
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <Metric label={isTR ? 'Toplam' : 'Total'} value={fmt(supportTotal)} />
-                    <Metric label={isTR ? 'Kullanılan' : 'Used'} value={fmt(supportUsed)} />
-                    <Metric label={isTR ? 'Kalan' : 'Remaining'} value={fmt(Math.max(supportTotal - supportUsed, 0))} />
-                  </div>
-                  {supportProgress !== null && <ProgressBar value={supportProgress} colorClass="bg-blue-500" />}
-                </>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <Metric label="Web Chat" value={fmt(observedChannels.webchat || 0)} />
-                  <Metric label="WhatsApp" value={fmt(observedChannels.whatsapp || 0)} />
-                  <Metric label={isTR ? 'E-posta' : 'Email'} value={fmt(observedChannels.email || 0)} />
-                  <Metric label={isTR ? 'Bu Dönem' : 'This Period'} value={fmt(supportUsed)} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Stats Row */}
-          <div className="mt-4 grid gap-3 grid-cols-2 md:grid-cols-4">
-            <Metric
-              label={isTR ? 'Paket' : 'Plan'}
-              value={getPlanDisplayName(snapshot?.plan || subscription?.plan, locale)}
-            />
-            <Metric
-              label={isTR ? 'Numara Limiti' : 'Number Limit'}
-              value={isUnlimited ? '∞' : fmt(phoneNumberLimit ?? 0)}
-              sub={`${phoneNumbers.length} ${isTR ? 'kullanılıyor' : 'in use'}`}
-            />
-            {(toNumber(addOns?.voiceMinutes?.remaining) > 0 || toNumber(addOns?.writtenInteractions?.remaining) > 0) && (
-              <Metric
-                label={isTR ? 'Ek Paket' : 'Add-on'}
-                value={`${fmt(addOns?.voiceMinutes?.remaining || 0, 1)} ${isTR ? 'dk' : 'min'}`}
-                sub={`${fmt(addOns?.writtenInteractions?.remaining || 0)} ${isTR ? 'etkileşim' : 'interactions'}`}
-              />
-            )}
-            {wallet?.enabled && (
-              <Metric
-                label={isTR ? 'Bakiye' : 'Balance'}
-                value={formatTl(wallet.balance || 0, locale)}
-              />
+            ) : (
+              <span className="text-sm text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
+                {isTR ? 'Ses dakikası yok' : 'No voice minutes'}
+              </span>
             )}
           </div>
-        </section>
+          <Link
+            href="/dashboard/subscription"
+            className="shrink-0 flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors whitespace-nowrap"
+          >
+            {isTR ? 'Kullanım Detayları' : 'Usage Details'}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       )}
 
       {/* ═══ Lock Banner ═══ */}

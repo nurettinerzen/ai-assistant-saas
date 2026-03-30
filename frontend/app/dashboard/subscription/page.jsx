@@ -334,12 +334,6 @@ export default function SubscriptionPage() {
     }
   };
 
-  const usagePercent = subscription
-    ? (subscription.creditsUsed / subscription.creditsLimit) * 100
-    : 0;
-  const billingSnapshot = subscription?.billingSnapshot || null;
-  const writtenUsage = billingSnapshot?.includedUsage?.writtenInteractions || null;
-  const voiceUsage = billingSnapshot?.includedUsage?.voiceMinutes || null;
   const writtenAddOnCatalog = subscription?.addOnCatalog?.written || [];
   const voiceAddOnCatalog = subscription?.addOnCatalog?.voice || [];
 
@@ -475,52 +469,33 @@ export default function SubscriptionPage() {
         </div>
       )}
 
+      {/* Add-on Store — only purchase options, usage shown in CreditBalance above */}
       {!loading && subscription && (writtenAddOnCatalog.length > 0 || voiceAddOnCatalog.length > 0) && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-primary-600" />
-                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                    {locale === 'tr' ? 'Yazılı Destek Kullanımı' : 'Written Support Usage'}
-                  </h3>
-                </div>
-                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                  {locale === 'tr'
-                    ? 'Webchat, WhatsApp ve e-posta aynı havuzdan düşer.'
-                    : 'Webchat, WhatsApp, and email all consume the same pool.'}
-                </p>
-              </div>
-              <Badge variant="outline">
-                {locale === 'tr'
-                  ? `${writtenUsage?.used || 0} / ${writtenUsage?.total ?? 0}`
-                  : `${writtenUsage?.used || 0} / ${writtenUsage?.total ?? 0}`}
-              </Badge>
-            </div>
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1">
+            {locale === 'tr' ? 'Ek Paket Satın Al' : 'Buy Add-ons'}
+          </h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
+            {locale === 'tr'
+              ? 'Dahil kullanımınız bittiğinde ek paketler devreye girer.'
+              : 'Add-ons kick in when your included usage runs out.'}
+          </p>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/60 px-4 py-3">
-                <div className="text-neutral-500 dark:text-neutral-400">{locale === 'tr' ? 'Plana dahil kalan' : 'Included remaining'}</div>
-                <div className="mt-1 text-xl font-semibold text-neutral-900 dark:text-white">{writtenUsage?.remaining ?? '-'}</div>
-              </div>
-              <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/60 px-4 py-3">
-                <div className="text-neutral-500 dark:text-neutral-400">{locale === 'tr' ? 'Ek paket kalan' : 'Add-on remaining'}</div>
-                <div className="mt-1 text-xl font-semibold text-neutral-900 dark:text-white">
-                  {billingSnapshot?.addOns?.writtenInteractions?.remaining ?? 0}
-                </div>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Written interaction add-ons */}
             {writtenAddOnCatalog.length > 0 && (
-              <div className="mt-5 space-y-3">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  {locale === 'tr' ? 'Yazılı Destek' : 'Written Support'}
+                </div>
                 {writtenAddOnCatalog.map((pkg) => {
                   const buttonKey = `WRITTEN:${pkg.id}`;
                   return (
-                    <div key={pkg.id} className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-3">
+                    <div key={pkg.id} className="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-700 px-4 py-3">
                       <div>
                         <div className="font-medium text-neutral-900 dark:text-white">
-                          {pkg.quantity} {locale === 'tr' ? 'yazılı etkileşim' : 'written interactions'}
+                          {pkg.quantity} {locale === 'tr' ? 'etkileşim' : 'interactions'}
                         </div>
                         <div className="text-sm text-neutral-500 dark:text-neutral-400">
                           {formatPrice(pkg.amount)}
@@ -528,6 +503,7 @@ export default function SubscriptionPage() {
                       </div>
                       <Button
                         size="sm"
+                        variant="outline"
                         onClick={() => handleBuyAddOn('WRITTEN', pkg.id)}
                         disabled={purchasingAddOn === buttonKey}
                       >
@@ -542,52 +518,21 @@ export default function SubscriptionPage() {
                 })}
               </div>
             )}
-          </div>
 
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <PhoneCall className="h-4 w-4 text-primary-600" />
-                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                    {locale === 'tr' ? 'Ses Dakikası Kullanımı' : 'Voice Minute Usage'}
-                  </h3>
-                </div>
-                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                  {locale === 'tr'
-                    ? 'Dahil dakikalar bittiğinde ek paket bakiyesi kullanılır.'
-                    : 'Add-on balance is used after included minutes are exhausted.'}
-                </p>
-              </div>
-              <Badge variant="outline">
-                {locale === 'tr'
-                  ? `${voiceUsage?.used || 0} / ${voiceUsage?.total ?? 0} dk`
-                  : `${voiceUsage?.used || 0} / ${voiceUsage?.total ?? 0} min`}
-              </Badge>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/60 px-4 py-3">
-                <div className="text-neutral-500 dark:text-neutral-400">{locale === 'tr' ? 'Plana dahil kalan' : 'Included remaining'}</div>
-                <div className="mt-1 text-xl font-semibold text-neutral-900 dark:text-white">{voiceUsage?.remaining ?? 0}</div>
-              </div>
-              <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/60 px-4 py-3">
-                <div className="text-neutral-500 dark:text-neutral-400">{locale === 'tr' ? 'Ek paket kalan' : 'Add-on remaining'}</div>
-                <div className="mt-1 text-xl font-semibold text-neutral-900 dark:text-white">
-                  {billingSnapshot?.addOns?.voiceMinutes?.remaining ?? 0}
-                </div>
-              </div>
-            </div>
-
+            {/* Voice minute add-ons */}
             {voiceAddOnCatalog.length > 0 && (
-              <div className="mt-5 space-y-3">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <PhoneCall className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                  {locale === 'tr' ? 'Ses Dakikası' : 'Voice Minutes'}
+                </div>
                 {voiceAddOnCatalog.map((pkg) => {
                   const buttonKey = `VOICE:${pkg.id}`;
                   return (
-                    <div key={pkg.id} className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-3">
+                    <div key={pkg.id} className="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-700 px-4 py-3">
                       <div>
                         <div className="font-medium text-neutral-900 dark:text-white">
-                          {pkg.quantity} {locale === 'tr' ? 'ses dakikası' : 'voice minutes'}
+                          {pkg.quantity} {locale === 'tr' ? 'dakika' : 'minutes'}
                         </div>
                         <div className="text-sm text-neutral-500 dark:text-neutral-400">
                           {formatPrice(pkg.amount)}
@@ -595,6 +540,7 @@ export default function SubscriptionPage() {
                       </div>
                       <Button
                         size="sm"
+                        variant="outline"
                         onClick={() => handleBuyAddOn('VOICE', pkg.id)}
                         disabled={purchasingAddOn === buttonKey}
                       >
