@@ -1,9 +1,9 @@
 /**
  * Stripe Price Setup Script
- * Creates products and prices for all subscription plans
- * Supports multiple currencies (USD, TRY, EUR, GBP, BRL)
+ * Creates products and prices for active subscription plans
+ * Current rollout scope: TRY only, Starter + Pro
  *
- * YENİ FİYATLAR - Ocak 2026
+ * YENİ FİYATLAR - Mart 2026
  *
  * Kullanım:
  *   node backend/scripts/setup-stripe-prices.js
@@ -19,44 +19,24 @@ dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// YENİ FİYATLAR - Ocak 2026
-// plans.js ile uyumlu güncel fiyatlar
-// STARTER: ₺2.499/ay, 150 dk dahil, 3 asistan
-// PRO: ₺7.499/ay, 500 dk dahil, 10 asistan
+// YENİ FİYATLAR - Mart 2026
+// Aktif satış kapsamı: sadece TRY recurring fiyatlar
+// STARTER: ₺2.499/ay
+// PRO: ₺7.499/ay
 const PLANS = {
   STARTER: {
     name: 'Starter Plan - Telyx.AI',
-    description: '150 dakika dahil, sınırsız arama, 3 asistan, sınırsız telefon numarası, aşım: 23₺/dk',
+    description: 'Starter aylık plan (TRY), 150 dakika dahil, 3 asistan',
     prices: {
-      try: 249900,  // ₺2,499.00 in kuruş
-      usd: 5500,    // $55.00 in cents
-      eur: 5000,    // €50.00 in cents
-      gbp: 4300,    // £43.00 in pence
-      brl: 50000    // R$500.00 in centavos
+      try: 249900
     },
     interval: 'month'
   },
   PRO: {
     name: 'Pro Plan - Telyx.AI',
-    description: '500 dakika dahil, sınırsız arama, 10 asistan, sınırsız telefon numarası, aşım: 23₺/dk',
+    description: 'Pro aylık plan (TRY), 500 dakika dahil, 10 asistan',
     prices: {
-      try: 749900,  // ₺7,499.00 in kuruş
-      usd: 16700,   // $167.00 in cents
-      eur: 15000,   // €150.00 in cents
-      gbp: 13000,   // £130.00 in pence
-      brl: 150000   // R$1,500.00 in centavos
-    },
-    interval: 'month'
-  },
-  ENTERPRISE: {
-    name: 'Enterprise Plan - Telyx.AI',
-    description: 'Özel dakika, sınırsız arama, sınırsız asistan - Satışa ulaşın',
-    prices: {
-      try: null,    // Satış ile iletişim
-      usd: null,    // Contact sales
-      eur: null,
-      gbp: null,
-      brl: null
+      try: 749900
     },
     interval: 'month'
   }
@@ -64,11 +44,7 @@ const PLANS = {
 
 // Para birimi format yardımcıları
 const CURRENCY_SYMBOLS = {
-  try: '₺',
-  usd: '$',
-  eur: '€',
-  gbp: '£',
-  brl: 'R$'
+  try: '₺'
 };
 
 function formatAmount(amount, currency) {
