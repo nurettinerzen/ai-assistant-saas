@@ -341,6 +341,23 @@ export default function SubscriptionPage() {
     }
   };
 
+  const handleReactivateSubscription = async () => {
+    try {
+      setUpgrading(true);
+      const response = await apiClient.subscription.reactivate();
+
+      if (response.data?.success) {
+        toast.success(t('dashboard.subscriptionPage.reactivateCurrentSuccess'));
+        await refreshBillingState();
+      }
+    } catch (error) {
+      console.error('Reactivate subscription error:', error);
+      toast.error(error.response?.data?.error || t('dashboard.subscriptionPage.operationFailed'));
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
   const closePaymentModal = () => {
     setShowPaymentModal(false);
     setCheckoutFormHtml('');
@@ -527,13 +544,33 @@ export default function SubscriptionPage() {
             {/* Canceled status message */}
             {subscription.cancelAtPeriodEnd && !subscription.pendingPlanId && (
               <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
-                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-2.5 text-sm text-orange-800 dark:text-orange-400">
-                  <strong>{t('dashboard.subscriptionPage.subscriptionCanceled')}</strong>
-                  {' '}
-                  {subscription.currentPeriodEnd && (
-                    <>{t('dashboard.subscriptionPage.planEndsOnDate').replace('{date}', formatDate(subscription.currentPeriodEnd, 'short'))}</>
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-3 text-sm text-orange-800 dark:text-orange-400 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <strong>{t('dashboard.subscriptionPage.subscriptionCanceled')}</strong>
+                    {' '}
+                    {subscription.currentPeriodEnd && (
+                      <>{t('dashboard.subscriptionPage.planEndsOnDate').replace('{date}', formatDate(subscription.currentPeriodEnd, 'short'))}</>
+                    )}
+                    {!subscription.currentPeriodEnd && <>{t('dashboard.subscriptionPage.planEndsAtPeriodEnd')}</>}
+                  </div>
+                  {showCancelableSubscription && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReactivateSubscription}
+                      disabled={upgrading}
+                      className="shrink-0 border-orange-300 bg-white text-orange-700 hover:bg-orange-100 hover:text-orange-800 dark:border-orange-700 dark:bg-transparent dark:text-orange-300"
+                    >
+                      {upgrading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {t('dashboard.subscriptionPage.processing')}
+                        </>
+                      ) : (
+                        t('dashboard.subscriptionPage.reactivate')
+                      )}
+                    </Button>
                   )}
-                  {!subscription.currentPeriodEnd && <>{t('dashboard.subscriptionPage.planEndsAtPeriodEnd')}</>}
                 </div>
               </div>
             )}
