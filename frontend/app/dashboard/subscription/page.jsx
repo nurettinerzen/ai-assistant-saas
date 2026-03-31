@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, CreditCard, Loader2, AlertCircle, MessageSquare, PhoneCall, X } from 'lucide-react';
@@ -29,9 +29,9 @@ import {
 import {
   useSubscription,
   useBillingHistory,
-  useUpgradeSubscription,
 } from '@/hooks/useSubscription';
 import { useProfile } from '@/hooks/useSettings';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Note: Region is determined by business.country, NOT by UI language
 // Language (locale) only affects UI text, not pricing
@@ -78,12 +78,12 @@ export default function SubscriptionPage() {
   const { t, locale } = useLanguage();
   const { can, loading: permissionsLoading } = usePermissions();
   const pageHelp = getPageHelp('subscription', locale);
+  const queryClient = useQueryClient();
 
   // React Query hooks
   const { data: subscription, isLoading: subscriptionLoading, refetch: refetchSubscription } = useSubscription();
   const { data: billingHistory = [], isLoading: billingLoading } = useBillingHistory();
   const { data: profileData } = useProfile();
-  const upgradeSubscription = useUpgradeSubscription();
 
   const loading = subscriptionLoading || billingLoading;
   const [upgrading, setUpgrading] = useState(false);
@@ -149,6 +149,21 @@ export default function SubscriptionPage() {
     return regionConfig.plans[planId] || null;
   };
 
+  const refreshBillingState = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['subscription'] }),
+      queryClient.invalidateQueries({ queryKey: ['balance'] }),
+      queryClient.invalidateQueries({ queryKey: ['settings', 'profile'] }),
+    ]);
+
+    await Promise.all([
+      refetchSubscription(),
+      queryClient.refetchQueries({ queryKey: ['balance'], exact: true }),
+      queryClient.refetchQueries({ queryKey: ['subscription', 'billingHistory'], exact: true }),
+      queryClient.refetchQueries({ queryKey: ['settings', 'profile'], exact: true }),
+    ]);
+  }, [queryClient, refetchSubscription]);
+
   // Get plan name from translation
   const getPlanName = (plan) => {
     return t(plan.nameKey);
@@ -163,112 +178,118 @@ export default function SubscriptionPage() {
 
   // Check for success/error in URL params (after payment callback)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get('status');
-    const success = params.get('success');
-    const session_id = params.get('session_id');
-    const walletTopup = params.get('wallet_topup');
-    const addonStatus = params.get('addon');
-    const addonKind = params.get('addon_kind');
+    const handleUrlState = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const status = params.get('status');
+      const success = params.get('success');
+      const session_id = params.get('session_id');
+      const walletTopup = params.get('wallet_topup');
+      const addonStatus = params.get('addon');
+      const addonKind = params.get('addon_kind');
 
-    if (walletTopup === 'success') {
-      toast.success(locale === 'tr' ? 'Bakiye yükleme tamamlandı' : 'Balance top-up completed');
-      refetchSubscription();
-      window.history.replaceState({}, '', window.location.pathname);
-      return;
-    }
+      if (walletTopup === 'success') {
+        toast.success(locale === 'tr' ? 'Bakiye yükleme tamamlandı' : 'Balance top-up completed');
+        await refreshBillingState();
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
 
-    if (walletTopup === 'cancel') {
-      toast.error(locale === 'tr' ? 'Bakiye yükleme iptal edildi' : 'Balance top-up canceled');
-      window.history.replaceState({}, '', window.location.pathname);
-      return;
-    }
+      if (walletTopup === 'cancel') {
+        toast.error(locale === 'tr' ? 'Bakiye yükleme iptal edildi' : 'Balance top-up canceled');
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
 
-    if (addonStatus === 'success') {
-      toast.success(
-        locale === 'tr'
-          ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı etkileşim'} ek paketi satın alındı`
-          : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written interaction'} add-on purchase completed`
-      );
-      refetchSubscription();
-      window.history.replaceState({}, '', window.location.pathname);
-      return;
-    }
+      if (addonStatus === 'success') {
+        toast.success(
+          locale === 'tr'
+            ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı etkileşim'} ek paketi satın alındı`
+            : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written interaction'} add-on purchase completed`
+        );
+        await refreshBillingState();
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
 
-    if (addonStatus === 'cancel') {
-      toast.error(
-        locale === 'tr'
-          ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı etkileşim'} ek paket satın alma iptal edildi`
-          : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written interaction'} add-on purchase canceled`
-      );
-      window.history.replaceState({}, '', window.location.pathname);
-      return;
-    }
+      if (addonStatus === 'cancel') {
+        toast.error(
+          locale === 'tr'
+            ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı etkileşim'} ek paket satın alma iptal edildi`
+            : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written interaction'} add-on purchase canceled`
+        );
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
 
-    // Verify Stripe session if present
-    if (success === 'true' && session_id) {
-      apiClient.get(`/api/subscription/verify-session?session_id=${session_id}`)
-        .then(() => {
+      if (success === 'true' && session_id) {
+        try {
+          await apiClient.get(`/api/subscription/verify-session?session_id=${session_id}`);
           toast.success(t('dashboard.subscriptionPage.upgradeSuccess'));
-          // Reload subscription data
-          refetchSubscription();
-          // Clean URL
+          await refreshBillingState();
           window.history.replaceState({}, '', window.location.pathname);
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error('Session verification error:', error);
           toast.error(t('dashboard.subscriptionPage.sessionVerificationError'));
-        });
-      return;
-    }
+        }
+        return;
+      }
 
-    if (status === 'success' || success === 'true') {
-      toast.success(t('dashboard.subscriptionPage.upgradeSuccess'));
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
-      // Reload subscription data
-      refetchSubscription();
-    } else if (status === 'error' || params.get('error')) {
-      const errorMsg = params.get('message') || t('dashboard.subscriptionPage.upgradeFailed');
-      toast.error(decodeURIComponent(errorMsg));
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, [locale, refetchSubscription, t]);
+      if (status === 'success' || success === 'true') {
+        toast.success(t('dashboard.subscriptionPage.upgradeSuccess'));
+        window.history.replaceState({}, '', window.location.pathname);
+        await refreshBillingState();
+      } else if (status === 'error' || params.get('error')) {
+        const errorMsg = params.get('message') || t('dashboard.subscriptionPage.upgradeFailed');
+        toast.error(decodeURIComponent(errorMsg));
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    };
+
+    handleUrlState();
+  }, [locale, refreshBillingState, t]);
 
   const handleUpgrade = async (planId) => {
     // Get plan name from translation keys
     const planInfo = BASE_PLANS.find(p => p.id === planId);
     const planName = planInfo ? t(planInfo.nameKey) : planId;
+    const currentPlanId = LEGACY_PLAN_MAP[subscription?.plan] || subscription?.plan || 'FREE';
+    const currentLevel = PLAN_HIERARCHY[currentPlanId] ?? 0;
+    const nextLevel = PLAN_HIERARCHY[planId] ?? 0;
+    const requiresConfirmation = planId === 'PAYG' || nextLevel <= currentLevel;
 
-    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirmMsg')} ${planName}`)) return;
+    if (requiresConfirmation && !confirm(`${t('dashboard.subscriptionPage.upgradeConfirmMsg')} ${planName}`)) {
+      return;
+    }
 
     try {
       setUpgrading(true);
-      const response = await apiClient.subscription.upgrade(planId);
+      const response = planId === 'PAYG'
+        ? await apiClient.post('/api/subscription/switch-to-payg', {})
+        : await apiClient.subscription.upgrade(planId);
 
       // Handle different response types
       if (response.data?.type === 'payg_switch') {
         // Switched to PAYG (pay as you go)
         toast.success(t('dashboard.subscriptionPage.paygSwitchSuccess'));
-        refetchSubscription();
+        await refreshBillingState();
       } else if (response.data?.type === 'upgrade') {
         // Immediate upgrade (with proration)
         toast.success(t('dashboard.subscriptionPage.upgradeWithProrationSuccess'));
-        refetchSubscription();
+        await refreshBillingState();
       } else if (response.data?.type === 'reactivate') {
         // Reactivated canceled subscription with new plan
         const effectiveDate = response.data.effectiveDate
           ? formatDate(response.data.effectiveDate, 'long')
           : t('dashboard.subscriptionPage.nextPeriod');
         toast.success(t('dashboard.subscriptionPage.reactivateSuccess').replace('{date}', effectiveDate).replace('{planName}', planName));
-        refetchSubscription();
+        await refreshBillingState();
       } else if (response.data?.type === 'downgrade') {
         // Scheduled downgrade (end of period)
         const effectiveDate = response.data.effectiveDate
           ? formatDate(response.data.effectiveDate, 'long')
           : t('dashboard.subscriptionPage.endOfPeriod');
         toast.success(t('dashboard.subscriptionPage.downgradeScheduled').replace('{date}', effectiveDate).replace('{planName}', planName));
-        refetchSubscription();
+        await refreshBillingState();
       } else if (response.data?.checkoutFormContent) {
         // iyzico checkout form
         setCheckoutFormHtml(response.data.checkoutFormContent);
@@ -278,7 +299,7 @@ export default function SubscriptionPage() {
         window.location.href = response.data.sessionUrl;
       } else {
         toast.success(t('dashboard.subscriptionPage.upgradeSuccess'));
-        refetchSubscription();
+        await refreshBillingState();
       }
     } catch (error) {
       console.error('Upgrade error:', error);
@@ -300,9 +321,13 @@ export default function SubscriptionPage() {
       if (response.data?.success) {
         const cancelDate = response.data.cancelAt
           ? formatDate(response.data.cancelAt, 'long')
-          : t('dashboard.subscriptionPage.endOfPeriod');
-        toast.success(t('dashboard.subscriptionPage.cancelSuccess').replace('{date}', cancelDate));
-        refetchSubscription();
+          : null;
+        toast.success(
+          cancelDate
+            ? t('dashboard.subscriptionPage.cancelSuccess').replace('{date}', cancelDate)
+            : t('dashboard.subscriptionPage.cancelSuccessNoDate')
+        );
+        await refreshBillingState();
       }
     } catch (error) {
       console.error('Cancel subscription error:', error);
@@ -337,6 +362,7 @@ export default function SubscriptionPage() {
   const writtenAddOnCatalog = subscription?.addOnCatalog?.written || [];
   const voiceAddOnCatalog = subscription?.addOnCatalog?.voice || [];
   const currentPlanPricing = subscription ? getPlanPricing(subscription.plan) : null;
+  const showCancelableSubscription = Boolean(subscription?.stripeSubscriptionId) && !['FREE', 'TRIAL', 'PAYG'].includes(subscription.plan);
   const currentPlanSummary = subscription ? [
     {
       label: locale === 'tr' ? 'Yazılı etkileşim' : 'Written interactions',
@@ -468,7 +494,7 @@ export default function SubscriptionPage() {
               </div>
 
               {/* Right side: cancel button */}
-              {subscription.plan !== 'FREE' && !subscription.cancelAtPeriodEnd && (
+              {showCancelableSubscription && !subscription.cancelAtPeriodEnd && (
                 <Button
                   variant="outline"
                   size="sm"

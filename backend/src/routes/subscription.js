@@ -256,6 +256,103 @@ async function ensureStripeCustomerForBusiness({
   return customer.id;
 }
 
+async function switchBusinessToPayg({ businessId, force = false }) {
+  const currentSubscription = await prisma.subscription.findUnique({
+    where: { businessId }
+  });
+  const paygConfig = PLAN_CONFIG.PAYG;
+
+  const immediateSwitchPlans = ['FREE', 'TRIAL', 'PAYG', null, undefined];
+  const isEnterprisePendingPayment = currentSubscription?.plan === 'ENTERPRISE'
+    && currentSubscription?.enterprisePaymentStatus === 'pending';
+
+  const canSwitchImmediately = !currentSubscription
+    || immediateSwitchPlans.includes(currentSubscription.plan)
+    || currentSubscription.status !== 'ACTIVE'
+    || isEnterprisePendingPayment
+    || force;
+
+  if (canSwitchImmediately) {
+    const now = new Date();
+    const subscription = await prisma.subscription.upsert({
+      where: { businessId },
+      create: {
+        businessId,
+        plan: 'PAYG',
+        status: 'ACTIVE',
+        paymentProvider: 'stripe',
+        balance: 0,
+        minutesLimit: paygConfig.minutesLimit,
+        callsLimit: paygConfig.callsLimit,
+        assistantsLimit: paygConfig.assistantsLimit,
+        phoneNumbersLimit: paygConfig.phoneNumbersLimit,
+        includedMinutesUsed: 0,
+        overageMinutes: 0,
+        currentPeriodStart: now,
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+        pendingPlanId: null
+      },
+      update: {
+        plan: 'PAYG',
+        status: 'ACTIVE',
+        paymentProvider: 'stripe',
+        cancelAtPeriodEnd: false,
+        pendingPlanId: null,
+        minutesLimit: paygConfig.minutesLimit,
+        callsLimit: paygConfig.callsLimit,
+        assistantsLimit: paygConfig.assistantsLimit,
+        phoneNumbersLimit: paygConfig.phoneNumbersLimit,
+        stripeSubscriptionId: null,
+        stripePriceId: null,
+        iyzicoSubscriptionId: null,
+        iyzicoReferenceCode: null,
+        pendingSubscriptionToken: null,
+        includedMinutesUsed: 0,
+        overageMinutes: 0,
+        currentPeriodStart: now,
+        currentPeriodEnd: null
+      }
+    });
+
+    return {
+      success: true,
+      immediate: true,
+      subscription
+    };
+  }
+
+  const periodEnd = currentSubscription.currentPeriodEnd
+    || currentSubscription.enterpriseEndDate
+    || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  if (currentSubscription.stripeSubscriptionId) {
+    try {
+      await getStripe().subscriptions.update(currentSubscription.stripeSubscriptionId, {
+        cancel_at_period_end: true
+      });
+      console.log(`📅 Scheduled Stripe cancellation for subscription ${currentSubscription.stripeSubscriptionId}`);
+    } catch (stripeError) {
+      console.error('Stripe cancellation error:', stripeError.message);
+    }
+  }
+
+  const subscription = await prisma.subscription.update({
+    where: { businessId },
+    data: {
+      cancelAtPeriodEnd: true,
+      pendingPlanId: 'PAYG'
+    }
+  });
+
+  return {
+    success: true,
+    immediate: false,
+    subscription,
+    periodEnd
+  };
+}
+
 function resolveUsageCycleStart(subscription) {
   if (subscription?.currentPeriodStart) {
     return new Date(subscription.currentPeriodStart);
@@ -831,7 +928,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         console.log('🔄 Subscription updated:', stripeSubscription.id);
 
         const priceId = stripeSubscription.items.data[0]?.price?.id;
-        const plan = await resolvePlanFromPriceId(priceId) || 'STARTER';
+        const resolvedPlan = await resolvePlanFromPriceId(priceId) || 'STARTER';
         const existingSubscription = await prisma.subscription.findFirst({
           where: { stripeSubscriptionId: stripeSubscription.id },
           include: {
@@ -840,11 +937,10 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
             }
           }
         });
-        const planConfig = PLAN_CONFIG[plan];
         const currentPeriodStart = new Date(stripeSubscription.current_period_start * 1000);
         const currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000);
         const billingPlan = getBillingPlanDefinition(
-          existingSubscription ? { ...existingSubscription, plan } : { plan },
+          existingSubscription ? { ...existingSubscription, plan: resolvedPlan } : { plan: resolvedPlan },
           existingSubscription?.business?.country || 'TR'
         );
         const shouldExpireAddOns = shouldExpireCycleScopedAddOns({
@@ -852,6 +948,14 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           nextPeriodStart: currentPeriodStart,
           billingPlan
         });
+        const pendingPlanId = existingSubscription?.pendingPlanId
+          ? String(existingSubscription.pendingPlanId).toUpperCase()
+          : null;
+        const shouldApplyPendingPlan = Boolean(pendingPlanId) && shouldExpireAddOns;
+        const effectivePlan = shouldApplyPendingPlan
+          ? pendingPlanId
+          : (pendingPlanId ? existingSubscription.plan : resolvedPlan);
+        const planConfig = PLAN_CONFIG[effectivePlan] || PLAN_CONFIG.STARTER;
 
         if (shouldExpireAddOns && existingSubscription) {
           try {
@@ -862,7 +966,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         }
 
         const updateData = {
-          plan: plan,
+          plan: effectivePlan,
           status: normalizeSubscriptionStatus(stripeSubscription.status),
           stripePriceId: priceId,
           currentPeriodStart,
@@ -874,6 +978,10 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           assistantsLimit: planConfig.assistantsLimit,
           phoneNumbersLimit: planConfig.phoneNumbersLimit
         };
+
+        if (shouldApplyPendingPlan) {
+          updateData.pendingPlanId = null;
+        }
 
         if (shouldExpireAddOns) {
           updateData.includedMinutesUsed = 0;
@@ -888,7 +996,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           data: updateData
         });
 
-        console.log('✅ Subscription plan updated to:', plan);
+        console.log('✅ Subscription plan updated to:', effectivePlan);
         break;
       }
 
@@ -944,6 +1052,36 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const subscription = event.data.object;
         console.log('❌ Subscription canceled:', subscription.id);
 
+        const existingSubscription = await prisma.subscription.findFirst({
+          where: { stripeSubscriptionId: subscription.id }
+        });
+
+        if (existingSubscription?.pendingPlanId === 'PAYG') {
+          await prisma.subscription.updateMany({
+            where: { stripeSubscriptionId: subscription.id },
+            data: {
+              plan: 'PAYG',
+              status: 'ACTIVE',
+              paymentProvider: 'stripe',
+              stripeSubscriptionId: null,
+              stripePriceId: null,
+              pendingPlanId: null,
+              cancelAtPeriodEnd: false,
+              minutesLimit: PLAN_CONFIG.PAYG.minutesLimit,
+              callsLimit: PLAN_CONFIG.PAYG.callsLimit,
+              assistantsLimit: PLAN_CONFIG.PAYG.assistantsLimit,
+              phoneNumbersLimit: PLAN_CONFIG.PAYG.phoneNumbersLimit,
+              includedMinutesUsed: 0,
+              overageMinutes: 0,
+              currentPeriodStart: new Date(),
+              currentPeriodEnd: null
+            }
+          });
+
+          console.log('✅ Switched to PAYG after period-end cancellation');
+          break;
+        }
+
         // Downgrade to FREE plan
         await prisma.subscription.updateMany({
           where: { stripeSubscriptionId: subscription.id },
@@ -952,6 +1090,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
             status: 'CANCELED',
             stripeSubscriptionId: null,
             stripePriceId: null,
+            pendingPlanId: null,
+            cancelAtPeriodEnd: false,
             voiceAddOnMinutesBalance: 0,
             writtenInteractionAddOnBalance: 0,
             // Reset limits to FREE
@@ -1933,41 +2073,24 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
       return res.status(400).json({ error: 'Invalid plan ID' });
     }
 
-    // Handle PAYG plan switch - redirect to switch-to-payg endpoint
+    // Handle PAYG plan switch through the shared transition helper
     if (normalizedPlanId === 'PAYG') {
-      // PAYG is balance-based, not subscription-based
-      const planConfig = PLAN_CONFIG.PAYG;
+      const result = await switchBusinessToPayg({ businessId });
+      if (result.immediate) {
+        console.log(`✅ Switched to PAYG for business ${businessId}`);
+        return res.json({
+          success: true,
+          message: 'Kullandıkça öde planına geçildi. Bakiye yükleyerek kullanmaya başlayabilirsiniz.',
+          type: 'payg_switch'
+        });
+      }
 
-      // Update subscription to PAYG plan
-      await prisma.subscription.upsert({
-        where: { businessId },
-        create: {
-          businessId,
-          plan: 'PAYG',
-          status: 'ACTIVE',
-          balance: 0,
-          minutesLimit: planConfig.minutesLimit,
-          callsLimit: planConfig.callsLimit,
-          assistantsLimit: planConfig.assistantsLimit,
-          phoneNumbersLimit: planConfig.phoneNumbersLimit
-        },
-        update: {
-          plan: 'PAYG',
-          status: 'ACTIVE',
-          cancelAtPeriodEnd: false,
-          minutesLimit: planConfig.minutesLimit,
-          callsLimit: planConfig.callsLimit,
-          assistantsLimit: planConfig.assistantsLimit,
-          phoneNumbersLimit: planConfig.phoneNumbersLimit
-        }
-      });
-
-      console.log(`✅ Switched to PAYG for business ${businessId}`);
-
+      console.log(`⏰ Scheduled PAYG switch for business ${businessId} at ${result.periodEnd}`);
       return res.json({
         success: true,
-        message: 'Kullandıkça öde planına geçildi. Bakiye yükleyerek kullanmaya başlayabilirsiniz.',
-        type: 'payg_switch'
+        message: 'Mevcut dönem sonunda Kullandıkça Öde planına geçilecek.',
+        type: 'downgrade',
+        effectiveDate: result.periodEnd
       });
     }
 
@@ -2466,97 +2589,35 @@ router.post('/switch-to-payg', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
     const { force } = req.body; // force=true for immediate switch (admin only or free plans)
+    const result = await switchBusinessToPayg({ businessId, force: Boolean(force) });
 
-    // Get current subscription
-    const currentSubscription = await prisma.subscription.findUnique({
-      where: { businessId }
-    });
-
-    // Plans that can switch immediately (no billing period)
-    const immediateSwitchPlans = ['FREE', 'TRIAL', 'PAYG', null, undefined];
-
-    // Enterprise with pending payment CAN switch immediately (haven't paid yet)
-    // Enterprise with paid status should wait for period end
-    const isEnterprisePendingPayment = currentSubscription?.plan === 'ENTERPRISE' &&
-      currentSubscription?.enterprisePaymentStatus === 'pending';
-
-    const canSwitchImmediately = !currentSubscription ||
-      immediateSwitchPlans.includes(currentSubscription.plan) ||
-      currentSubscription.status !== 'ACTIVE' ||
-      isEnterprisePendingPayment || // Enterprise pending payment = can switch immediately
-      force;
-
-    if (canSwitchImmediately) {
-      // Immediate switch - no active paid subscription
-      const subscription = await prisma.subscription.upsert({
-        where: { businessId },
-        create: {
-          businessId,
-          plan: 'PAYG',
-          status: 'ACTIVE',
-          balance: 0
-        },
-        update: {
-          plan: 'PAYG',
-          status: 'ACTIVE',
-          cancelAtPeriodEnd: false,
-          scheduledPlanId: null,
-          stripeSubscriptionId: null,
-          iyzicoSubscriptionId: null
-        }
-      });
-
+    if (result.immediate) {
       console.log(`✅ Switched to PAYG for business ${businessId} (immediate)`);
-
       return res.json({
         success: true,
         subscription: {
           plan: 'PAYG',
-          balance: subscription.balance || 0,
+          balance: result.subscription?.balance || 0,
           status: 'active'
         },
-        message: 'Switched to PAYG. Please top up your balance to start using.'
+        message: 'Switched to PAYG. Please top up your balance to start using.',
+        type: 'payg_switch'
       });
     }
 
-    // User has active paid subscription - schedule downgrade at period end
-    const periodEnd = currentSubscription.currentPeriodEnd ||
-      currentSubscription.enterpriseEndDate ||
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days if no period end
-
-    // Cancel Stripe subscription if exists
-    if (currentSubscription.stripeSubscriptionId) {
-      try {
-        await stripe.subscriptions.update(currentSubscription.stripeSubscriptionId, {
-          cancel_at_period_end: true
-        });
-        console.log(`📅 Scheduled Stripe cancellation for subscription ${currentSubscription.stripeSubscriptionId}`);
-      } catch (stripeError) {
-        console.error('Stripe cancellation error:', stripeError.message);
-      }
-    }
-
-    // Update subscription to schedule PAYG switch at period end
-    const subscription = await prisma.subscription.update({
-      where: { businessId },
-      data: {
-        cancelAtPeriodEnd: true,
-        scheduledPlanId: 'PAYG'
-      }
-    });
-
-    console.log(`⏰ Scheduled PAYG switch for business ${businessId}: ${currentSubscription.plan} → PAYG (at ${periodEnd})`);
-
-    res.json({
+    console.log(`⏰ Scheduled PAYG switch for business ${businessId}: at ${result.periodEnd}`);
+    return res.json({
       success: true,
       scheduled: true,
       subscription: {
-        plan: currentSubscription.plan,
+        plan: result.subscription?.plan,
         scheduledPlan: 'PAYG',
-        periodEnd: periodEnd,
+        periodEnd: result.periodEnd,
         status: 'active'
       },
-      message: `Plan will be changed to PAYG at the end of current billing period (${new Date(periodEnd).toLocaleDateString('tr-TR')}). You can continue using your current plan until then.`
+      message: `Plan will be changed to PAYG at the end of current billing period (${new Date(result.periodEnd).toLocaleDateString('tr-TR')}). You can continue using your current plan until then.`,
+      type: 'downgrade',
+      effectiveDate: result.periodEnd
     });
   } catch (error) {
     console.error('Switch to PAYG error:', error);

@@ -69,6 +69,8 @@ const BALANCE_SUBSCRIPTION_SELECT = {
   enterpriseStartDate: true,
   enterpriseEndDate: true,
   enterprisePaymentStatus: true,
+  voiceAddOnMinutesBalance: true,
+  writtenInteractionAddOnBalance: true,
   business: {
     select: {
       country: true,
@@ -305,6 +307,8 @@ router.get('/', async (req, res) => {
     const balanceMinutes = isPAYG
       ? calculateTLToMinutes(subscription.balance || 0, plan, country)
       : 0;
+    const voiceAddOnRemaining = Number(subscription.voiceAddOnMinutesBalance || 0);
+    const writtenAddOnRemaining = Number(subscription.writtenInteractionAddOnBalance || 0);
 
     // Enterprise için ödeme durumu bilgisi
     const enterpriseInfo = isEnterprise ? {
@@ -331,7 +335,8 @@ router.get('/', async (req, res) => {
       // Diğerleri: plan config'den al
       includedMinutes: !isPAYG && plan !== 'TRIAL' ? {
         used: subscription.includedMinutesUsed || 0,
-        limit: planIncludedMinutes
+        limit: planIncludedMinutes,
+        addOnRemaining: voiceAddOnRemaining
       } : null,
 
       // Aşım bilgisi (postpaid paketler için - enterprise hariç)
@@ -374,6 +379,9 @@ router.get('/', async (req, res) => {
           email: 0
         }
       } : null,
+
+      voiceAddOnRemaining,
+      writtenAddOnRemaining,
 
       // Period info
       periodEnd: subscription.currentPeriodEnd,

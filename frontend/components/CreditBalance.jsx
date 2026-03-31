@@ -77,6 +77,7 @@ const TRANSLATIONS = {
     writtenLimitNotConfigured: 'Ayrı bir yazılı etkileşim limiti tanımlı değil. Bu kartta mevcut dönem içindeki gözlenen kullanım gösterilir.',
     writtenUnitPrice: 'Yazılı etkileşim birim ücreti',
     addOnRemainingLabel: 'Ek paket bakiyesi',
+    voiceAddOnRemainingLabel: 'Ek ses dakikası',
     webchat: 'Webchat',
     whatsappChannel: 'WhatsApp',
     emailChannel: 'E-posta',
@@ -134,6 +135,7 @@ const TRANSLATIONS = {
     writtenLimitNotConfigured: 'No separate written interaction limit is configured. This card shows observed usage for the current cycle.',
     writtenUnitPrice: 'Written interaction unit price',
     addOnRemainingLabel: 'Add-on balance',
+    voiceAddOnRemainingLabel: 'Voice add-on balance',
     webchat: 'Webchat',
     whatsappChannel: 'WhatsApp',
     emailChannel: 'Email',
@@ -228,6 +230,11 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
     const writtenPercent = balance.writtenInteractions?.limit > 0
       ? Math.min((balance.writtenInteractions.used / balance.writtenInteractions.limit) * 100, 100)
       : 0;
+    const voiceAddOnRemaining = Number(
+      balance.voiceAddOnRemaining
+      ?? balance.includedMinutes?.addOnRemaining
+      ?? 0
+    );
     const shouldShowWrittenUsage = Boolean(balance.writtenInteractions) && plan !== 'FREE';
     const hasConfiguredWrittenLimit = Number(balance.writtenInteractions?.limit || 0) > 0;
     const writtenChannels = balance.writtenInteractions?.channels || {
@@ -412,6 +419,15 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
               </span>
             </div>
 
+            {voiceAddOnRemaining > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-neutral-600 dark:text-neutral-400">{txt.voiceAddOnRemainingLabel}</span>
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  {voiceAddOnRemaining} {txt.min}
+                </span>
+              </div>
+            )}
+
             {/* Low balance warning */}
             {(balance.balance || 0) < 100 && (
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-2">
@@ -444,6 +460,12 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
                 value={includedPercent}
                 className={`h-2 ${includedPercent >= 100 ? '[&>div]:bg-red-500' : includedPercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-blue-600'}`}
               />
+              {voiceAddOnRemaining > 0 && (
+                <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
+                  <span>{txt.voiceAddOnRemainingLabel}</span>
+                  <span>{voiceAddOnRemaining} {txt.min}</span>
+                </div>
+              )}
               {includedPercent >= 80 && includedPercent < 100 && (
                 <p className="text-xs text-orange-600 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" />

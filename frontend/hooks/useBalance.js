@@ -19,6 +19,8 @@ export function useBalance() {
         return { ...response.data, isNewSystem: false };
       }
     },
-    staleTime: 30000, // 30 seconds - balance changes frequently
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }

@@ -12,7 +12,9 @@ export function useSubscription() {
       const response = await apiClient.subscription.getCurrent();
       return response.data;
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -27,7 +29,9 @@ export function useBillingHistory() {
       const response = await apiClient.subscription.getBillingHistory();
       return response.data.history || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }
 
