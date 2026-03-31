@@ -96,7 +96,7 @@ export default function PricingPage() {
       unit: isTR ? '1 etkileşim' : '1 interaction',
       rate: `${formatSharedPrice(writtenUnitRate, region)}/${isTR ? 'etkileşim' : 'interaction'}`,
       note: isTR
-        ? 'PAYG cüzdanından düşer. Aylık planlarda dahil havuz, sonra add-on, sonrasında written aşım uygulanır.'
+        ? 'PAYG bakiyesinden düşer. Aylık planlarda önce dahil kullanım, sonra ek paket, ardından yazılı kullanım aşımı uygulanır.'
         : 'Deducted from the PAYG wallet. Monthly plans consume the included pool first, then add-ons, then written overage.'
     },
     {
@@ -306,7 +306,7 @@ export default function PricingPage() {
               </h2>
               <p className="text-[var(--pr-text-secondary)]">
                 {isTR
-                  ? 'Aylık taahhüt yok. Ses dakikaları ve yazılı etkileşimler kullanım cüzdanından düşer.'
+                  ? 'Aylık taahhüt yok. Ses dakikaları ve yazılı etkileşimler kullanım bakiyesinden düşer.'
                   : 'No monthly commitment. Voice minutes and written interactions are deducted from the usage wallet.'}
               </p>
             </motion.div>
@@ -332,7 +332,7 @@ export default function PricingPage() {
 
               <div className="flex flex-wrap justify-center gap-3 mb-8">
                 {[
-                  isTR ? 'Telefon + written kanallar dahil' : 'Phone + written channels included',
+                  isTR ? 'Telefon + yazılı kanallar dahil' : 'Phone + written channels included',
                   isTR ? `${payg.assistantsLimit} asistan` : `${payg.assistantsLimit} assistants`,
                   isTR ? `${formatSharedPrice(payg.writtenUnitPrice, region)}/etkileşim` : `${formatSharedPrice(payg.writtenUnitPrice, region)}/interaction`,
                   isTR ? 'Bakiye süresi dolmaz' : 'Balance never expires',

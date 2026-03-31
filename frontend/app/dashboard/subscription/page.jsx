@@ -187,8 +187,8 @@ export default function SubscriptionPage() {
     if (addonStatus === 'success') {
       toast.success(
         locale === 'tr'
-          ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı destek'} ek paketi satın alındı`
-          : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written support'} add-on purchase completed`
+          ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı etkileşim'} ek paketi satın alındı`
+          : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written interaction'} add-on purchase completed`
       );
       refetchSubscription();
       window.history.replaceState({}, '', window.location.pathname);
@@ -198,8 +198,8 @@ export default function SubscriptionPage() {
     if (addonStatus === 'cancel') {
       toast.error(
         locale === 'tr'
-          ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı destek'} ek paket satın alma iptal edildi`
-          : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written support'} add-on purchase canceled`
+          ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı etkileşim'} ek paket satın alma iptal edildi`
+          : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written interaction'} add-on purchase canceled`
       );
       window.history.replaceState({}, '', window.location.pathname);
       return;
@@ -336,6 +336,46 @@ export default function SubscriptionPage() {
 
   const writtenAddOnCatalog = subscription?.addOnCatalog?.written || [];
   const voiceAddOnCatalog = subscription?.addOnCatalog?.voice || [];
+  const currentPlanPricing = subscription ? getPlanPricing(subscription.plan) : null;
+  const currentPlanSummary = subscription ? [
+    {
+      label: locale === 'tr' ? 'Yazılı etkileşim' : 'Written interactions',
+      value: (() => {
+        if (subscription.plan === 'PAYG') return locale === 'tr' ? 'Bakiyeden düşer' : 'Wallet-based';
+        const limit = subscription.enterpriseSupportInteractions ?? currentPlanPricing?.writtenInteractions;
+        if (limit === null || limit === undefined) return locale === 'tr' ? 'Özel' : 'Custom';
+        if (Number(limit) === 0) return locale === 'tr' ? 'Yok' : 'Not included';
+        return `${Number(limit).toLocaleString(regionConfig.locale)} ${locale === 'tr' ? 'etkileşim' : 'interactions'}`;
+      })(),
+    },
+    {
+      label: locale === 'tr' ? 'Ses dakikası' : 'Voice minutes',
+      value: (() => {
+        if (subscription.plan === 'PAYG') return locale === 'tr' ? 'Bakiyeden düşer' : 'Wallet-based';
+        const limit = subscription.enterpriseMinutes ?? currentPlanPricing?.minutes;
+        if (limit === null || limit === undefined) return locale === 'tr' ? 'Özel' : 'Custom';
+        if (Number(limit) === 0) return locale === 'tr' ? 'Yok' : 'Not included';
+        return `${Number(limit).toLocaleString(regionConfig.locale)} ${locale === 'tr' ? 'dk' : 'min'}`;
+      })(),
+    },
+    {
+      label: locale === 'tr' ? 'Eşzamanlı çağrı' : 'Concurrent calls',
+      value: (() => {
+        const limit = subscription.enterpriseConcurrent ?? subscription.concurrentLimit ?? currentPlanPricing?.concurrent;
+        if (limit === null || limit === undefined) return locale === 'tr' ? 'Özel' : 'Custom';
+        if (Number(limit) === 0) return locale === 'tr' ? 'Yok' : 'Not included';
+        return String(limit);
+      })(),
+    },
+    {
+      label: locale === 'tr' ? 'Asistan limiti' : 'Assistant limit',
+      value: (() => {
+        const limit = subscription.enterpriseAssistants ?? subscription.assistantsLimit ?? currentPlanPricing?.assistants;
+        if (limit === null || limit === undefined) return locale === 'tr' ? 'Özel' : 'Custom';
+        return String(limit);
+      })(),
+    },
+  ] : [];
 
   // Show loading while permissions are being loaded
   if (permissionsLoading || loading) {
@@ -369,9 +409,9 @@ export default function SubscriptionPage() {
 
       {/* Current plan & usage */}
       {!loading && subscription && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] gap-6 items-start">
           {/* Current plan */}
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm h-fit">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.currentPlan')}</h2>
               <Badge className="bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-400">
@@ -422,6 +462,18 @@ export default function SubscriptionPage() {
               )}
             </div>
 
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {currentPlanSummary.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 px-3 py-3"
+                >
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">{item.label}</div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-900 dark:text-white">{item.value}</div>
+                </div>
+              ))}
+            </div>
+
             {/* Cancel Subscription Button - Only show for paid plans */}
             {subscription.plan !== 'FREE' && !subscription.cancelAtPeriodEnd && (
               <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
@@ -463,7 +515,7 @@ export default function SubscriptionPage() {
           </div>
 
           {/* Credit Balance - YENİ KREDİ SİSTEMİ */}
-          <div className="lg:col-span-2">
+          <div>
             <CreditBalance
               onBuyCredit={() => setCreditModalOpen(true)}
               refreshTrigger={creditRefreshTrigger}
@@ -490,7 +542,7 @@ export default function SubscriptionPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  {locale === 'tr' ? 'Yazılı Destek' : 'Written Support'}
+                  {locale === 'tr' ? 'Yazılı etkileşim' : 'Written interactions'}
                 </div>
                 {writtenAddOnCatalog.map((pkg) => {
                   const buttonKey = `WRITTEN:${pkg.id}`;

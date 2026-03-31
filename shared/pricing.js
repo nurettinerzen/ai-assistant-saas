@@ -66,8 +66,8 @@ export const SHARED_PLAN_META = {
   PAYG: {
     id: 'PAYG',
     nameTR: 'Kullandıkça Öde', nameEN: 'Pay As You Go',
-    descTR: 'Aylık ücret yok; written ve ses kullanımı cüzdandan düşer',
-    descEN: 'No monthly fee; written and voice usage is deducted from the wallet',
+    descTR: 'Aylık ücret yok; yazılı kullanım ve ses dakikaları bakiyeden düşer',
+    descEN: 'No monthly fee; written usage and voice minutes are deducted from the wallet',
     features: ['walletBilling', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'batchCalls'],
   },
   STARTER: {
@@ -87,8 +87,8 @@ export const SHARED_PLAN_META = {
   ENTERPRISE: {
     id: 'ENTERPRISE',
     nameTR: 'Kurumsal', nameEN: 'Enterprise',
-    descTR: 'Özel written, voice, concurrency ve onboarding içeren kurumsal paket',
-    descEN: 'Enterprise package with custom written, voice, concurrency, and onboarding',
+    descTR: 'Özel yazılı etkileşim, ses dakikası ve eşzamanlı çağrı limitleri',
+    descEN: 'Enterprise package with custom written usage, voice minutes, and concurrency limits',
     features: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'batchCalls', 'customCrm', 'prioritySupport', 'apiAccess', 'dedicatedSupport', 'customIntegrations', 'slaGuarantee'],
   },
 };
@@ -122,11 +122,11 @@ export const SHARED_FEATURE_ORDER = [
 
 export const SHARED_FEATURE_LABELS = {
   tr: {
-    walletBilling: (plan) => `Written + ses kullanımında cüzdandan ödeme`,
+    walletBilling: () => 'Yazılı kullanım ve ses dakikaları bakiyeden düşer',
     writtenInteractions: (plan) => {
-      if (plan.id === 'ENTERPRISE') return 'Özel written destek limiti';
-      if (plan.id === 'TRIAL') return `${plan.writtenInteractions} written etkileşim`;
-      return `${plan.writtenInteractions} destek etkileşimi`;
+      if (plan.id === 'ENTERPRISE') return 'Özel yazılı etkileşim limiti';
+      if (plan.id === 'TRIAL') return `${plan.writtenInteractions} yazılı etkileşim`;
+      return `${plan.writtenInteractions} yazılı etkileşim`;
     },
     minutes: (plan) => {
       if (plan.id === 'TRIAL') return '15 dk telefon görüşmesi';
@@ -136,28 +136,28 @@ export const SHARED_FEATURE_LABELS = {
     },
     concurrent: (plan) => plan.id === 'ENTERPRISE' ? '5+ eşzamanlı çağrı' : `${plan.concurrentLimit} eşzamanlı çağrı`,
     assistants: (plan) => plan.id === 'ENTERPRISE' ? 'Özel asistan limiti' : `${plan.assistantsLimit} asistan`,
-    phone: 'Telefon AI',
+    phone: 'Telefon',
     whatsapp: 'WhatsApp',
-    chatWidget: 'Chat widget',
-    email: 'E-posta AI',
+    chatWidget: 'Webchat',
+    email: 'E-posta',
     ecommerce: 'E-ticaret entegrasyonu',
     calendar: 'Google Takvim',
     googleSheets: 'Google Sheets',
     analytics: 'Analitik',
     batchCalls: 'Toplu arama',
-    customCrm: 'Custom CRM webhook',
+    customCrm: 'Özel CRM webhook entegrasyonu',
     prioritySupport: 'Öncelikli destek',
     apiAccess: 'API erişimi',
-    dedicatedSupport: 'Dedicated onboarding ve destek',
+    dedicatedSupport: 'Özel kurulum ve destek',
     customIntegrations: 'Özel entegrasyonlar',
     slaGuarantee: 'SLA garantisi',
   },
   en: {
-    walletBilling: () => 'Wallet billing for written + voice usage',
+    walletBilling: () => 'Written usage and voice minutes are deducted from the wallet',
     writtenInteractions: (plan) => {
-      if (plan.id === 'ENTERPRISE') return 'Custom written support limit';
+      if (plan.id === 'ENTERPRISE') return 'Custom written interaction limit';
       if (plan.id === 'TRIAL') return `${plan.writtenInteractions} written interactions`;
-      return `${plan.writtenInteractions} support interactions`;
+      return `${plan.writtenInteractions} written interactions`;
     },
     minutes: (plan) => {
       if (plan.id === 'TRIAL') return '15 min phone calls';
@@ -167,16 +167,16 @@ export const SHARED_FEATURE_LABELS = {
     },
     concurrent: (plan) => plan.id === 'ENTERPRISE' ? '5+ concurrent calls' : `${plan.concurrentLimit} concurrent call${plan.concurrentLimit > 1 ? 's' : ''}`,
     assistants: (plan) => plan.id === 'ENTERPRISE' ? 'Custom assistant limit' : `${plan.assistantsLimit} assistant${plan.assistantsLimit > 1 ? 's' : ''}`,
-    phone: 'Phone AI',
+    phone: 'Phone',
     whatsapp: 'WhatsApp',
-    chatWidget: 'Chat widget',
-    email: 'Email AI',
+    chatWidget: 'Webchat',
+    email: 'Email',
     ecommerce: 'E-commerce integration',
     calendar: 'Google Calendar',
     googleSheets: 'Google Sheets',
     analytics: 'Analytics',
     batchCalls: 'Batch calls',
-    customCrm: 'Custom CRM webhook',
+    customCrm: 'Custom CRM webhook integration',
     prioritySupport: 'Priority support',
     apiAccess: 'API access',
     dedicatedSupport: 'Dedicated onboarding and support',
