@@ -63,7 +63,6 @@ const PUBLIC_PATHS = [
   '/api/template',  // VoiceID template
   '/api/integrations/google-calendar/callback',
   '/api/integrations/hubspot/callback',
-  '/api/google-sheets/callback',
   '/api/email/gmail/callback',
   '/api/gmail/callback',  // Alt pattern
   '/api/email/outlook/callback',

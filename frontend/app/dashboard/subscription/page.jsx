@@ -46,7 +46,7 @@ const BASE_PLANS = [
     id: 'PAYG',
     nameKey: 'dashboard.subscriptionPage.planNamePayg',
     descriptionKey: 'dashboard.subscriptionPage.planDescPayg',
-    includedFeatures: ['walletBilling', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'batchCalls'],
+    includedFeatures: ['walletBilling', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'analytics', 'batchCalls'],
     isPayg: true,
     paymentModel: 'PREPAID',
   },
@@ -54,7 +54,7 @@ const BASE_PLANS = [
     id: 'STARTER',
     nameKey: 'dashboard.subscriptionPage.planNameStarter',
     descriptionKey: 'dashboard.subscriptionPage.planDescStarter',
-    includedFeatures: ['writtenInteractions', 'assistants', 'whatsapp', 'chatWidget', 'analytics', 'email', 'ecommerce', 'calendar', 'googleSheets'],
+    includedFeatures: ['writtenInteractions', 'assistants', 'whatsapp', 'chatWidget', 'analytics', 'email', 'ecommerce', 'calendar'],
     paymentModel: 'POSTPAID',
   },
   {
@@ -62,14 +62,14 @@ const BASE_PLANS = [
     nameKey: 'dashboard.subscriptionPage.planNamePro',
     descriptionKey: 'dashboard.subscriptionPage.planDescPro',
     popular: true,
-    includedFeatures: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'customCrm', 'prioritySupport'],
+    includedFeatures: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'batchCalls', 'customCrm', 'prioritySupport'],
     paymentModel: 'POSTPAID',
   },
   {
     id: 'ENTERPRISE',
     nameKey: 'dashboard.subscriptionPage.planNameEnterprise',
     descriptionKey: 'dashboard.subscriptionPage.planDescEnterprise',
-    includedFeatures: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'customCrm', 'prioritySupport', 'apiAccess', 'dedicatedSupport', 'customIntegrations', 'slaGuarantee'],
+    includedFeatures: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'batchCalls', 'customCrm', 'prioritySupport', 'apiAccess', 'dedicatedSupport', 'customIntegrations', 'slaGuarantee'],
     paymentModel: 'POSTPAID',
   },
 ];
@@ -409,80 +409,72 @@ export default function SubscriptionPage() {
 
       {/* Current plan & usage */}
       {!loading && subscription && (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] gap-6 items-start">
-          {/* Current plan */}
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm h-fit">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.currentPlan')}</h2>
-              <Badge className="bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-400">
-                {getPlanDisplayName(subscription.plan, locale)}
-              </Badge>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.subscriptionPage.monthlyCost')}</span>
-                <span className="font-semibold text-neutral-900 dark:text-white">
-                  {(() => {
-                    // Get price from REGIONAL_PRICING based on subscription.plan
-                    const planPricing = getPlanPricing(subscription.plan);
-                    if (subscription.plan === 'ENTERPRISE' && subscription.enterprisePrice) {
-                      return formatPrice(subscription.enterprisePrice);
-                    }
-                    if (planPricing && planPricing.price !== null) {
-                      return formatPrice(planPricing.price);
-                    }
-                    // FREE plan or custom pricing
-                    if (subscription.plan === 'FREE') return formatPrice(0);
-                    if (subscription.plan === 'ENTERPRISE') return t('dashboard.subscriptionPage.custom');
-                    return formatPrice(subscription.price || 0);
-                  })()}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.subscriptionPage.billingCycle')}</span>
-                <span className="font-medium text-neutral-900 dark:text-white">
-                  {subscription.billingCycle || t('dashboard.subscriptionPage.monthly')}
-                </span>
-              </div>
-              {subscription.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.subscriptionPage.nextBilling')}</span>
-                <span className="font-medium text-neutral-900 dark:text-white">
-                  {formatDate(subscription.currentPeriodEnd || subscription.nextBillingDate, 'short')}
-                </span>
-              </div>
-              )}
-              {subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd && (
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.subscriptionPage.subscriptionEndDate')}</span>
-                <span className="font-medium text-orange-600 dark:text-orange-400">
-                  {formatDate(subscription.currentPeriodEnd, 'short')}
-                </span>
-              </div>
-              )}
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              {currentPlanSummary.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 px-3 py-3"
-                >
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">{item.label}</div>
-                  <div className="mt-1 text-sm font-semibold text-neutral-900 dark:text-white">{item.value}</div>
+        <div className="space-y-6">
+          {/* Compact Plan Info Bar */}
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-6 py-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Left side: plan badge + info items */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <Badge className="bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-400 text-sm px-3 py-1">
+                  {getPlanDisplayName(subscription.plan, locale)}
+                </Badge>
+                <span className="hidden sm:block text-neutral-300 dark:text-neutral-600 select-none">·</span>
+                <div className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
+                  <span className="font-medium text-neutral-500 dark:text-neutral-500">{t('dashboard.subscriptionPage.monthlyCost')}:</span>
+                  <span className="font-semibold text-neutral-900 dark:text-white">
+                    {(() => {
+                      const planPricing = getPlanPricing(subscription.plan);
+                      if (subscription.plan === 'ENTERPRISE' && subscription.enterprisePrice) {
+                        return formatPrice(subscription.enterprisePrice);
+                      }
+                      if (planPricing && planPricing.price !== null) {
+                        return formatPrice(planPricing.price);
+                      }
+                      if (subscription.plan === 'FREE') return formatPrice(0);
+                      if (subscription.plan === 'ENTERPRISE') return t('dashboard.subscriptionPage.custom');
+                      return formatPrice(subscription.price || 0);
+                    })()}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <span className="hidden sm:block text-neutral-300 dark:text-neutral-600 select-none">·</span>
+                <div className="flex items-center gap-1.5 text-sm">
+                  <span className="font-medium text-neutral-500 dark:text-neutral-500">{t('dashboard.subscriptionPage.billingCycle')}:</span>
+                  <span className="font-medium text-neutral-900 dark:text-white">
+                    {subscription.billingCycle || t('dashboard.subscriptionPage.monthly')}
+                  </span>
+                </div>
+                {subscription.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (
+                  <>
+                    <span className="hidden sm:block text-neutral-300 dark:text-neutral-600 select-none">·</span>
+                    <div className="flex items-center gap-1.5 text-sm">
+                      <span className="font-medium text-neutral-500 dark:text-neutral-500">{t('dashboard.subscriptionPage.nextBilling')}:</span>
+                      <span className="font-medium text-neutral-900 dark:text-white">
+                        {formatDate(subscription.currentPeriodEnd || subscription.nextBillingDate, 'short')}
+                      </span>
+                    </div>
+                  </>
+                )}
+                {subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd && (
+                  <>
+                    <span className="hidden sm:block text-neutral-300 dark:text-neutral-600 select-none">·</span>
+                    <div className="flex items-center gap-1.5 text-sm">
+                      <span className="font-medium text-neutral-500 dark:text-neutral-500">{t('dashboard.subscriptionPage.subscriptionEndDate')}:</span>
+                      <span className="font-medium text-orange-600 dark:text-orange-400">
+                        {formatDate(subscription.currentPeriodEnd, 'short')}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
 
-            {/* Cancel Subscription Button - Only show for paid plans */}
-            {subscription.plan !== 'FREE' && !subscription.cancelAtPeriodEnd && (
-              <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+              {/* Right side: cancel button */}
+              {subscription.plan !== 'FREE' && !subscription.cancelAtPeriodEnd && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleCancelSubscription}
                   disabled={upgrading}
-                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 shrink-0"
                 >
                   {upgrading ? (
                     <>
@@ -496,15 +488,15 @@ export default function SubscriptionPage() {
                     </>
                   )}
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Canceled status message */}
             {subscription.cancelAtPeriodEnd && (
-              <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 text-sm text-orange-800 dark:text-orange-400">
+              <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-2.5 text-sm text-orange-800 dark:text-orange-400">
                   <strong>{t('dashboard.subscriptionPage.subscriptionCanceled')}</strong>
-                  <br />
+                  {' '}
                   {subscription.currentPeriodEnd && (
                     <>{t('dashboard.subscriptionPage.planEndsOnDate').replace('{date}', formatDate(subscription.currentPeriodEnd, 'short'))}</>
                   )}
@@ -514,13 +506,11 @@ export default function SubscriptionPage() {
             )}
           </div>
 
-          {/* Credit Balance - YENİ KREDİ SİSTEMİ */}
-          <div>
-            <CreditBalance
-              onBuyCredit={() => setCreditModalOpen(true)}
-              refreshTrigger={creditRefreshTrigger}
-            />
-          </div>
+          {/* Credit Balance - full width */}
+          <CreditBalance
+            onBuyCredit={() => setCreditModalOpen(true)}
+            refreshTrigger={creditRefreshTrigger}
+          />
         </div>
       )}
 
@@ -648,7 +638,7 @@ export default function SubscriptionPage() {
             const FEATURE_ORDER = [
               'trialMinutes', 'trialChat', 'walletBilling', 'writtenInteractions', 'payPerMinute',
               'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget',
-              'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls',
+              'ecommerce', 'calendar', 'analytics', 'email', 'batchCalls',
               'customCrm', 'prioritySupport', 'apiAccess', 'dedicatedSupport', 'customIntegrations',
               'slaGuarantee'
             ];
@@ -685,7 +675,6 @@ export default function SubscriptionPage() {
                 email: t('dashboard.subscriptionPage.featureEmail'),
                 ecommerce: t('dashboard.subscriptionPage.featureEcommerce'),
                 calendar: t('dashboard.subscriptionPage.featureCalendar'),
-                googleSheets: t('dashboard.subscriptionPage.featureGoogleSheets'),
                 batchCalls: t('dashboard.subscriptionPage.featureBatchCalls'),
                 customCrm: t('dashboard.subscriptionPage.featureCustomCrm'),
                 analytics: t('dashboard.subscriptionPage.featureAnalytics'),

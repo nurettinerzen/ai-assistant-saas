@@ -2013,7 +2013,7 @@
       "featureTrialMinutes": "15 minutes phone calls",
       "featureTrialChat": "7 days chat/WhatsApp",
       "featurePayPerMinute": "{price}/min pay as you go",
-      "featureWalletBilling": "Written usage and voice minutes are deducted from the wallet",
+      "featureWalletBilling": "Pay as you go from balance",
       "featureWrittenInteractions": "{count} written interactions included",
       "featureWrittenInteractionsEnterprise": "Custom written interaction limit",
       "featureMinutes": "{count} min included",
@@ -2031,7 +2031,6 @@
       "featureEmail": "Email",
       "featureEcommerce": "E-commerce integration",
       "featureCalendar": "Google Calendar",
-      "featureGoogleSheets": "Google Sheets",
       "featureBatchCalls": "Batch calls",
       "featureCustomCrm": "Custom CRM webhook integration",
       "featureAnalytics": "Analytics",
@@ -3475,9 +3474,6 @@
       "crm": "CRM",
       "scheduling": "Scheduling"
     },
-    "googleSheets": {
-      "desc": "Sync customer data with Google Sheets"
-    },
     "customCrm": {
       "desc": "Integration with your own CRM system"
     },
@@ -3569,10 +3565,6 @@
     "calendar_integration": {
       "name": "Calendar Integration",
       "description": "Manage appointments with Google Calendar."
-    },
-    "sheets_integration": {
-      "name": "Google Sheets",
-      "description": "Sync data with Google Sheets."
     },
     "crm_integration": {
       "name": "Custom CRM",

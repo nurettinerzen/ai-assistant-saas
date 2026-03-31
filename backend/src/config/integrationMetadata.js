@@ -73,26 +73,6 @@ export const INTEGRATION_METADATA = {
     region: 'TR'
   },
 
-  // ============================================================================
-  // DATA & ANALYTICS
-  // ============================================================================
-
-  GOOGLE_SHEETS: {
-    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      ECOMMERCE: 'RECOMMENDED',
-      CLINIC: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      SERVICE: 'RECOMMENDED',
-      OTHER: 'RECOMMENDED'
-    },
-    name: 'Google Sheets',
-    description: 'Müşteri verilerini Google Sheets ile senkronize et',
-    category: 'data',
-    authType: 'oauth'
-  },
-
   // Note: Gmail and Outlook are handled separately in frontend (not in this metadata)
   // Note: Custom CRM/ERP is also handled separately in frontend integration cards
 };

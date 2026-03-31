@@ -581,8 +581,7 @@ const handleShopifyConnect = async () => {
   };
 
   // Integrations to hide (removed from platform)
-  // PILOT: Show all integrations (removed hidden list)
-  const HIDDEN_INTEGRATIONS = ['GOOGLE_SHEETS'];
+  const HIDDEN_INTEGRATIONS = [];
 
   // Integration Categories - new structure without sector filter
   const INTEGRATION_CATEGORIES = [

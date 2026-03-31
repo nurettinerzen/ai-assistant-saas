@@ -147,24 +147,6 @@ export const FEATURES = {
     descriptionEN: 'Manage appointments with Google Calendar.'
   },
 
-  SHEETS_INTEGRATION: {
-    id: 'sheets_integration',
-    name: 'Google Sheets',
-    nameEN: 'Google Sheets',
-    requiredPlan: PLANS.STARTER,
-    visibility: {
-      [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.TRIAL]: VISIBILITY.VISIBLE,
-      [PLANS.PAYG]: VISIBILITY.VISIBLE,
-      [PLANS.STARTER]: VISIBILITY.VISIBLE,
-      [PLANS.BASIC]: VISIBILITY.VISIBLE,
-      [PLANS.PRO]: VISIBILITY.VISIBLE,
-      [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
-    },
-    description: 'Google Sheets ile veri senkronizasyonu yapın.',
-    descriptionEN: 'Sync data with Google Sheets.'
-  },
-
   CRM_INTEGRATION: {
     id: 'crm_integration',
     name: 'Custom CRM',
@@ -380,7 +362,6 @@ export const LOCKED_INTEGRATIONS_FOR_BASIC = [
 // Map integration types to feature definitions
 export const INTEGRATION_FEATURE_MAP = {
   'GOOGLE_CALENDAR': FEATURES.CALENDAR_INTEGRATION,
-  'GOOGLE_SHEETS': FEATURES.SHEETS_INTEGRATION,
   'CUSTOM': FEATURES.CRM_INTEGRATION,
   'ZAPIER': FEATURES.CRM_INTEGRATION,  // Zapier is part of CRM/automation
   // E-commerce platforms - available for BASIC

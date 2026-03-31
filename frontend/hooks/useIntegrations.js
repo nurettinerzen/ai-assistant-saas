@@ -424,23 +424,6 @@ export function useDisconnectGoogleCalendar() {
 }
 
 /**
- * Hook to disconnect Google Sheets
- * @returns {object} Mutation object
- */
-export function useDisconnectGoogleSheets() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      return await apiClient.post('/api/integrations/google-sheets/disconnect');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['integrations'] });
-    },
-  });
-}
-
-/**
  * Hook to test Google Calendar
  * @returns {object} Mutation object
  */
@@ -448,18 +431,6 @@ export function useTestGoogleCalendar() {
   return useMutation({
     mutationFn: async () => {
       return await apiClient.post('/api/integrations/google-calendar/test');
-    },
-  });
-}
-
-/**
- * Hook to test Google Sheets
- * @returns {object} Mutation object
- */
-export function useTestGoogleSheets() {
-  return useMutation({
-    mutationFn: async () => {
-      return await apiClient.post('/api/integrations/google-sheets/test');
     },
   });
 }

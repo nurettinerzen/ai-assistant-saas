@@ -2013,7 +2013,7 @@
       "featureTrialMinutes": "15 dakika telefon görüşmesi",
       "featureTrialChat": "7 gün chat/WhatsApp",
       "featurePayPerMinute": "{price}/dk kullandıkça öde",
-      "featureWalletBilling": "Yazılı kullanım ve ses dakikaları bakiyeden düşer",
+      "featureWalletBilling": "Bakiyeden kullandıkça öde",
       "featureWrittenInteractions": "{count} yazılı etkileşim dahil",
       "featureWrittenInteractionsEnterprise": "Özel yazılı etkileşim limiti",
       "featureMinutes": "{count} dk dahil",
@@ -2031,7 +2031,6 @@
       "featureEmail": "E-posta",
       "featureEcommerce": "E-ticaret entegrasyonu",
       "featureCalendar": "Google Takvim",
-      "featureGoogleSheets": "Google Sheets",
       "featureBatchCalls": "Toplu arama",
       "featureCustomCrm": "Özel CRM webhook entegrasyonu",
       "featureAnalytics": "Analitik",
@@ -3475,9 +3474,6 @@
       "crm": "CRM",
       "scheduling": "Planlama"
     },
-    "googleSheets": {
-      "desc": "Google Sheets ile müşteri verilerini senkronize edin"
-    },
     "customCrm": {
       "desc": "Kendi CRM sisteminizle entegrasyon"
     },
@@ -3569,10 +3565,6 @@
     "calendar_integration": {
       "name": "Takvim Entegrasyonu",
       "description": "Google Calendar ile randevu yönetimi yapın."
-    },
-    "sheets_integration": {
-      "name": "Google Sheets",
-      "description": "Google Sheets ile veri senkronizasyonu yapın."
     },
     "crm_integration": {
       "name": "Custom CRM",

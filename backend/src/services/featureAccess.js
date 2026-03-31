@@ -137,7 +137,6 @@ class FeatureAccessController {
     // Features available in PRO and above
     const proFeatures = [
       'email',
-      'googleSheets',
       'prioritySupport',
       'advancedAnalytics',
       'apiAccess'
@@ -218,7 +217,6 @@ class FeatureAccessController {
         features: {
           ecommerce: planConfig.features?.ecommerce || false,
           calendar: planConfig.features?.calendar || false,
-          googleSheets: planConfig.features?.googleSheets || false,
           batchCalls: planConfig.features?.batchCalls || false,
           advancedAnalytics: planConfig.features?.advancedAnalytics || false,
           prioritySupport: planConfig.features?.prioritySupport || false,

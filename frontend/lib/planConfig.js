@@ -51,7 +51,6 @@ export const PLAN_FEATURES = {
     chatWidget: true,
     email: true,
     googleCalendar: true,
-    googleSheets: true,
     ecommerce: true,
     customCrm: false,
     maxMinutes: 15,
@@ -65,7 +64,6 @@ export const PLAN_FEATURES = {
     chatWidget: true,
     email: true,
     googleCalendar: true,
-    googleSheets: true,
     ecommerce: true,
     customCrm: false,
     maxMinutes: 15,
@@ -78,7 +76,6 @@ export const PLAN_FEATURES = {
     chatWidget: true,
     email: true,
     googleCalendar: true,
-    googleSheets: true,
     ecommerce: true,
     customCrm: false, // Can connect, usage PRO+
     batchCalls: true,
@@ -95,7 +92,6 @@ export const PLAN_FEATURES = {
     chatWidget: true,
     email: true,
     googleCalendar: true,
-    googleSheets: true,
     ecommerce: true,
     customCrm: false, // Can connect, usage PRO+
     batchCalls: false,
@@ -112,7 +108,6 @@ export const PLAN_FEATURES = {
     chatWidget: true,
     email: true,
     googleCalendar: true,
-    googleSheets: true,
     ecommerce: true,
     customCrm: true, // Full usage
     batchCalls: true,
@@ -130,7 +125,6 @@ export const PLAN_FEATURES = {
     chatWidget: true,
     email: true,
     googleCalendar: true,
-    googleSheets: true,
     ecommerce: true,
     customCrm: true,
     batchCalls: true,

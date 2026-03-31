@@ -140,8 +140,6 @@ export async function logAuditAction(admin, action, entityType, entityId, change
 const SENSITIVE_FIELDS = {
   User: ['password'],
   Business: [
-    'googleSheetsAccessToken',
-    'googleSheetsRefreshToken',
     'whatsappAccessToken',
     'whatsappVerifyToken'
   ],

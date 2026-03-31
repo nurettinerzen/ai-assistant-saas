@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Lock, Phone, PhoneCall, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, Lock, MessageSquare, Phone, PhoneCall, Plus, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
@@ -127,6 +127,8 @@ export default function PhoneNumbersPage() {
   const localeCode = locale === 'en' ? 'en-US' : 'tr-TR';
   const snapshot = subscription?.billingSnapshot || buildLegacyBillingSnapshot(subscription);
   const voiceUsage = snapshot?.includedUsage?.voiceMinutes || null;
+  const writtenUsage = snapshot?.includedUsage?.writtenInteractions || null;
+  const addOns = snapshot?.addOns || {};
 
   const fmt = (v, d = 0) => Number(v || 0).toLocaleString(localeCode, { maximumFractionDigits: d });
 
@@ -276,39 +278,108 @@ export default function PhoneNumbersPage() {
         )}
       </section>
 
-      {/* ═══ 2. Compact Usage Summary Bar ═══ */}
+      {/* ═══ 2. Usage Overview ═══ */}
       {!loading && snapshot && (
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white px-5 py-3 dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/30">
-              <PhoneCall className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-            </div>
-            <Badge variant="outline" className="shrink-0 rounded-full text-xs font-semibold">
-              {getPlanDisplayName(snapshot?.plan || subscription?.plan, locale)}
-            </Badge>
-            {voiceUsage && voiceUsage.total > 0 ? (
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
-                  {fmt(voiceUsage.used, 1)} / {fmt(voiceUsage.total, 1)} {isTR ? 'dk kullanıldı' : 'min used'}
-                </span>
-                <div className="w-20 shrink-0">
-                  <ProgressBar value={voiceProgress} colorClass="bg-teal-500" />
-                </div>
-              </div>
-            ) : (
-              <span className="text-sm text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
-                {isTR ? 'Ses dakikası yok' : 'No voice minutes'}
+        <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="rounded-full text-xs font-semibold">
+                {getPlanDisplayName(snapshot?.plan || subscription?.plan, locale)}
+              </Badge>
+              <span className="text-sm text-neutral-400 dark:text-neutral-500">
+                {isTR ? 'Genel Bakış' : 'Overview'}
               </span>
-            )}
+            </div>
+            <Link
+              href="/dashboard/subscription"
+              className="flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
+            >
+              {isTR ? 'Paket & Faturalandırma' : 'Plan & Billing'}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
-          <Link
-            href="/dashboard/subscription"
-            className="shrink-0 flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors whitespace-nowrap"
-          >
-            {isTR ? 'Kullanım Detayları' : 'Usage Details'}
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Voice Minutes */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <PhoneCall className="h-3.5 w-3.5 text-teal-500" />
+                {isTR ? 'Ses Dakikaları' : 'Voice Minutes'}
+              </div>
+              {voiceUsage && voiceUsage.total > 0 ? (
+                <>
+                  <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                    {fmt(voiceUsage.used, 1)} <span className="text-sm font-normal text-neutral-400">/ {fmt(voiceUsage.total, 1)}</span>
+                  </p>
+                  <ProgressBar value={voiceProgress} colorClass={voiceProgress >= 80 ? 'bg-orange-500' : 'bg-teal-500'} />
+                </>
+              ) : (
+                <p className="text-sm text-neutral-400 dark:text-neutral-500">{isTR ? 'Bu pakette yok' : 'Not in plan'}</p>
+              )}
+            </div>
+
+            {/* Written Interactions */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                {isTR ? 'Yazılı Destek' : 'Written Support'}
+              </div>
+              {writtenUsage && toNumber(writtenUsage.total) > 0 ? (
+                <>
+                  <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                    {fmt(writtenUsage.used)} <span className="text-sm font-normal text-neutral-400">/ {fmt(writtenUsage.total)}</span>
+                  </p>
+                  <ProgressBar
+                    value={toNumber(writtenUsage.total) > 0 ? (toNumber(writtenUsage.used) / toNumber(writtenUsage.total)) * 100 : 0}
+                    colorClass={toNumber(writtenUsage.used) / toNumber(writtenUsage.total, 1) >= 0.8 ? 'bg-orange-500' : 'bg-blue-500'}
+                  />
+                </>
+              ) : (
+                <p className="text-sm text-neutral-400 dark:text-neutral-500">{isTR ? 'Limit yok' : 'No limit'}</p>
+              )}
+            </div>
+
+            {/* Concurrent Calls */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <Phone className="h-3.5 w-3.5 text-purple-500" />
+                {isTR ? 'Eşzamanlı Çağrı' : 'Concurrent'}
+              </div>
+              <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                {concurrentCalls > 0 ? concurrentCalls : '—'}
+              </p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500">{isTR ? 'maks. eşzamanlı' : 'max concurrent'}</p>
+            </div>
+
+            {/* Assistants */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <Users className="h-3.5 w-3.5 text-amber-500" />
+                {isTR ? 'Asistan' : 'Assistants'}
+              </div>
+              <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                {fmt(toNumber(snapshot?.entitlements?.assistants || subscription?.limits?.assistants, 0))}
+              </p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500">{isTR ? 'maks. asistan' : 'max assistants'}</p>
+            </div>
+          </div>
+
+          {/* Add-on balances row */}
+          {(toNumber(addOns?.voiceMinutes?.remaining) > 0 || toNumber(addOns?.writtenInteractions?.remaining) > 0) && (
+            <div className="mt-4 flex flex-wrap gap-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+              {toNumber(addOns?.voiceMinutes?.remaining) > 0 && (
+                <Badge variant="outline" className="text-xs text-teal-600 border-teal-200 dark:text-teal-400 dark:border-teal-800">
+                  +{fmt(addOns.voiceMinutes.remaining, 1)} {isTR ? 'dk ek paket' : 'min add-on'}
+                </Badge>
+              )}
+              {toNumber(addOns?.writtenInteractions?.remaining) > 0 && (
+                <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 dark:text-blue-400 dark:border-blue-800">
+                  +{fmt(addOns.writtenInteractions.remaining)} {isTR ? 'etkileşim ek paket' : 'interaction add-on'}
+                </Badge>
+              )}
+            </div>
+          )}
+        </section>
       )}
 
       {/* ═══ Lock Banner ═══ */}

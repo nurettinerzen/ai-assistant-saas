@@ -4,7 +4,6 @@ import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission, requireOwner } from '../middleware/permissions.js';
 import googleCalendarService from '../services/google-calendar.js';
 import hubspotService from '../services/hubspot.js';
-import googleSheetsService from '../services/google-sheets.js';
 import whatsappService from '../services/whatsapp.js';
 import { getFilteredIntegrations, getIntegrationPriority } from '../config/integrationMetadata.js';
 import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
@@ -538,91 +537,6 @@ router.post('/google-calendar/disconnect', async (req, res) => {
 });
 
 /* ============================================================
-   GOOGLE SHEETS - TEST & DISCONNECT
-============================================================ */
-
-router.post('/google-sheets/test', async (req, res) => {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: {
-        businessId: req.businessId,
-        type: 'GOOGLE_SHEETS'
-      }
-    });
-
-    if (!integration || !integration.connected) {
-      return res.status(404).json({ success: false, error: 'Google Sheets not connected' });
-    }
-
-    // Test by checking token validity
-    const credentials = integration.credentials;
-    
-    // Simple test - if we have tokens, connection is valid
-    if (credentials.access_token) {
-      res.json({ 
-        success: true, 
-        message: 'Google Sheets bağlantısı aktif'
-      });
-    } else {
-      res.status(400).json({ success: false, error: 'Invalid credentials' });
-    }
-  } catch (error) {
-    console.error('Google Sheets test error:', error);
-    res.status(500).json({ success: false, error: 'Test failed' });
-  }
-});
-
-router.post('/google-sheets/disconnect', async (req, res) => {
-  try {
-    const business = await prisma.business.findUnique({
-      where: { id: req.businessId },
-      select: {
-        googleSheetsAccessToken: true,
-        googleSheetsRefreshToken: true
-      }
-    });
-
-    try {
-      const refreshToken = decryptTokenValue(business?.googleSheetsRefreshToken, { allowPlaintext: true });
-      const accessToken = decryptTokenValue(business?.googleSheetsAccessToken, { allowPlaintext: true });
-      await revokeGoogleOAuthToken(refreshToken || accessToken);
-    } catch (revokeError) {
-      console.warn(`Google Sheets revoke skipped for business ${req.businessId}:`, revokeError.message);
-    }
-
-    await prisma.business.update({
-      where: { id: req.businessId },
-      data: {
-        googleSheetsAccessToken: null,
-        googleSheetsRefreshToken: null,
-        googleSheetsTokenExpiry: null,
-        googleSheetsConnected: false,
-        googleSheetId: null,
-        googleSheetName: null,
-        googleSheetLastSync: null
-      }
-    });
-
-    await prisma.integration.updateMany({
-      where: {
-        businessId: req.businessId,
-        type: 'GOOGLE_SHEETS'
-      },
-      data: {
-        connected: false,
-        isActive: false,
-        credentials: {}
-      }
-    });
-
-    res.json({ success: true, message: 'Google Sheets disconnected' });
-  } catch (error) {
-    console.error('Google Sheets disconnect error:', error);
-    res.status(500).json({ error: 'Failed to disconnect' });
-  }
-});
-
-/* ============================================================
    HUBSPOT INTEGRATION (OAuth)
 ============================================================ */
 
@@ -694,82 +608,6 @@ router.get('/hubspot/callback', async (req, res) => {
   } catch (error) {
     console.error('❌ HubSpot callback error:', error);
     safeRedirect(res, '/dashboard/integrations?error=hubspot');
-  }
-});
-
-/* ============================================================
-   GOOGLE SHEETS INTEGRATION (OAuth)
-============================================================ */
-
-router.get('/google-sheets/auth', async (req, res) => {
-  try {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-sheets/callback`;
-
-    // SECURITY: Generate cryptographically secure state token (CSRF protection)
-    const state = await generateOAuthState(req.businessId, 'google-sheets');
-
-    const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
-    const authUrl = googleSheetsService.getAuthUrl(oauth2Client);
-
-    res.json({ authUrl: authUrl + `&state=${state}` });
-  } catch (error) {
-    console.error('Google Sheets auth error:', error);
-    res.status(500).json({ error: 'Failed to start Google Sheets OAuth' });
-  }
-});
-
-router.get('/google-sheets/callback', async (req, res) => {
-  try {
-    const { code, state } = req.query;
-
-    if (!code || !state) {
-      console.error('Google Sheets callback: missing code or state');
-      return safeRedirect(res, '/dashboard/integrations?error=google-sheets-invalid');
-    }
-
-    // SECURITY: Validate state token (CSRF protection)
-    const validation = await validateOAuthState(state, null, 'google-sheets');
-
-    if (!validation.valid) {
-      console.error('❌ Google Sheets callback: Invalid state:', validation.error);
-      return safeRedirect(res, '/dashboard/integrations?error=google-sheets-csrf');
-    }
-
-    const businessId = validation.businessId;
-
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-sheets/callback`;
-
-    const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
-    const tokens = await googleSheetsService.getTokens(oauth2Client, code);
-
-    await prisma.integration.upsert({
-      where: {
-        businessId_type: {
-          businessId,
-          type: 'GOOGLE_SHEETS'
-        }
-      },
-      update: {
-        credentials: tokens,
-        connected: true
-      },
-      create: {
-        businessId,
-        type: 'GOOGLE_SHEETS',
-        credentials: tokens,
-        connected: true
-      }
-    });
-
-    console.log(`✅ Google Sheets connected for business ${businessId}`);
-    safeRedirect(res, '/dashboard/integrations?success=google-sheets');
-  } catch (error) {
-    console.error('❌ Google Sheets callback error:', error);
-    safeRedirect(res, '/dashboard/integrations?error=google-sheets');
   }
 });
 

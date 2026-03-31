@@ -362,7 +362,6 @@ export const PLAN_FEATURES = {
     analytics: false,
     apiAccess: false,
     batchCalls: false,
-    googleSheets: false,
     customCrm: false
   },
   STARTER: {
@@ -376,7 +375,6 @@ export const PLAN_FEATURES = {
     analytics: true,
     apiAccess: false,
     batchCalls: true,
-    googleSheets: false,
     customCrm: false
   },
   BASIC: {
@@ -390,7 +388,6 @@ export const PLAN_FEATURES = {
     analytics: true,
     apiAccess: false,
     batchCalls: true,
-    googleSheets: false,
     customCrm: false
   },
   PRO: {
@@ -404,7 +401,6 @@ export const PLAN_FEATURES = {
     analytics: true,
     apiAccess: true,
     batchCalls: true,
-    googleSheets: true,
     customCrm: true
   },
   ENTERPRISE: {
@@ -418,7 +414,6 @@ export const PLAN_FEATURES = {
     analytics: true,
     apiAccess: true,
     batchCalls: true,
-    googleSheets: true,
     customCrm: true,
     customVoice: true,
     whiteLabel: true,

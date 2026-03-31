@@ -21,15 +21,6 @@ export default function InventoryPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
 
-  // Google Sheets States
-  const [showSheetsModal, setShowSheetsModal] = useState(false);
-  const [sheetsConfig, setSheetsConfig] = useState({
-    spreadsheetId: '',
-    sheetName: 'Sheet1'
-  });
-  const [syncing, setSyncing] = useState(false);
-  const [connected, setConnected] = useState(false);
-
   const [newProduct, setNewProduct] = useState({
     sku: '',
     name: '',
@@ -159,61 +150,6 @@ export default function InventoryPage() {
   🔗 Connect ERP
 </button>
 
-  // Google Sheets Connect
-  const handleConnectSheets = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await authFetch(`${API_URL}/api/google-sheets/connect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(sheetsConfig)
-      });
-
-      const data = await res.json();
-      if (!res.ok) return alert(data.error);
-
-      setConnected(true);
-      alert(`Connected to: ${data.spreadsheet.title}`);
-      setShowSheetsModal(false);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Sync Sheets
-  const handleSyncSheets = async () => {
-    if (!confirm('Sync inventory from Sheets?')) return;
-    setSyncing(true);
-
-    try {
-      const res = await authFetch(`${API_URL}/api/google-sheets/sync`, { method: 'POST' });
-
-      const data = await res.json();
-      if (!res.ok) return alert(data.error);
-
-      alert(`Sync complete: ${data.total} rows`);
-      loadProducts(user.businessId);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // Disconnect Sheets
-  const handleDisconnectSheets = async () => {
-    if (!confirm('Disconnect Sheets?')) return;
-
-    try {
-      await authFetch(`${API_URL}/api/google-sheets/disconnect`, { method: 'POST' });
-
-      setConnected(false);
-      alert('Disconnected');
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -327,48 +263,6 @@ export default function InventoryPage() {
   🔗 Connect ERP
 </button>
 
-              {/* Sheets Buttons */}
-              {connected ? (
-                <>
-                  <button
-                    onClick={handleSyncSheets}
-                    disabled={syncing}
-                    style={{
-                      padding: '10px 20px',
-                      background: syncing ? '#999' : '#10b981',
-                      color: 'white',
-                      borderRadius: '5px'
-                    }}
-                  >
-                    {syncing ? '⏳ Syncing...' : '🔄 Sync Sheets'}
-                  </button>
-
-                  <button
-                    onClick={handleDisconnectSheets}
-                    style={{
-                      padding: '10px 20px',
-                      background: '#ef4444',
-                      color: 'white',
-                      borderRadius: '5px'
-                    }}
-                  >
-                    🔌 Disconnect
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setShowSheetsModal(true)}
-                  style={{
-                    padding: '10px 20px',
-                    background: '#10b981',
-                    color: 'white',
-                    borderRadius: '5px'
-                  }}
-                >
-                  📊 Connect Sheets
-                </button>
-              )}
-
               {/* Add Product */}
               <button
                 onClick={() => setShowAddModal(true)}
@@ -394,7 +288,7 @@ export default function InventoryPage() {
               borderRadius: '10px'
             }}>
               <p style={{ fontSize: '20px', marginBottom: '10px' }}>📦 No products yet</p>
-              <p>Add products manually or import from Google Sheets.</p>
+              <p>Add products manually or upload a CSV file.</p>
             </div>
           ) : (
             <div style={{
@@ -448,86 +342,6 @@ export default function InventoryPage() {
             </div>
           )}
 
-        </div>
-      )}
-
-      {/* SHEETS MODAL */}
-      {showSheetsModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            width: '90%',
-            maxWidth: '450px'
-          }}>
-            <h2>Connect Google Sheets</h2>
-            <form onSubmit={handleConnectSheets}>
-              <label>Spreadsheet ID *</label>
-              <input
-                type="text"
-                value={sheetsConfig.spreadsheetId}
-                onChange={(e) => setSheetsConfig({ ...sheetsConfig, spreadsheetId: e.target.value })}
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '5px',
-                  border: '1px solid #ddd',
-                  marginBottom: '15px'
-                }}
-              />
-
-              <label>Sheet Name</label>
-              <input
-                type="text"
-                value={sheetsConfig.sheetName}
-                onChange={(e) => setSheetsConfig({ ...sheetsConfig, sheetName: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '5px',
-                  border: '1px solid #ddd',
-                  marginBottom: '20px'
-                }}
-              />
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="submit"
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    background: '#10b981',
-                    color: 'white',
-                    borderRadius: '6px'
-                  }}
-                >
-                  Connect
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowSheetsModal(false)}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    background: '#eee',
-                    borderRadius: '6px'
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
 
