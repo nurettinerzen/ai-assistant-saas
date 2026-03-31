@@ -78,11 +78,13 @@ export const FEATURES = {
     id: 'email',
     name: 'E-posta',
     nameEN: 'Email',
-    requiredPlan: PLANS.PRO,
+    requiredPlan: PLANS.STARTER,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.STARTER]: VISIBILITY.HIDDEN,
-      [PLANS.BASIC]: VISIBILITY.LOCKED,
+      [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+      [PLANS.PAYG]: VISIBILITY.VISIBLE,
+      [PLANS.STARTER]: VISIBILITY.VISIBLE,
+      [PLANS.BASIC]: VISIBILITY.VISIBLE,
       [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
@@ -94,10 +96,12 @@ export const FEATURES = {
     id: 'integrations',
     name: 'Entegrasyonlar',
     nameEN: 'Integrations',
-    requiredPlan: PLANS.BASIC,
+    requiredPlan: PLANS.STARTER,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.STARTER]: VISIBILITY.HIDDEN,
+      [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+      [PLANS.PAYG]: VISIBILITY.VISIBLE,
+      [PLANS.STARTER]: VISIBILITY.VISIBLE,
       [PLANS.BASIC]: VISIBILITY.VISIBLE,
       [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
@@ -115,8 +119,8 @@ export const FEATURES = {
       [PLANS.FREE]: VISIBILITY.LOCKED,
       [PLANS.TRIAL]: VISIBILITY.VISIBLE,
       [PLANS.PAYG]: VISIBILITY.VISIBLE,
-      [PLANS.STARTER]: VISIBILITY.VISIBLE,
-      [PLANS.BASIC]: VISIBILITY.VISIBLE,
+      [PLANS.STARTER]: VISIBILITY.LOCKED,
+      [PLANS.BASIC]: VISIBILITY.LOCKED,
       [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
@@ -129,11 +133,13 @@ export const FEATURES = {
     id: 'calendar_integration',
     name: 'Takvim Entegrasyonu',
     nameEN: 'Calendar Integration',
-    requiredPlan: PLANS.PRO,
+    requiredPlan: PLANS.STARTER,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.STARTER]: VISIBILITY.HIDDEN,
-      [PLANS.BASIC]: VISIBILITY.LOCKED,
+      [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+      [PLANS.PAYG]: VISIBILITY.VISIBLE,
+      [PLANS.STARTER]: VISIBILITY.VISIBLE,
+      [PLANS.BASIC]: VISIBILITY.VISIBLE,
       [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
@@ -145,11 +151,13 @@ export const FEATURES = {
     id: 'sheets_integration',
     name: 'Google Sheets',
     nameEN: 'Google Sheets',
-    requiredPlan: PLANS.PRO,
+    requiredPlan: PLANS.STARTER,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.STARTER]: VISIBILITY.HIDDEN,
-      [PLANS.BASIC]: VISIBILITY.LOCKED,
+      [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+      [PLANS.PAYG]: VISIBILITY.VISIBLE,
+      [PLANS.STARTER]: VISIBILITY.VISIBLE,
+      [PLANS.BASIC]: VISIBILITY.VISIBLE,
       [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
@@ -180,10 +188,12 @@ export const FEATURES = {
     name: 'E-ticaret Entegrasyonu',
     nameEN: 'E-commerce Integration',
     namePR: 'Integração E-commerce',
-    requiredPlan: PLANS.BASIC,
+    requiredPlan: PLANS.STARTER,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.STARTER]: VISIBILITY.HIDDEN,
+      [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+      [PLANS.PAYG]: VISIBILITY.VISIBLE,
+      [PLANS.STARTER]: VISIBILITY.VISIBLE,
       [PLANS.BASIC]: VISIBILITY.VISIBLE,
       [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
@@ -203,19 +213,23 @@ export const FEATURES = {
     name: 'Telefon Kanalı',
     nameEN: 'Phone Channel',
     namePR: 'Canal Telefônico',
-    requiredPlan: PLANS.STARTER,
+    requiredPlan: PLANS.TRIAL,
     // Region-based visibility
     regionVisibility: {
       TR: {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
-        [PLANS.STARTER]: VISIBILITY.VISIBLE,
-        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+        [PLANS.PAYG]: VISIBILITY.VISIBLE,
+        [PLANS.STARTER]: VISIBILITY.HIDDEN,
+        [PLANS.BASIC]: VISIBILITY.HIDDEN,
         [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       BR: {
         // In Brazil, phone is BYOC only (Anatel regulations)
         [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.TRIAL]: VISIBILITY.HIDDEN,
+        [PLANS.PAYG]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.HIDDEN,
         [PLANS.BASIC]: VISIBILITY.HIDDEN,
         [PLANS.PRO]: VISIBILITY.BYOC,
@@ -223,15 +237,19 @@ export const FEATURES = {
       },
       US: {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
-        [PLANS.STARTER]: VISIBILITY.VISIBLE,
-        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+        [PLANS.PAYG]: VISIBILITY.VISIBLE,
+        [PLANS.STARTER]: VISIBILITY.HIDDEN,
+        [PLANS.BASIC]: VISIBILITY.HIDDEN,
         [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       EU: {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
-        [PLANS.STARTER]: VISIBILITY.VISIBLE,
-        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+        [PLANS.PAYG]: VISIBILITY.VISIBLE,
+        [PLANS.STARTER]: VISIBILITY.HIDDEN,
+        [PLANS.BASIC]: VISIBILITY.HIDDEN,
         [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       }
@@ -293,11 +311,13 @@ export const FEATURES = {
     name: 'WhatsApp Mesajlaşma',
     nameEN: 'WhatsApp Messaging',
     namePR: 'Mensagens WhatsApp',
-    requiredPlan: PLANS.BASIC,
+    requiredPlan: PLANS.STARTER,
     regionVisibility: {
       TR: {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
-        [PLANS.STARTER]: VISIBILITY.LOCKED,
+        [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+        [PLANS.PAYG]: VISIBILITY.VISIBLE,
+        [PLANS.STARTER]: VISIBILITY.VISIBLE,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
         [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
@@ -336,10 +356,12 @@ export const FEATURES = {
     name: 'Chat Widget',
     nameEN: 'Chat Widget',
     namePR: 'Widget de Chat',
-    requiredPlan: PLANS.BASIC,
+    requiredPlan: PLANS.STARTER,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.STARTER]: VISIBILITY.LOCKED,
+      [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+      [PLANS.PAYG]: VISIBILITY.VISIBLE,
+      [PLANS.STARTER]: VISIBILITY.VISIBLE,
       [PLANS.BASIC]: VISIBILITY.VISIBLE,
       [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
@@ -352,8 +374,6 @@ export const FEATURES = {
 
 // Integration types that are locked for BASIC plan
 export const LOCKED_INTEGRATIONS_FOR_BASIC = [
-  'GOOGLE_CALENDAR',
-  'GOOGLE_SHEETS',
   'CUSTOM'  // Custom CRM
 ];
 
@@ -635,7 +655,7 @@ export function getPrimaryVoiceChannel(countryCode) {
   return 'phone_channel';
 }
 
-export default {
+const featureConfig = {
   PLANS,
   PLAN_HIERARCHY,
   VISIBILITY,
@@ -657,3 +677,5 @@ export default {
   getAvailableChannels,
   getPrimaryVoiceChannel
 };
+
+export default featureConfig;

@@ -73,6 +73,13 @@ const TRANSLATIONS = {
     enterpriseConcurrent: 'Eş zamanlı arama',
     writtenSupport: 'Yazılı Destek',
     writtenSupportDesc: 'Chat, WhatsApp ve e-posta',
+    writtenObserved: 'Gözlenen yazılı kullanım',
+    writtenLimitNotConfigured: 'Ayrı written limit tanımlı değil. Bu dönemde gözlenen kullanım gösteriliyor.',
+    writtenUnitPrice: 'Yazılı kullanım birim fiyatı',
+    addOnRemainingLabel: 'Add-on kalan',
+    webchat: 'Webchat',
+    whatsappChannel: 'WhatsApp',
+    emailChannel: 'E-posta',
     interactions: 'etkileşim',
     used80Written: "Yazılı destek limitinizin %80'ini kullandınız",
     usedAllWritten: 'Yazılı destek limitiniz doldu'
@@ -123,6 +130,13 @@ const TRANSLATIONS = {
     enterpriseConcurrent: 'Concurrent calls',
     writtenSupport: 'Written Support',
     writtenSupportDesc: 'Chat, WhatsApp and email',
+    writtenObserved: 'Observed written usage',
+    writtenLimitNotConfigured: 'A separate written limit is not configured, so this card shows observed usage for the current cycle.',
+    writtenUnitPrice: 'Written unit price',
+    addOnRemainingLabel: 'Add-on remaining',
+    webchat: 'Webchat',
+    whatsappChannel: 'WhatsApp',
+    emailChannel: 'Email',
     interactions: 'interactions',
     used80Written: "You've used 80% of your written support limit",
     usedAllWritten: 'Written support limit reached'
@@ -214,6 +228,106 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
     const writtenPercent = balance.writtenInteractions?.limit > 0
       ? Math.min((balance.writtenInteractions.used / balance.writtenInteractions.limit) * 100, 100)
       : 0;
+    const shouldShowWrittenUsage = Boolean(balance.writtenInteractions) && plan !== 'FREE';
+    const hasConfiguredWrittenLimit = Number(balance.writtenInteractions?.limit || 0) > 0;
+    const writtenChannels = balance.writtenInteractions?.channels || {
+      webchat: 0,
+      whatsapp: 0,
+      email: 0
+    };
+
+    const renderWrittenUsage = () => {
+      if (!shouldShowWrittenUsage) {
+        return null;
+      }
+
+      if (hasConfiguredWrittenLimit) {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.writtenSupport}</span>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{txt.writtenSupportDesc}</p>
+                </div>
+              </div>
+              <span className="text-neutral-600 dark:text-neutral-400">
+                {balance.writtenInteractions.used}/{balance.writtenInteractions.limit} {txt.interactions}
+              </span>
+            </div>
+            <Progress
+              value={writtenPercent}
+              className={`h-2 ${writtenPercent >= 100 ? '[&>div]:bg-red-500' : writtenPercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-blue-600'}`}
+            />
+            {balance.writtenInteractions.addOnRemaining > 0 && (
+              <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
+                <span>{txt.addOnRemainingLabel}</span>
+                <span>{balance.writtenInteractions.addOnRemaining} {txt.interactions}</span>
+              </div>
+            )}
+            {writtenPercent >= 80 && writtenPercent < 100 && (
+              <p className="text-xs text-orange-600 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {txt.used80Written}
+              </p>
+            )}
+            {writtenPercent >= 100 && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {txt.usedAllWritten}
+              </p>
+            )}
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-3 rounded-lg border border-blue-100 dark:border-blue-900/40 bg-blue-50/70 dark:bg-blue-900/10 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <MessageSquare className="h-4 w-4 mt-0.5 text-blue-600 dark:text-blue-400" />
+              <div>
+                <div className="font-medium text-neutral-700 dark:text-neutral-300">{txt.writtenObserved}</div>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">{txt.writtenSupportDesc}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
+                {balance.writtenInteractions.used || 0}
+              </div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">{txt.interactions}</div>
+            </div>
+          </div>
+
+          <p className="text-xs text-blue-700 dark:text-blue-300">
+            {txt.writtenLimitNotConfigured}
+          </p>
+
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="rounded-md bg-white/70 dark:bg-neutral-900/40 px-3 py-2">
+              <div className="text-neutral-500 dark:text-neutral-400">{txt.webchat}</div>
+              <div className="font-medium text-neutral-900 dark:text-white">{writtenChannels.webchat || 0}</div>
+            </div>
+            <div className="rounded-md bg-white/70 dark:bg-neutral-900/40 px-3 py-2">
+              <div className="text-neutral-500 dark:text-neutral-400">{txt.whatsappChannel}</div>
+              <div className="font-medium text-neutral-900 dark:text-white">{writtenChannels.whatsapp || 0}</div>
+            </div>
+            <div className="rounded-md bg-white/70 dark:bg-neutral-900/40 px-3 py-2">
+              <div className="text-neutral-500 dark:text-neutral-400">{txt.emailChannel}</div>
+              <div className="font-medium text-neutral-900 dark:text-white">{writtenChannels.email || 0}</div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+            <span>{txt.writtenUnitPrice}: {currency}{(balance.writtenInteractions.unitPrice || 0).toLocaleString(dateLocale)}</span>
+            {balance.writtenInteractions.addOnRemaining > 0 && (
+              <span>{txt.addOnRemainingLabel}: {balance.writtenInteractions.addOnRemaining}</span>
+            )}
+          </div>
+        </div>
+      );
+    };
 
     return (
       <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6 space-y-5">
@@ -265,39 +379,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
               </div>
             )}
 
-            {/* Trial Written Support */}
-            {balance.writtenInteractions?.limit > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.writtenSupport}</span>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{txt.writtenSupportDesc}</p>
-                    </div>
-                  </div>
-                  <span className="text-neutral-600 dark:text-neutral-400">
-                    {balance.writtenInteractions.used}/{balance.writtenInteractions.limit} {txt.interactions}
-                  </span>
-                </div>
-                <Progress
-                  value={writtenPercent}
-                  className={`h-2 ${writtenPercent >= 100 ? '[&>div]:bg-red-500' : writtenPercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-blue-600'}`}
-                />
-                {writtenPercent >= 80 && writtenPercent < 100 && (
-                  <p className="text-xs text-orange-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {txt.used80Written}
-                  </p>
-                )}
-                {writtenPercent >= 100 && (
-                  <p className="text-xs text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {txt.usedAllWritten}
-                  </p>
-                )}
-              </div>
-            )}
+            {renderWrittenUsage()}
           </>
         )}
 
@@ -340,39 +422,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
               </div>
             )}
 
-            {/* PAYG Written Support (if data exists) */}
-            {balance.writtenInteractions?.limit > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.writtenSupport}</span>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{txt.writtenSupportDesc}</p>
-                    </div>
-                  </div>
-                  <span className="text-neutral-600 dark:text-neutral-400">
-                    {balance.writtenInteractions.used}/{balance.writtenInteractions.limit} {txt.interactions}
-                  </span>
-                </div>
-                <Progress
-                  value={writtenPercent}
-                  className={`h-2 ${writtenPercent >= 100 ? '[&>div]:bg-red-500' : writtenPercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-blue-600'}`}
-                />
-                {writtenPercent >= 80 && writtenPercent < 100 && (
-                  <p className="text-xs text-orange-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {txt.used80Written}
-                  </p>
-                )}
-                {writtenPercent >= 100 && (
-                  <p className="text-xs text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {txt.usedAllWritten}
-                  </p>
-                )}
-              </div>
-            )}
+            {renderWrittenUsage()}
           </>
         )}
 
@@ -408,39 +458,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
               )}
             </div>
 
-            {/* Written Support Section */}
-            {balance.writtenInteractions?.limit > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.writtenSupport}</span>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{txt.writtenSupportDesc}</p>
-                    </div>
-                  </div>
-                  <span className="text-neutral-600 dark:text-neutral-400">
-                    {balance.writtenInteractions.used}/{balance.writtenInteractions.limit} {txt.interactions}
-                  </span>
-                </div>
-                <Progress
-                  value={writtenPercent}
-                  className={`h-2 ${writtenPercent >= 100 ? '[&>div]:bg-red-500' : writtenPercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-blue-600'}`}
-                />
-                {writtenPercent >= 80 && writtenPercent < 100 && (
-                  <p className="text-xs text-orange-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {txt.used80Written}
-                  </p>
-                )}
-                {writtenPercent >= 100 && (
-                  <p className="text-xs text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {txt.usedAllWritten}
-                  </p>
-                )}
-              </div>
-            )}
+            {renderWrittenUsage()}
 
             {/* Enterprise Payment Status */}
             {isEnterprise && balance.enterprise && (

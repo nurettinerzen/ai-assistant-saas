@@ -46,7 +46,7 @@ const BASE_PLANS = [
     id: 'PAYG',
     nameKey: 'dashboard.subscriptionPage.planNamePayg',
     descriptionKey: 'dashboard.subscriptionPage.planDescPayg',
-    includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email', 'batchCalls'],
+    includedFeatures: ['walletBilling', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'batchCalls'],
     isPayg: true,
     paymentModel: 'PREPAID',
   },
@@ -54,7 +54,7 @@ const BASE_PLANS = [
     id: 'STARTER',
     nameKey: 'dashboard.subscriptionPage.planNameStarter',
     descriptionKey: 'dashboard.subscriptionPage.planDescStarter',
-    includedFeatures: ['assistants', 'whatsapp', 'chatWidget', 'analytics', 'email'],
+    includedFeatures: ['writtenInteractions', 'assistants', 'whatsapp', 'chatWidget', 'analytics', 'email', 'ecommerce', 'calendar', 'googleSheets'],
     paymentModel: 'POSTPAID',
   },
   {
@@ -62,14 +62,14 @@ const BASE_PLANS = [
     nameKey: 'dashboard.subscriptionPage.planNamePro',
     descriptionKey: 'dashboard.subscriptionPage.planDescPro',
     popular: true,
-    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess'],
+    includedFeatures: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'customCrm', 'prioritySupport'],
     paymentModel: 'POSTPAID',
   },
   {
     id: 'ENTERPRISE',
     nameKey: 'dashboard.subscriptionPage.planNameEnterprise',
     descriptionKey: 'dashboard.subscriptionPage.planDescEnterprise',
-    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee'],
+    includedFeatures: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'customCrm', 'prioritySupport', 'apiAccess', 'dedicatedSupport', 'customIntegrations', 'slaGuarantee'],
     paymentModel: 'POSTPAID',
   },
 ];
@@ -385,6 +385,9 @@ export default function SubscriptionPage() {
                   {(() => {
                     // Get price from REGIONAL_PRICING based on subscription.plan
                     const planPricing = getPlanPricing(subscription.plan);
+                    if (subscription.plan === 'ENTERPRISE' && subscription.enterprisePrice) {
+                      return formatPrice(subscription.enterprisePrice);
+                    }
                     if (planPricing && planPricing.price !== null) {
                       return formatPrice(planPricing.price);
                     }
@@ -591,10 +594,11 @@ export default function SubscriptionPage() {
 
             // Feature order - YENİ FİYATLANDIRMA SİSTEMİ
             const FEATURE_ORDER = [
-              'trialMinutes', 'trialChat', 'payPerMinute', 'minutes', 'concurrent',
-              'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget',
-              'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls',
-              'prioritySupport', 'apiAccess', 'slaGuarantee'
+              'trialMinutes', 'trialChat', 'walletBilling', 'writtenInteractions', 'payPerMinute',
+              'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget',
+              'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls',
+              'customCrm', 'prioritySupport', 'apiAccess', 'dedicatedSupport', 'customIntegrations',
+              'slaGuarantee'
             ];
 
             // Feature labels using translation keys
@@ -605,6 +609,10 @@ export default function SubscriptionPage() {
               const featureMap = {
                 trialMinutes: t('dashboard.subscriptionPage.featureTrialMinutes'),
                 trialChat: t('dashboard.subscriptionPage.featureTrialChat'),
+                walletBilling: t('dashboard.subscriptionPage.featureWalletBilling'),
+                writtenInteractions: isEnterprise
+                  ? t('dashboard.subscriptionPage.featureWrittenInteractionsEnterprise')
+                  : t('dashboard.subscriptionPage.featureWrittenInteractions').replace('{count}', String(planPricing?.writtenInteractions || 0)),
                 payPerMinute: t('dashboard.subscriptionPage.featurePayPerMinute').replace('{price}', formatPrice(planPricing?.pricePerMinute || 0)),
                 minutes: isEnterprise
                   ? t('dashboard.subscriptionPage.featureMinutesEnterprise')
@@ -619,7 +627,6 @@ export default function SubscriptionPage() {
                   : isPro
                     ? t('dashboard.subscriptionPage.featureAssistants10')
                     : t('dashboard.subscriptionPage.featureAssistants5'),
-                phoneNumbers: t('dashboard.subscriptionPage.featurePhoneNumbers'),
                 phone: t('dashboard.subscriptionPage.featurePhone'),
                 whatsapp: t('dashboard.subscriptionPage.featureWhatsapp'),
                 chatWidget: t('dashboard.subscriptionPage.featureChatWidget'),
@@ -628,9 +635,12 @@ export default function SubscriptionPage() {
                 calendar: t('dashboard.subscriptionPage.featureCalendar'),
                 googleSheets: t('dashboard.subscriptionPage.featureGoogleSheets'),
                 batchCalls: t('dashboard.subscriptionPage.featureBatchCalls'),
+                customCrm: t('dashboard.subscriptionPage.featureCustomCrm'),
                 analytics: t('dashboard.subscriptionPage.featureAnalytics'),
                 prioritySupport: t('dashboard.subscriptionPage.featurePrioritySupport'),
                 apiAccess: t('dashboard.subscriptionPage.featureApiAccess'),
+                dedicatedSupport: t('dashboard.subscriptionPage.featureDedicatedSupport'),
+                customIntegrations: t('dashboard.subscriptionPage.featureCustomIntegrations'),
                 slaGuarantee: t('dashboard.subscriptionPage.featureSlaGuarantee'),
               };
 

@@ -16,11 +16,11 @@ export const SHARED_REGIONAL_PRICING = {
     symbolPosition: 'after', // 2.499₺
     locale: 'tr-TR',
     plans: {
-      TRIAL:      { price: 0,    minutes: 15,   overageRate: 0,  concurrentLimit: 1,  assistantsLimit: 1,  chatDays: 7 },
-      PAYG:       { price: 0,    minutes: 0,    overageRate: 0,  concurrentLimit: 1,  assistantsLimit: 5,  pricePerMinute: 23, minTopup: 4 },
-      STARTER:    { price: 2499, minutes: 150,  overageRate: 23, concurrentLimit: 1,  assistantsLimit: 3 },
-      PRO:        { price: 7499, minutes: 500,  overageRate: 23, concurrentLimit: 5,  assistantsLimit: 10 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 23, concurrentLimit: 5,  assistantsLimit: 25 },
+      TRIAL:      { price: 0,    minutes: 15,   writtenInteractions: 50,   overageRate: 0,  concurrentLimit: 1,  assistantsLimit: 1,  chatDays: 7, writtenUnitPrice: 2.5 },
+      PAYG:       { price: 0,    minutes: 0,    writtenInteractions: 0,    overageRate: 0,  concurrentLimit: 1,  assistantsLimit: 5,  pricePerMinute: 23, minTopup: 4, writtenUnitPrice: 2.5 },
+      STARTER:    { price: 2499, minutes: 0,    writtenInteractions: 500,  overageRate: 0,  concurrentLimit: 0,  assistantsLimit: 5, writtenUnitPrice: 2.5 },
+      PRO:        { price: 7499, minutes: 500,  writtenInteractions: 2000, overageRate: 23, concurrentLimit: 2,  assistantsLimit: 10, writtenUnitPrice: 2.5 },
+      ENTERPRISE: { price: null, minutes: null, writtenInteractions: null, overageRate: 23, concurrentLimit: 5,  assistantsLimit: 25, writtenUnitPrice: 2.5 },
     },
   },
   BR: {
@@ -29,11 +29,11 @@ export const SHARED_REGIONAL_PRICING = {
     symbolPosition: 'before',
     locale: 'pt-BR',
     plans: {
-      TRIAL:      { price: 0,    minutes: 15,    overageRate: 0,    concurrentLimit: 1, assistantsLimit: 1,  chatDays: 7 },
-      PAYG:       { price: 0,    minutes: 0,     overageRate: 0,    concurrentLimit: 1, assistantsLimit: 5,  pricePerMinute: 4.60, minTopup: 4 },
-      STARTER:    { price: 500,  minutes: 150,   overageRate: 4.60, concurrentLimit: 1, assistantsLimit: 3 },
-      PRO:        { price: 1500, minutes: 500,   overageRate: 4.60, concurrentLimit: 5, assistantsLimit: 10 },
-      ENTERPRISE: { price: null, minutes: null,  overageRate: 4.60, concurrentLimit: 5, assistantsLimit: 25 },
+      TRIAL:      { price: 0,    minutes: 15,    writtenInteractions: 50,   overageRate: 0,    concurrentLimit: 1, assistantsLimit: 1,  chatDays: 7, writtenUnitPrice: 0.5 },
+      PAYG:       { price: 0,    minutes: 0,     writtenInteractions: 0,    overageRate: 0,    concurrentLimit: 1, assistantsLimit: 5,  pricePerMinute: 4.60, minTopup: 4, writtenUnitPrice: 0.5 },
+      STARTER:    { price: 500,  minutes: 0,     writtenInteractions: 500,  overageRate: 0,    concurrentLimit: 0, assistantsLimit: 5, writtenUnitPrice: 0.5 },
+      PRO:        { price: 1500, minutes: 500,   writtenInteractions: 2000, overageRate: 4.60, concurrentLimit: 2, assistantsLimit: 10, writtenUnitPrice: 0.5 },
+      ENTERPRISE: { price: null, minutes: null,  writtenInteractions: null, overageRate: 4.60, concurrentLimit: 5, assistantsLimit: 25, writtenUnitPrice: 0.5 },
     },
   },
   US: {
@@ -42,11 +42,11 @@ export const SHARED_REGIONAL_PRICING = {
     symbolPosition: 'before',
     locale: 'en-US',
     plans: {
-      TRIAL:      { price: 0,    minutes: 15,   overageRate: 0,    concurrentLimit: 1, assistantsLimit: 1,  chatDays: 7 },
-      PAYG:       { price: 0,    minutes: 0,    overageRate: 0,    concurrentLimit: 1, assistantsLimit: 5,  pricePerMinute: 0.51, minTopup: 4 },
-      STARTER:    { price: 55,   minutes: 150,  overageRate: 0.51, concurrentLimit: 1, assistantsLimit: 3 },
-      PRO:        { price: 167,  minutes: 500,  overageRate: 0.51, concurrentLimit: 5, assistantsLimit: 10 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 0.51, concurrentLimit: 5, assistantsLimit: 25 },
+      TRIAL:      { price: 0,    minutes: 15,   writtenInteractions: 50,   overageRate: 0,    concurrentLimit: 1, assistantsLimit: 1,  chatDays: 7, writtenUnitPrice: 0.06 },
+      PAYG:       { price: 0,    minutes: 0,    writtenInteractions: 0,    overageRate: 0,    concurrentLimit: 1, assistantsLimit: 5,  pricePerMinute: 0.51, minTopup: 4, writtenUnitPrice: 0.06 },
+      STARTER:    { price: 55,   minutes: 0,    writtenInteractions: 500,  overageRate: 0,    concurrentLimit: 0, assistantsLimit: 5, writtenUnitPrice: 0.06 },
+      PRO:        { price: 167,  minutes: 500,  writtenInteractions: 2000, overageRate: 0.51, concurrentLimit: 2, assistantsLimit: 10, writtenUnitPrice: 0.06 },
+      ENTERPRISE: { price: null, minutes: null, writtenInteractions: null, overageRate: 0.51, concurrentLimit: 5, assistantsLimit: 25, writtenUnitPrice: 0.06 },
     },
   },
 };
@@ -59,37 +59,37 @@ export const SHARED_PLAN_META = {
   TRIAL: {
     id: 'TRIAL',
     nameTR: 'Deneme', nameEN: 'Trial',
-    descTR: 'Ücretsiz deneme — 15 dk telefon, 7 gün chat/WhatsApp',
-    descEN: 'Free trial — 15 min phone, 7-day chat/WhatsApp',
-    features: ['phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'analytics', 'batchCalls'],
+    descTR: '7 gün boyunca sınırlı yazılı kullanım ve telefon denemesi',
+    descEN: '7-day limited written usage and phone trial',
+    features: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'batchCalls'],
   },
   PAYG: {
     id: 'PAYG',
     nameTR: 'Kullandıkça Öde', nameEN: 'Pay As You Go',
-    descTR: 'Dakika başı ödeme, minimum 4 dk yükleme',
-    descEN: 'Pay per minute, minimum 4 min top-up',
-    features: ['phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'analytics', 'batchCalls'],
+    descTR: 'Aylık ücret yok; written ve ses kullanımı cüzdandan düşer',
+    descEN: 'No monthly fee; written and voice usage is deducted from the wallet',
+    features: ['walletBilling', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'batchCalls'],
   },
   STARTER: {
     id: 'STARTER',
     nameTR: 'Başlangıç', nameEN: 'Starter',
-    descTR: 'Küçük işletmeler için ideal başlangıç paketi',
-    descEN: 'Perfect starter package for small businesses',
-    features: ['phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'analytics', 'batchCalls'],
+    descTR: 'Yalnızca yazılı kanallar için aylık başlangıç paketi',
+    descEN: 'Monthly starter package for written channels only',
+    features: ['writtenInteractions', 'assistants', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics'],
   },
   PRO: {
     id: 'PRO',
     nameTR: 'Profesyonel', nameEN: 'Pro',
-    descTR: 'Yüksek hacimli işletmeler için tam donanımlı paket',
-    descEN: 'Full-featured package for high-volume businesses',
-    features: ['phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'analytics', 'batchCalls', 'prioritySupport', 'apiAccess'],
+    descTR: 'Yazılı kullanım havuzu ve ses dakikalarını birlikte sunar',
+    descEN: 'Combines a written usage pool with included voice minutes',
+    features: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'batchCalls', 'customCrm', 'prioritySupport'],
   },
   ENTERPRISE: {
     id: 'ENTERPRISE',
     nameTR: 'Kurumsal', nameEN: 'Enterprise',
-    descTR: 'Özel ihtiyaçlar için kişiselleştirilmiş çözümler',
-    descEN: 'Customized solutions for specific needs',
-    features: ['phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'analytics', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee'],
+    descTR: 'Özel written, voice, concurrency ve onboarding içeren kurumsal paket',
+    descEN: 'Enterprise package with custom written, voice, concurrency, and onboarding',
+    features: ['writtenInteractions', 'minutes', 'concurrent', 'assistants', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'batchCalls', 'customCrm', 'prioritySupport', 'apiAccess', 'dedicatedSupport', 'customIntegrations', 'slaGuarantee'],
   },
 };
 
@@ -98,6 +98,8 @@ export const SHARED_PLAN_META = {
 // ============================================================================
 
 export const SHARED_FEATURE_ORDER = [
+  'walletBilling',
+  'writtenInteractions',
   'minutes',
   'concurrent',
   'assistants',
@@ -107,54 +109,78 @@ export const SHARED_FEATURE_ORDER = [
   'email',
   'ecommerce',
   'calendar',
+  'googleSheets',
   'analytics',
   'batchCalls',
+  'customCrm',
   'prioritySupport',
   'apiAccess',
+  'dedicatedSupport',
+  'customIntegrations',
   'slaGuarantee',
 ];
 
 export const SHARED_FEATURE_LABELS = {
   tr: {
+    walletBilling: (plan) => `Written + ses kullanımında cüzdandan ödeme`,
+    writtenInteractions: (plan) => {
+      if (plan.id === 'ENTERPRISE') return 'Özel written destek limiti';
+      if (plan.id === 'TRIAL') return `${plan.writtenInteractions} written etkileşim`;
+      return `${plan.writtenInteractions} destek etkileşimi`;
+    },
     minutes: (plan) => {
       if (plan.id === 'TRIAL') return '15 dk telefon görüşmesi';
-      if (plan.id === 'PAYG') return 'Dakika başı ödeme';
-      if (plan.id === 'ENTERPRISE') return 'Özel dakika paketi';
+      if (plan.id === 'PAYG') return 'Kullanıma göre ses dakikası';
+      if (plan.id === 'ENTERPRISE') return 'Özel ses dakikası limiti';
       return `${plan.minutes} dk görüşme`;
     },
     concurrent: (plan) => plan.id === 'ENTERPRISE' ? '5+ eşzamanlı çağrı' : `${plan.concurrentLimit} eşzamanlı çağrı`,
-    assistants: (plan) => plan.id === 'ENTERPRISE' ? 'Sınırsız asistan' : `${plan.assistantsLimit} asistan`,
+    assistants: (plan) => plan.id === 'ENTERPRISE' ? 'Özel asistan limiti' : `${plan.assistantsLimit} asistan`,
     phone: 'Telefon AI',
     whatsapp: 'WhatsApp',
     chatWidget: 'Chat widget',
     email: 'E-posta AI',
     ecommerce: 'E-ticaret entegrasyonu',
     calendar: 'Google Takvim',
+    googleSheets: 'Google Sheets',
     analytics: 'Analitik',
     batchCalls: 'Toplu arama',
+    customCrm: 'Custom CRM webhook',
     prioritySupport: 'Öncelikli destek',
     apiAccess: 'API erişimi',
+    dedicatedSupport: 'Dedicated onboarding ve destek',
+    customIntegrations: 'Özel entegrasyonlar',
     slaGuarantee: 'SLA garantisi',
   },
   en: {
+    walletBilling: () => 'Wallet billing for written + voice usage',
+    writtenInteractions: (plan) => {
+      if (plan.id === 'ENTERPRISE') return 'Custom written support limit';
+      if (plan.id === 'TRIAL') return `${plan.writtenInteractions} written interactions`;
+      return `${plan.writtenInteractions} support interactions`;
+    },
     minutes: (plan) => {
       if (plan.id === 'TRIAL') return '15 min phone calls';
-      if (plan.id === 'PAYG') return 'Pay per minute';
-      if (plan.id === 'ENTERPRISE') return 'Custom minute package';
+      if (plan.id === 'PAYG') return 'Usage-based voice minutes';
+      if (plan.id === 'ENTERPRISE') return 'Custom voice minute limit';
       return `${plan.minutes} min calls`;
     },
     concurrent: (plan) => plan.id === 'ENTERPRISE' ? '5+ concurrent calls' : `${plan.concurrentLimit} concurrent call${plan.concurrentLimit > 1 ? 's' : ''}`,
-    assistants: (plan) => plan.id === 'ENTERPRISE' ? 'Unlimited assistants' : `${plan.assistantsLimit} assistant${plan.assistantsLimit > 1 ? 's' : ''}`,
+    assistants: (plan) => plan.id === 'ENTERPRISE' ? 'Custom assistant limit' : `${plan.assistantsLimit} assistant${plan.assistantsLimit > 1 ? 's' : ''}`,
     phone: 'Phone AI',
     whatsapp: 'WhatsApp',
     chatWidget: 'Chat widget',
     email: 'Email AI',
     ecommerce: 'E-commerce integration',
     calendar: 'Google Calendar',
+    googleSheets: 'Google Sheets',
     analytics: 'Analytics',
     batchCalls: 'Batch calls',
+    customCrm: 'Custom CRM webhook',
     prioritySupport: 'Priority support',
     apiAccess: 'API access',
+    dedicatedSupport: 'Dedicated onboarding and support',
+    customIntegrations: 'Custom integrations',
     slaGuarantee: 'SLA guarantee',
   },
 };

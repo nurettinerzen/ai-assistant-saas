@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   SHARED_REGIONAL_PRICING,
+  SHARED_FEATURE_ORDER,
   SHARED_PLAN_META,
   LOCALE_TO_REGION,
   formatSharedPrice,
@@ -64,10 +65,13 @@ export default function PricingPage() {
       description: isTR ? meta.descTR : meta.descEN,
       price: planPricing.price,
       minutes: planPricing.minutes,
+      writtenInteractions: planPricing.writtenInteractions,
       overageRate: planPricing.overageRate,
       concurrentLimit: planPricing.concurrentLimit,
       assistantsLimit: planPricing.assistantsLimit,
       chatDays: planPricing.chatDays,
+      writtenUnitPrice: planPricing.writtenUnitPrice,
+      pricePerMinute: planPricing.pricePerMinute,
       features: meta.features,
       period: id === 'ENTERPRISE' ? '' : (id === 'TRIAL' ? '' : period),
       popular: id === 'PRO',
@@ -76,48 +80,32 @@ export default function PricingPage() {
   });
 
   const getPlanFeatures = (plan) => {
-    const display = ['minutes', 'concurrent', 'assistants', ...plan.features];
-    const seen = new Set();
-    return display
-      .filter((key) => {
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
+    return SHARED_FEATURE_ORDER
+      .filter((key) => plan.features.includes(key))
       .map((key) => ({ key, text: getFeatureLabel(key, lang, plan) }));
   };
 
   // PAYG
   const payg = pricing.plans.PAYG;
-  const overageRatePerMinute = pricing.plans.STARTER?.overageRate || pricing.plans.PRO?.overageRate || payg.pricePerMinute;
+  const writtenUnitRate = payg.writtenUnitPrice || 0;
+  const voiceUnitRate = payg.pricePerMinute || 0;
 
   const overageRows = [
     {
-      channel: isTR ? 'Arama dakikası' : 'Voice minute',
+      channel: isTR ? 'Destek etkileşimi' : 'Support interaction',
+      unit: isTR ? '1 etkileşim' : '1 interaction',
+      rate: `${formatSharedPrice(writtenUnitRate, region)}/${isTR ? 'etkileşim' : 'interaction'}`,
+      note: isTR
+        ? 'PAYG cüzdanından düşer. Aylık planlarda dahil havuz, sonra add-on, sonrasında written aşım uygulanır.'
+        : 'Deducted from the PAYG wallet. Monthly plans consume the included pool first, then add-ons, then written overage.'
+    },
+    {
+      channel: isTR ? 'Ses dakikası' : 'Voice minute',
       unit: isTR ? '1 dk' : '1 min',
-      rate: `${formatSharedPrice(overageRatePerMinute, region)}/${isTR ? 'dk' : 'min'}`,
-      note: isTR ? 'Plan dakikası bittikten sonra uygulanır.' : 'Applies after plan minutes are consumed.',
-    },
-    {
-      channel: isTR ? 'WhatsApp mesajı' : 'WhatsApp message',
-      unit: isTR ? '1 mesaj' : '1 message',
-      rate: isTR ? 'Ek ücret yok' : 'No extra fee',
-      note: isTR ? 'Mevcut plan kapsamında kullanılır.' : 'Handled within current plan scope.',
-      free: true,
-    },
-    {
-      channel: isTR ? 'E-posta yanıt/draft' : 'Email reply/draft',
-      unit: isTR ? '1 e-posta' : '1 email',
-      rate: isTR ? 'Ek ücret yok' : 'No extra fee',
-      note: isTR ? 'Ayrı mesaj başı aşım tanımı yok.' : 'No separate per-message overage is defined.',
-      free: true,
-    },
-    {
-      channel: isTR ? 'Web chat mesajı' : 'Web chat message',
-      unit: isTR ? '1 mesaj' : '1 message',
-      rate: isTR ? 'Ek ücret yok' : 'No extra fee',
-      note: isTR ? 'Mevcut plan kapsamında kullanılır.' : 'Handled within current plan scope.',
-      free: true,
+      rate: `${formatSharedPrice(voiceUnitRate, region)}/${isTR ? 'dk' : 'min'}`,
+      note: isTR
+        ? 'PAYG cüzdanından düşer. Pro ve Enterprise planlarında dahil dakikalar bittiğinde ses aşımı devreye girer.'
+        : 'Deducted from the PAYG wallet. On Pro and Enterprise, voice overage applies after included minutes are exhausted.'
     },
   ];
 
@@ -318,8 +306,8 @@ export default function PricingPage() {
               </h2>
               <p className="text-[var(--pr-text-secondary)]">
                 {isTR
-                  ? 'Aylık taahhüt yok. Dakika başı ödeme yapın.'
-                  : 'No monthly commitment. Pay per minute.'}
+                  ? 'Aylık taahhüt yok. Ses dakikaları ve yazılı etkileşimler kullanım cüzdanından düşer.'
+                  : 'No monthly commitment. Voice minutes and written interactions are deducted from the usage wallet.'}
               </p>
             </motion.div>
 
@@ -344,8 +332,9 @@ export default function PricingPage() {
 
               <div className="flex flex-wrap justify-center gap-3 mb-8">
                 {[
-                  isTR ? 'Tüm kanallar dahil' : 'All channels included',
+                  isTR ? 'Telefon + written kanallar dahil' : 'Phone + written channels included',
                   isTR ? `${payg.assistantsLimit} asistan` : `${payg.assistantsLimit} assistants`,
+                  isTR ? `${formatSharedPrice(payg.writtenUnitPrice, region)}/etkileşim` : `${formatSharedPrice(payg.writtenUnitPrice, region)}/interaction`,
                   isTR ? 'Bakiye süresi dolmaz' : 'Balance never expires',
                 ].map((tag) => (
                   <span

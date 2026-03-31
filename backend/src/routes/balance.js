@@ -365,7 +365,14 @@ router.get('/', async (req, res) => {
         remaining: Number.isFinite(writtenUsage.remaining) ? Number(writtenUsage.remaining || 0) : 0,
         addOnRemaining: Number(writtenUsage.addOnRemaining || 0),
         overage: Number(writtenUsage.overage || 0),
-        unitPrice: Number(writtenUsage.unitPrice || billingPlan.writtenInteractionUnitPrice || 0)
+        unitPrice: Number(writtenUsage.unitPrice || billingPlan.writtenInteractionUnitPrice || 0),
+        configured: Boolean(writtenUsage.configured),
+        note: writtenUsage.note || null,
+        channels: writtenUsage.channels || {
+          webchat: 0,
+          whatsapp: 0,
+          email: 0
+        }
       } : null,
 
       // Period info

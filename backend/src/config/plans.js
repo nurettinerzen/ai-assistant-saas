@@ -265,7 +265,7 @@ export const PLANS = {
     namePR: 'Pague Conforme Usa',
     minutesLimit: 0,          // Dahil dakika yok
     callsLimit: -1,
-    assistantsLimit: 1,       // 1 asistan
+    assistantsLimit: 5,       // 5 asistan
     phoneNumbersLimit: 1,
     overageLimit: 0,          // Aşım kavramı yok, direkt bakiyeden
     concurrentLimit: 1,       // 1 eşzamanlı çağrı

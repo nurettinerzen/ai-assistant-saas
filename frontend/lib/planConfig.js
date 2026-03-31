@@ -156,12 +156,12 @@ export const REGIONAL_PRICING = {
     currencyPosition: 'after',
     locale: 'tr-TR',
     plans: {
-      TRIAL: { price: 0, minutes: 15, concurrent: 1, assistants: 5, pricePerMinute: 0, chatDays: 7, paymentModel: null },
-      PAYG: { price: 0, minutes: 0, concurrent: 1, assistants: 5, pricePerMinute: 23, minTopup: 4, paymentModel: 'PREPAID' },
-      STARTER: { price: 2499, minutes: 0, concurrent: 0, assistants: 5, pricePerMinute: 0, overageRate: 0, paymentModel: 'POSTPAID' },
-      PRO: { price: 7499, minutes: 500, concurrent: 2, assistants: 10, pricePerMinute: 15, overageRate: 23, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 12, overageRate: 23, paymentModel: 'POSTPAID' },
-      BASIC: { price: 2499, minutes: 0, concurrent: 0, pricePerMinute: 0, overageRate: 0, paymentModel: 'POSTPAID' },
+      TRIAL: { price: 0, minutes: 15, writtenInteractions: 50, concurrent: 1, assistants: 1, pricePerMinute: 0, writtenUnitPrice: 2.5, chatDays: 7, paymentModel: null },
+      PAYG: { price: 0, minutes: 0, writtenInteractions: 0, concurrent: 1, assistants: 5, pricePerMinute: 23, writtenUnitPrice: 2.5, minTopup: 4, paymentModel: 'PREPAID' },
+      STARTER: { price: 2499, minutes: 0, writtenInteractions: 500, concurrent: 0, assistants: 5, pricePerMinute: 0, writtenUnitPrice: 2.5, overageRate: 0, paymentModel: 'POSTPAID' },
+      PRO: { price: 7499, minutes: 500, writtenInteractions: 2000, concurrent: 2, assistants: 10, pricePerMinute: 23, writtenUnitPrice: 2.5, overageRate: 23, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, writtenInteractions: null, concurrent: 5, assistants: 25, pricePerMinute: 23, writtenUnitPrice: 2.5, overageRate: 23, paymentModel: 'POSTPAID' },
+      BASIC: { price: 2499, minutes: 0, writtenInteractions: 500, concurrent: 0, assistants: 5, pricePerMinute: 0, writtenUnitPrice: 2.5, overageRate: 0, paymentModel: 'POSTPAID' },
     },
   },
   BR: {
@@ -169,12 +169,12 @@ export const REGIONAL_PRICING = {
     currencyPosition: 'before',
     locale: 'pt-BR',
     plans: {
-      TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7, paymentModel: null },
-      PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 4.60, minTopup: 4, paymentModel: 'PREPAID' },
-      STARTER: { price: 500, minutes: 0, concurrent: 0, pricePerMinute: 0, overageRate: 0, paymentModel: 'POSTPAID' },
-      PRO: { price: 1500, minutes: 500, concurrent: 2, pricePerMinute: 3.00, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 2.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      BASIC: { price: 500, minutes: 0, concurrent: 0, pricePerMinute: 0, overageRate: 0, paymentModel: 'POSTPAID' },
+      TRIAL: { price: 0, minutes: 15, writtenInteractions: 50, concurrent: 1, assistants: 1, pricePerMinute: 0, writtenUnitPrice: 0.5, chatDays: 7, paymentModel: null },
+      PAYG: { price: 0, minutes: 0, writtenInteractions: 0, concurrent: 1, assistants: 5, pricePerMinute: 4.60, writtenUnitPrice: 0.5, minTopup: 4, paymentModel: 'PREPAID' },
+      STARTER: { price: 500, minutes: 0, writtenInteractions: 500, concurrent: 0, assistants: 5, pricePerMinute: 0, writtenUnitPrice: 0.5, overageRate: 0, paymentModel: 'POSTPAID' },
+      PRO: { price: 1500, minutes: 500, writtenInteractions: 2000, concurrent: 2, assistants: 10, pricePerMinute: 4.60, writtenUnitPrice: 0.5, overageRate: 4.60, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, writtenInteractions: null, concurrent: 5, assistants: 25, pricePerMinute: 4.60, writtenUnitPrice: 0.5, overageRate: 4.60, paymentModel: 'POSTPAID' },
+      BASIC: { price: 500, minutes: 0, writtenInteractions: 500, concurrent: 0, assistants: 5, pricePerMinute: 0, writtenUnitPrice: 0.5, overageRate: 0, paymentModel: 'POSTPAID' },
     },
   },
   US: {
@@ -182,12 +182,12 @@ export const REGIONAL_PRICING = {
     currencyPosition: 'before',
     locale: 'en-US',
     plans: {
-      TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7, paymentModel: null },
-      PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 0.51, minTopup: 4, paymentModel: 'PREPAID' },
-      STARTER: { price: 55, minutes: 0, concurrent: 0, pricePerMinute: 0, overageRate: 0, paymentModel: 'POSTPAID' },
-      PRO: { price: 167, minutes: 500, concurrent: 2, pricePerMinute: 0.33, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 0.27, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      BASIC: { price: 55, minutes: 0, concurrent: 0, pricePerMinute: 0, overageRate: 0, paymentModel: 'POSTPAID' },
+      TRIAL: { price: 0, minutes: 15, writtenInteractions: 50, concurrent: 1, assistants: 1, pricePerMinute: 0, writtenUnitPrice: 0.06, chatDays: 7, paymentModel: null },
+      PAYG: { price: 0, minutes: 0, writtenInteractions: 0, concurrent: 1, assistants: 5, pricePerMinute: 0.51, writtenUnitPrice: 0.06, minTopup: 4, paymentModel: 'PREPAID' },
+      STARTER: { price: 55, minutes: 0, writtenInteractions: 500, concurrent: 0, assistants: 5, pricePerMinute: 0, writtenUnitPrice: 0.06, overageRate: 0, paymentModel: 'POSTPAID' },
+      PRO: { price: 167, minutes: 500, writtenInteractions: 2000, concurrent: 2, assistants: 10, pricePerMinute: 0.51, writtenUnitPrice: 0.06, overageRate: 0.51, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, writtenInteractions: null, concurrent: 5, assistants: 25, pricePerMinute: 0.51, writtenUnitPrice: 0.06, overageRate: 0.51, paymentModel: 'POSTPAID' },
+      BASIC: { price: 55, minutes: 0, writtenInteractions: 500, concurrent: 0, assistants: 5, pricePerMinute: 0, writtenUnitPrice: 0.06, overageRate: 0, paymentModel: 'POSTPAID' },
     },
   },
 };
@@ -339,7 +339,7 @@ export function formatPrice(amount, region = 'TR') {
     : `${config.currency}${formatted}`;
 }
 
-export default {
+const planConfig = {
   PLAN_IDS,
   PLAN_NAMES,
   PLAN_HIERARCHY,
@@ -359,3 +359,5 @@ export default {
   getRegionalConfig,
   formatPrice,
 };
+
+export default planConfig;
