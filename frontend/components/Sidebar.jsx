@@ -62,6 +62,7 @@ import { VISIBILITY, getFeatureVisibility } from '@/lib/features';
 import { getPlanDisplayName } from '@/lib/planConfig';
 import { TelyxLogoCompact } from './TelyxLogo';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export default function Sidebar({ user, credits, business }) {
   const pathname = usePathname();
@@ -80,11 +81,12 @@ export default function Sidebar({ user, credits, business }) {
   // Upgrade modal state
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState(null);
+  const { data: liveSubscription } = useSubscription();
 
   // Get user's current plan and country
   // Only use actual plan from subscription - don't assume STARTER as default
   // This prevents flash where features appear/disappear as plan loads
-  const userPlan = user?.subscription?.plan || user?.plan || null;
+  const userPlan = liveSubscription?.plan || user?.subscription?.plan || user?.plan || null;
   const userCountry = business?.country || user?.business?.country || 'TR';
 
   // Show skeleton until BOTH conditions are met:

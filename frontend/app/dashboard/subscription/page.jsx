@@ -287,8 +287,12 @@ export default function SubscriptionPage() {
         // Scheduled downgrade (end of period)
         const effectiveDate = response.data.effectiveDate
           ? formatDate(response.data.effectiveDate, 'short')
-          : t('dashboard.subscriptionPage.endOfPeriod');
-        toast.success(t('dashboard.subscriptionPage.downgradeScheduled').replace('{date}', effectiveDate).replace('{planName}', planName));
+          : null;
+        toast.success(
+          effectiveDate
+            ? t('dashboard.subscriptionPage.downgradeScheduled').replace('{date}', effectiveDate).replace('{planName}', planName)
+            : t('dashboard.subscriptionPage.downgradeScheduledNoDate').replace('{planName}', planName)
+        );
         await refreshBillingState();
       } else if (response.data?.checkoutFormContent) {
         // iyzico checkout form
@@ -363,6 +367,9 @@ export default function SubscriptionPage() {
   const voiceAddOnCatalog = subscription?.addOnCatalog?.voice || [];
   const currentPlanPricing = subscription ? getPlanPricing(subscription.plan) : null;
   const showCancelableSubscription = Boolean(subscription?.stripeSubscriptionId) && !['FREE', 'TRIAL', 'PAYG'].includes(subscription.plan);
+  const pendingPlanName = subscription?.pendingPlanId
+    ? getPlanDisplayName(subscription.pendingPlanId, locale)
+    : null;
   const currentPlanSummary = subscription ? [
     {
       label: locale === 'tr' ? 'Yazılı etkileşim' : 'Written interactions',
@@ -518,7 +525,7 @@ export default function SubscriptionPage() {
             </div>
 
             {/* Canceled status message */}
-            {subscription.cancelAtPeriodEnd && (
+            {subscription.cancelAtPeriodEnd && !subscription.pendingPlanId && (
               <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-2.5 text-sm text-orange-800 dark:text-orange-400">
                   <strong>{t('dashboard.subscriptionPage.subscriptionCanceled')}</strong>
@@ -531,6 +538,19 @@ export default function SubscriptionPage() {
               </div>
             )}
           </div>
+
+          {subscription.pendingPlanId && (
+            <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
+              <strong>{t('dashboard.subscriptionPage.pendingPlanChange')}</strong>
+              {' '}
+              {subscription.currentPeriodEnd
+                ? t('dashboard.subscriptionPage.pendingPlanChangeDesc')
+                  .replace('{date}', formatDate(subscription.currentPeriodEnd, 'short'))
+                  .replace('{planName}', pendingPlanName)
+                : t('dashboard.subscriptionPage.pendingPlanChangeNoDate')
+                  .replace('{planName}', pendingPlanName)}
+            </div>
+          )}
 
           {/* Credit Balance - full width */}
           <CreditBalance
