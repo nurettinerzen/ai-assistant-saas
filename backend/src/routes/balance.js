@@ -83,27 +83,27 @@ const BALANCE_SUBSCRIPTION_SELECT = {
 };
 
 async function ensureStripeCustomerForSubscription(subscription, ownerEmail) {
-  if (subscription.stripeCustomerId) {
-    return subscription.stripeCustomerId;
-  }
-
   if (!process.env.STRIPE_SECRET_KEY) {
     throw new Error('Stripe not configured');
   }
 
-  const customer = await stripeService.createCustomer(
-    ownerEmail,
-    subscription.business?.name || `Business ${subscription.businessId}`,
-    subscription.business?.country || 'TR'
-  );
-
-  await prisma.subscription.update({
-    where: { id: subscription.id },
-    data: {
-      stripeCustomerId: customer.id,
-      paymentProvider: 'stripe'
-    }
+  const { customer, recreated } = await stripeService.ensureCustomer({
+    stripeCustomerId: subscription.stripeCustomerId,
+    email: ownerEmail,
+    name: subscription.business?.name || `Business ${subscription.businessId}`,
+    countryCode: subscription.business?.country || 'TR',
+    metadata: { businessId: subscription.businessId }
   });
+
+  if (recreated || subscription.stripeCustomerId !== customer.id || subscription.paymentProvider !== 'stripe') {
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        stripeCustomerId: customer.id,
+        paymentProvider: 'stripe'
+      }
+    });
+  }
 
   return customer.id;
 }

@@ -20,13 +20,21 @@ class StripeService {
     return stripe;
   }
 
+  normalizeMetadata(metadata = {}) {
+    return Object.fromEntries(
+      Object.entries(metadata)
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => [key, String(value)])
+    );
+  }
+
   /**
    * Create a customer with regional metadata
    * @param {string} email - Customer email
    * @param {string} name - Customer name
    * @param {string} countryCode - Country code (TR, BR, US, etc.)
    */
-  async createCustomer(email, name, countryCode = 'TR') {
+  async createCustomer(email, name, countryCode = 'TR', metadata = {}) {
     try {
       const country = getCountry(countryCode);
 
@@ -36,13 +44,48 @@ class StripeService {
         metadata: {
           country: countryCode,
           currency: country.currency,
-          timezone: country.timezone
+          timezone: country.timezone,
+          ...this.normalizeMetadata(metadata)
         }
       });
     } catch (error) {
       console.error('Create customer error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Return an existing Stripe customer if it still exists, otherwise create a new one.
+   * Useful when local records still carry customer IDs from an older Stripe account.
+   */
+  async ensureCustomer({
+    stripeCustomerId,
+    email,
+    name,
+    countryCode = 'TR',
+    metadata = {}
+  }) {
+    if (stripeCustomerId) {
+      try {
+        const customer = await stripe.customers.retrieve(stripeCustomerId);
+        if (customer && !customer.deleted) {
+          return { customer, recreated: false };
+        }
+      } catch (error) {
+        const message = String(error?.message || '');
+        const code = String(error?.code || error?.raw?.code || '');
+        const isMissingCustomer = code === 'resource_missing' || message.includes('No such customer');
+
+        if (!isMissingCustomer) {
+          throw error;
+        }
+
+        console.warn(`⚠️ Stripe customer ${stripeCustomerId} was not found. Recreating customer in current Stripe account.`);
+      }
+    }
+
+    const customer = await this.createCustomer(email, name, countryCode, metadata);
+    return { customer, recreated: Boolean(stripeCustomerId) };
   }
 
   /**

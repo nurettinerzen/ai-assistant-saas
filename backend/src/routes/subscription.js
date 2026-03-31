@@ -180,27 +180,78 @@ async function resolvePlanFromPriceId(priceId) {
 }
 
 async function ensureStripeCustomerForSubscription(subscription, ownerEmail) {
-  if (subscription.stripeCustomerId) {
-    return subscription.stripeCustomerId;
-  }
-
   if (!process.env.STRIPE_SECRET_KEY) {
     throw new Error('Stripe not configured');
   }
 
-  const customer = await stripeService.createCustomer(
-    ownerEmail,
-    subscription.business?.name || `Business ${subscription.businessId}`,
-    subscription.business?.country || 'TR'
-  );
+  const { customer, recreated } = await stripeService.ensureCustomer({
+    stripeCustomerId: subscription.stripeCustomerId,
+    email: ownerEmail,
+    name: subscription.business?.name || `Business ${subscription.businessId}`,
+    countryCode: subscription.business?.country || 'TR',
+    metadata: { businessId: subscription.businessId }
+  });
 
-  await prisma.subscription.update({
-    where: { id: subscription.id },
-    data: {
+  if (recreated || subscription.stripeCustomerId !== customer.id || subscription.paymentProvider !== 'stripe') {
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        stripeCustomerId: customer.id,
+        paymentProvider: 'stripe'
+      }
+    });
+  }
+
+  return customer.id;
+}
+
+async function ensureStripeCustomerForBusiness({
+  businessId,
+  ownerEmail,
+  businessName,
+  countryCode = 'TR'
+}) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('Stripe not configured');
+  }
+
+  const existingSubscription = await prisma.subscription.findUnique({
+    where: { businessId },
+    select: {
+      id: true,
+      plan: true,
+      status: true,
+      stripeCustomerId: true,
+      paymentProvider: true
+    }
+  });
+
+  const { customer, recreated } = await stripeService.ensureCustomer({
+    stripeCustomerId: existingSubscription?.stripeCustomerId,
+    email: ownerEmail,
+    name: businessName || `Business ${businessId}`,
+    countryCode,
+    metadata: { businessId }
+  });
+
+  await prisma.subscription.upsert({
+    where: { businessId },
+    create: {
+      businessId,
+      stripeCustomerId: customer.id,
+      paymentProvider: 'stripe',
+      plan: existingSubscription?.plan || 'FREE',
+      status: existingSubscription?.status || 'INCOMPLETE'
+    },
+    update: {
       stripeCustomerId: customer.id,
       paymentProvider: 'stripe'
     }
   });
+
+  if (recreated) {
+    console.warn(`⚠️ Replaced stale Stripe customer for business ${businessId}`);
+  }
 
   return customer.id;
 }
@@ -1700,40 +1751,12 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
       return res.status(400).json({ error: 'Invalid plan or price ID' });
     }
 
-    // Get or create Stripe customer
-    let stripeCustomerId;
-    const existingSub = await prisma.subscription.findUnique({
-      where: { businessId }
+    const stripeCustomerId = await ensureStripeCustomerForBusiness({
+      businessId,
+      ownerEmail: user.email,
+      businessName: user.business.name,
+      countryCode: user.business.country || 'TR'
     });
-
-    if (existingSub?.stripeCustomerId) {
-      stripeCustomerId = existingSub.stripeCustomerId;
-    } else {
-      const customer = await getStripe().customers.create({
-        email: user.email,
-        name: user.business.name,
-        metadata: {
-          businessId: businessId.toString()
-        }
-      });
-      stripeCustomerId = customer.id;
-
-      // Save customer ID
-      await prisma.subscription.upsert({
-        where: { businessId },
-        create: {
-          businessId,
-          stripeCustomerId,
-          paymentProvider: 'stripe',
-          plan: 'FREE',
-          status: 'INCOMPLETE'
-        },
-        update: {
-          stripeCustomerId,
-          paymentProvider: 'stripe'
-        }
-      });
-    }
 
     // Create checkout session
     const frontendUrl = process.env.FRONTEND_URL;
@@ -2012,40 +2035,12 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
       return res.status(400).json({ error: 'Stripe price not configured for this plan' });
     }
 
-    // Get or create Stripe customer
-    let stripeCustomerId;
-    const existingSub = await prisma.subscription.findUnique({
-      where: { businessId }
+    const stripeCustomerId = await ensureStripeCustomerForBusiness({
+      businessId,
+      ownerEmail: user.email,
+      businessName: user.business.name,
+      countryCode: user.business.country || 'TR'
     });
-
-    if (existingSub?.stripeCustomerId) {
-      stripeCustomerId = existingSub.stripeCustomerId;
-    } else {
-      const customer = await getStripe().customers.create({
-        email: user.email,
-        name: user.business.name,
-        metadata: {
-          businessId: businessId.toString()
-        }
-      });
-      stripeCustomerId = customer.id;
-
-      // Save customer ID
-      await prisma.subscription.upsert({
-        where: { businessId },
-        create: {
-          businessId,
-          stripeCustomerId,
-          paymentProvider: 'stripe',
-          plan: 'FREE',
-          status: 'INCOMPLETE'
-        },
-        update: {
-          stripeCustomerId,
-          paymentProvider: 'stripe'
-        }
-      });
-    }
 
     // Check if user already has an active subscription
     const currentSubscription = await prisma.subscription.findUnique({
