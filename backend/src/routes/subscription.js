@@ -2242,7 +2242,8 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
             id: stripeSubscription.items.data[0].id,
             price: priceId
           }],
-          proration_behavior: 'create_prorations', // Charge difference now
+          proration_behavior: 'always_invoice', // Invoice and attempt to collect the upgrade difference now
+          payment_behavior: 'pending_if_incomplete',
           metadata: {
             planId: normalizedPlanId
           }

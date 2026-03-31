@@ -287,7 +287,8 @@ describe('Subscription lifecycle routes', () => {
     expect(response.body.type).toBe('upgrade');
     expect(stripeClientMock.subscriptions.update).toHaveBeenCalledWith('sub_test_123', {
       items: [{ id: 'si_test_123', price: 'price_pro_try' }],
-      proration_behavior: 'create_prorations',
+      proration_behavior: 'always_invoice',
+      payment_behavior: 'pending_if_incomplete',
       metadata: { planId: 'PRO' }
     });
     expect(prismaMock.subscription.update).toHaveBeenCalledWith({

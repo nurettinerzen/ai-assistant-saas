@@ -51,6 +51,9 @@ const TRANSLATIONS = {
     lowBalance: 'Bakiyeniz azalıyor',
     noBalance: 'Bakiyeniz yok',
     overageThisMonth: 'Bu Ay Aşım',
+    voiceOverage: 'Ses aşımı',
+    writtenOverage: 'Yazılı aşım',
+    overageInteractions: 'etkileşim',
     overageRate: 'Aşım ücreti',
     overagePostpaid: 'Ay sonu faturalanır',
     periodEnd: 'Dönem sonu:',
@@ -109,6 +112,9 @@ const TRANSLATIONS = {
     lowBalance: 'Your balance is running low',
     noBalance: 'No balance',
     overageThisMonth: 'Overage This Month',
+    voiceOverage: 'Voice overage',
+    writtenOverage: 'Written overage',
+    overageInteractions: 'interactions',
     overageRate: 'Overage rate',
     overagePostpaid: 'Billed at month end',
     periodEnd: 'Period ends:',
@@ -235,6 +241,12 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
       ?? balance.includedMinutes?.addOnRemaining
       ?? 0
     );
+    const voiceOverageMinutes = Number(balance.overage?.minutes || 0);
+    const voiceOverageAmount = Number(balance.overage?.amount || 0);
+    const voiceOverageRate = Number(balance.overage?.rate || 0);
+    const writtenOverageCount = Number(balance.writtenInteractions?.overage || 0);
+    const writtenOverageAmount = writtenOverageCount * Number(balance.writtenInteractions?.unitPrice || 0);
+    const hasAnyOverage = voiceOverageMinutes > 0 || writtenOverageCount > 0;
     const shouldShowWrittenUsage = Boolean(balance.writtenInteractions) && plan !== 'FREE';
     const hasConfiguredWrittenLimit = Number(balance.writtenInteractions?.limit || 0) > 0;
     const writtenChannels = balance.writtenInteractions?.channels || {
@@ -535,28 +547,43 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
             )}
 
             {/* Overage Info - POSTPAID (Ay sonu fatura) - Enterprise hariç */}
-            {!isEnterprise && (
+            {!isEnterprise && hasAnyOverage && (
               <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.overageThisMonth}</span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
-                      {balance.overage?.minutes || 0} {txt.min}
-                    </span>
-                  </div>
+                </div>
+                <div className="mt-3 space-y-2 text-sm">
+                  {voiceOverageMinutes > 0 && (
+                    <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-300">
+                      <span>{txt.voiceOverage}</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400">
+                        {voiceOverageMinutes} {txt.min} · {currency}{voiceOverageAmount.toLocaleString(dateLocale)}
+                      </span>
+                    </div>
+                  )}
+                  {writtenOverageCount > 0 && (
+                    <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-300">
+                      <span>{txt.writtenOverage}</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400">
+                        {writtenOverageCount} {txt.overageInteractions} · {currency}{writtenOverageAmount.toLocaleString(dateLocale)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
-                  <span>{txt.overageRate}: {currency}{balance.overage?.rate || 23}{txt.perMin}</span>
+                  <span>
+                    {voiceOverageMinutes > 0 && `${txt.overageRate}: ${currency}${voiceOverageRate}${txt.perMin}`}
+                    {voiceOverageMinutes > 0 && writtenOverageCount > 0 ? ' · ' : ''}
+                    {writtenOverageCount > 0 && `${txt.writtenUnitPrice}: ${currency}${Number(balance.writtenInteractions?.unitPrice || 0).toLocaleString(dateLocale)}`}
+                  </span>
                   <span className="text-amber-600 dark:text-amber-400">{txt.overagePostpaid}</span>
                 </div>
-                {balance.overage && balance.overage.minutes > 0 && (
-                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-400 font-semibold">
-                    {txt.postpaidNote}: {currency}{balance.overage.amount?.toLocaleString(dateLocale)}
-                  </p>
-                )}
+                <p className="mt-2 text-sm text-amber-700 dark:text-amber-400 font-semibold">
+                  {txt.postpaidNote}: {currency}{(voiceOverageAmount + writtenOverageAmount).toLocaleString(dateLocale)}
+                </p>
               </div>
             )}
           </>
