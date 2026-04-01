@@ -651,12 +651,12 @@ router.get('/hubspot/callback', async (req, res) => {
 
 async function handleLegacyWhatsAppManualConnect(req, res) {
   try {
-    const { accessToken, phoneNumberId, verifyToken, wabaId } = req.body;
+    const { accessToken, phoneNumberId, verifyToken } = req.body;
     let metaResponse = null;
 
-    if (!accessToken || !phoneNumberId) {
+    if (!accessToken || !phoneNumberId || !verifyToken) {
       return res.status(400).json({
-        error: 'Access token and phone number ID are required'
+        error: 'Access token, phone number ID, and verify token are required'
       });
     }
 
@@ -672,7 +672,7 @@ async function handleLegacyWhatsAppManualConnect(req, res) {
         `https://graph.facebook.com/v18.0/${phoneNumberId}`,
         {
           params: {
-            fields: 'id,display_phone_number,verified_name,name_status,quality_rating',
+            fields: 'id,display_phone_number',
           },
           headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -706,19 +706,11 @@ async function handleLegacyWhatsAppManualConnect(req, res) {
     const encryptedAccessToken = encryptTokenValue(accessToken);
     const webhookUrl = getWhatsAppWebhookUrl();
     const nowIso = new Date().toISOString();
-    const effectiveVerifyToken = getWebhookVerifyToken(
-      typeof verifyToken === 'string' && verifyToken.trim() ? verifyToken.trim() : existingCredentials.verifyToken || null
-    );
     const manualCredentials = {
       ...existingCredentials,
       tenantId: req.businessId,
       phoneNumberId,
-      wabaId: typeof wabaId === 'string' && wabaId.trim() ? wabaId.trim() : existingCredentials.wabaId || null,
       displayPhoneNumber: metaResponse.data?.display_phone_number || existingCredentials.displayPhoneNumber || null,
-      verifiedName: metaResponse.data?.verified_name || existingCredentials.verifiedName || null,
-      displayNameStatus: metaResponse.data?.name_status || existingCredentials.displayNameStatus || null,
-      qualityRating: metaResponse.data?.quality_rating || existingCredentials.qualityRating || null,
-      verifyToken: effectiveVerifyToken,
       webhookUrl,
       connectionStatus: 'CONNECTED',
       onboardingMethod: 'MANUAL',
@@ -736,7 +728,7 @@ async function handleLegacyWhatsAppManualConnect(req, res) {
       data: {
         whatsappPhoneNumberId: phoneNumberId,
         whatsappAccessToken: encryptedAccessToken,
-        whatsappVerifyToken: effectiveVerifyToken,
+        whatsappVerifyToken: verifyToken,
         whatsappWebhookUrl: webhookUrl
       }
     });
@@ -767,10 +759,7 @@ async function handleLegacyWhatsAppManualConnect(req, res) {
       success: true,
       message: 'WhatsApp connected successfully',
       webhookUrl,
-      phoneNumberId,
-      verifyToken: effectiveVerifyToken,
-      wabaId: manualCredentials.wabaId,
-      displayPhoneNumber: manualCredentials.displayPhoneNumber
+      phoneNumberId
     });
   } catch (error) {
     console.error('WhatsApp connect error:', error);
