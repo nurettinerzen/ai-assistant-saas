@@ -1493,6 +1493,7 @@
       "whatsappTestMetaNumberHint": "This connected sender looks like a Meta test number. Messages can only reach recipient numbers that are allowed and verified in Meta.",
       "whatsappTestLastResult": "Last send",
       "whatsappTestSentTo": "Recipient",
+      "whatsappTestTemplateUsed": "Template used",
       "whatsappTestMessageId": "Message ID",
       "whatsappTestDeliveryMode": "Delivery mode",
       "whatsappTestDeliveryModeTemplate": "Template message",

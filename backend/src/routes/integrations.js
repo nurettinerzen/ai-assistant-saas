@@ -55,6 +55,40 @@ function getWhatsAppWebhookUrl() {
   return `${process.env.BACKEND_URL}/api/whatsapp/webhook`;
 }
 
+function countTemplateVariables(components = []) {
+  return (Array.isArray(components) ? components : []).reduce((total, component) => {
+    const text = String(component?.text || '');
+    const matches = text.match(/\{\{\d+\}\}/g);
+    return total + (matches ? matches.length : 0);
+  }, 0);
+}
+
+function buildTemplateParameters(placeholderCount, fallbackMessage) {
+  return Array.from({ length: placeholderCount }, (_, index) => ({
+    type: 'text',
+    text: index === 0 ? fallbackMessage : `Telyx ${index + 1}`
+  }));
+}
+
+function pickApprovedTemplate(templates = []) {
+  const approved = templates.filter((template) => String(template?.status || '').toUpperCase() === 'APPROVED');
+  if (!approved.length) {
+    return null;
+  }
+
+  const helloWorld = approved.find((template) => String(template?.name || '').toLowerCase() === 'hello_world');
+  if (helloWorld) {
+    return helloWorld;
+  }
+
+  const zeroVariableTemplate = approved.find((template) => countTemplateVariables(template?.components) === 0);
+  if (zeroVariableTemplate) {
+    return zeroVariableTemplate;
+  }
+
+  return approved[0];
+}
+
 function getWhatsAppEmbeddedSignupRedirectUri() {
   const frontendUrl = String(process.env.FRONTEND_URL || '').replace(/\/+$/, '');
   if (!frontendUrl) {
@@ -1469,8 +1503,6 @@ router.post('/whatsapp/send', requireOwner, async (req, res) => {
 
     const connectedNumber = credentials.displayPhoneNumber || null;
     const connectedWabaId = credentials.wabaId || null;
-    const normalizedConnectedNumber = String(connectedNumber || '').replace(/[\s()-]/g, '');
-    const isMetaTestNumber = /^\+?1555/.test(normalizedConnectedNumber);
 
     // Prefer business-scoped token, fall back to partner/system-user token for embedded signup connections.
     const accessToken = business?.whatsappAccessToken
@@ -1481,22 +1513,52 @@ router.post('/whatsapp/send', requireOwner, async (req, res) => {
       return res.status(404).json({ error: 'WhatsApp access token not available' });
     }
 
-    // Meta test numbers are more reliable with the default template than free-form text.
-    const result = isMetaTestNumber
-      ? await whatsappService.sendTemplateMessage(
-        accessToken,
-        business.whatsappPhoneNumberId,
-        recipientPhone,
-        'hello_world',
-        [],
-        'en_US'
-      )
-      : await whatsappService.sendMessage(
+    let result;
+    let deliveryMode = 'text';
+    let templateInfo = null;
+
+    if (connectedWabaId) {
+      try {
+        const templates = await whatsappService.listMessageTemplates(accessToken, connectedWabaId);
+        const selectedTemplate = pickApprovedTemplate(templates);
+
+        if (selectedTemplate) {
+          const placeholderCount = countTemplateVariables(selectedTemplate.components);
+          const templateParams = placeholderCount > 0
+            ? [{
+              type: 'body',
+              parameters: buildTemplateParameters(placeholderCount, message)
+            }]
+            : [];
+
+          result = await whatsappService.sendTemplateMessage(
+            accessToken,
+            business.whatsappPhoneNumberId,
+            recipientPhone,
+            selectedTemplate.name,
+            templateParams,
+            selectedTemplate.language || 'en_US'
+          );
+
+          deliveryMode = 'template';
+          templateInfo = {
+            name: selectedTemplate.name,
+            language: selectedTemplate.language || 'en_US'
+          };
+        }
+      } catch (templateError) {
+        console.warn('WhatsApp template lookup/send fallback to text:', templateError?.response?.data || templateError?.message || templateError);
+      }
+    }
+
+    if (!result) {
+      result = await whatsappService.sendMessage(
         accessToken,
         business.whatsappPhoneNumberId,
         recipientPhone,
         message
       );
+    }
 
     const messageId = result?.messages?.[0]?.id || result?.messages?.[0]?.message_status || null;
 
@@ -1510,7 +1572,8 @@ router.post('/whatsapp/send', requireOwner, async (req, res) => {
         phoneNumberId: business.whatsappPhoneNumberId,
         wabaId: connectedWabaId,
         acceptedByMeta: true,
-        deliveryMode: isMetaTestNumber ? 'template_hello_world' : 'text',
+        deliveryMode,
+        templateInfo,
         raw: result
       }
     });

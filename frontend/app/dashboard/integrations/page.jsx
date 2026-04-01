@@ -332,6 +332,7 @@ export default function IntegrationsPage() {
           messageId: response.data?.result?.messageId || null,
           acceptedByMeta: Boolean(response.data?.result?.acceptedByMeta),
           deliveryMode: response.data?.result?.deliveryMode || 'text',
+          templateInfo: response.data?.result?.templateInfo || null,
           sentAt: new Date().toISOString(),
         });
         toast.success(t('dashboard.integrationsPage.whatsappTestAcceptedSuccess'));
@@ -888,7 +889,10 @@ const handleShopifyConnect = async () => {
                 <div className="font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.whatsappTestLastResult')}</div>
                 <div>{t('dashboard.integrationsPage.whatsappTestSentTo')}: {whatsappTestResult.recipientPhone}</div>
                 {whatsappTestResult.deliveryMode && (
-                  <div>{t('dashboard.integrationsPage.whatsappTestDeliveryMode')}: {whatsappTestResult.deliveryMode === 'template_hello_world' ? t('dashboard.integrationsPage.whatsappTestDeliveryModeTemplate') : t('dashboard.integrationsPage.whatsappTestDeliveryModeText')}</div>
+                  <div>{t('dashboard.integrationsPage.whatsappTestDeliveryMode')}: {whatsappTestResult.deliveryMode === 'template' ? t('dashboard.integrationsPage.whatsappTestDeliveryModeTemplate') : t('dashboard.integrationsPage.whatsappTestDeliveryModeText')}</div>
+                )}
+                {whatsappTestResult.templateInfo?.name && (
+                  <div>{t('dashboard.integrationsPage.whatsappTestTemplateUsed')}: {whatsappTestResult.templateInfo.name}{whatsappTestResult.templateInfo.language ? ` (${whatsappTestResult.templateInfo.language})` : ''}</div>
                 )}
                 {whatsappTestResult.messageId && (
                   <div className="break-all">{t('dashboard.integrationsPage.whatsappTestMessageId')}: {whatsappTestResult.messageId}</div>

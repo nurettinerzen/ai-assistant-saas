@@ -10,6 +10,29 @@ import { safeCompareStrings } from '../security/constantTime.js';
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
 class WhatsAppService {
+  async listMessageTemplates(accessToken, wabaId, limit = 25) {
+    try {
+      const response = await axios.get(
+        `${WHATSAPP_API_URL}/${wabaId}/message_templates`,
+        {
+          params: {
+            fields: 'name,status,language,category,components',
+            limit,
+          },
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      return Array.isArray(response.data?.data) ? response.data.data : [];
+    } catch (error) {
+      console.error('WhatsApp list templates error:', error.response?.data);
+      throw error;
+    }
+  }
+
   /**
    * Send text message
    */

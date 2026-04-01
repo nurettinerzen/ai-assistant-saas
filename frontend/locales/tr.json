@@ -1493,6 +1493,7 @@
       "whatsappTestMetaNumberHint": "Bu bağlı numara bir Meta test numarası gibi görünüyor. Mesajlar yalnızca Meta'da izin verilen doğrulanmış alıcılara ulaşabilir.",
       "whatsappTestLastResult": "Son gönderim",
       "whatsappTestSentTo": "Alıcı",
+      "whatsappTestTemplateUsed": "Kullanılan şablon",
       "whatsappTestMessageId": "Mesaj kimliği",
       "whatsappTestDeliveryMode": "Gönderim türü",
       "whatsappTestDeliveryModeTemplate": "Şablon mesaj",
