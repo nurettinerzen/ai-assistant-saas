@@ -40,7 +40,14 @@ class WhatsAppService {
   /**
    * Send template message
    */
-  async sendTemplateMessage(accessToken, phoneNumberId, recipientPhone, templateName, templateParams) {
+  async sendTemplateMessage(
+    accessToken,
+    phoneNumberId,
+    recipientPhone,
+    templateName,
+    templateParams = [],
+    languageCode = 'en_US'
+  ) {
     try {
       const response = await axios.post(
         `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
@@ -50,7 +57,7 @@ class WhatsAppService {
           type: 'template',
           template: {
             name: templateName,
-            language: { code: 'en' },
+            language: { code: languageCode },
             components: templateParams
           }
         },

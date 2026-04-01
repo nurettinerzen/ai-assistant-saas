@@ -330,9 +330,11 @@ export default function IntegrationsPage() {
           recipientPhone: response.data?.result?.recipientPhone || whatsappTestForm.recipientPhone.trim(),
           connectedNumber: response.data?.result?.connectedNumber || whatsappStatus?.displayPhoneNumber || null,
           messageId: response.data?.result?.messageId || null,
+          acceptedByMeta: Boolean(response.data?.result?.acceptedByMeta),
+          deliveryMode: response.data?.result?.deliveryMode || 'text',
           sentAt: new Date().toISOString(),
         });
-        toast.success(t('dashboard.integrationsPage.whatsappTestSendSuccess'));
+        toast.success(t('dashboard.integrationsPage.whatsappTestAcceptedSuccess'));
       } else {
         toast.error(t('dashboard.integrationsPage.whatsappTestSendFailed'));
       }
@@ -789,38 +791,67 @@ const handleShopifyConnect = async () => {
               </h4>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-              {whatsappStatus?.displayPhoneNumber && (
-                <div>
-                  {t('dashboard.integrationsPage.whatsappConnectedNumber')}: <span className="font-medium text-neutral-900 dark:text-white">{whatsappStatus.displayPhoneNumber}</span>
-                </div>
-              )}
+            <div className="grid grid-cols-1 gap-2 text-xs text-neutral-600 dark:text-neutral-400 sm:grid-cols-2">
               {whatsappStatus?.phoneNumberId && (
-                <div>
-                  {t('dashboard.integrationsPage.whatsappPhoneNumberIdLabel')}: <span className="font-medium text-neutral-900 dark:text-white">{whatsappStatus.phoneNumberId}</span>
+                <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/40 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
+                    {t('dashboard.integrationsPage.whatsappPhoneNumberIdLabel')}
+                  </div>
+                  <div className="mt-1 font-medium text-neutral-900 dark:text-white break-all">{whatsappStatus.phoneNumberId}</div>
                 </div>
               )}
               {whatsappStatus?.wabaId && (
-                <div>
-                  {t('dashboard.integrationsPage.whatsappBusinessAccountLabel')}: <span className="font-medium text-neutral-900 dark:text-white">{whatsappStatus.wabaId}</span>
+                <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/40 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
+                    {t('dashboard.integrationsPage.whatsappBusinessAccountLabel')}
+                  </div>
+                  <div className="mt-1 font-medium text-neutral-900 dark:text-white break-all">{whatsappStatus.wabaId}</div>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor={`whatsapp-test-recipient-${integration.type}`}>
-                {t('dashboard.integrationsPage.whatsappTestRecipientLabel')}
-              </Label>
-              <Input
-                id={`whatsapp-test-recipient-${integration.type}`}
-                type="tel"
-                value={whatsappTestForm.recipientPhone}
-                placeholder={t('dashboard.integrationsPage.whatsappTestRecipientPlaceholder')}
-                onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, recipientPhone: event.target.value }))}
-              />
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                {t('dashboard.integrationsPage.whatsappTestRecipientHint')}
-              </p>
+            {String(whatsappStatus?.displayPhoneNumber || '').replace(/[\s()-]/g, '').startsWith('+1555') && (
+              <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                {t('dashboard.integrationsPage.whatsappTestMetaNumberHint')}
+              </div>
+            )}
+
+            {whatsappTestResult?.acceptedByMeta && (
+              <div className="rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-800 dark:text-blue-300">
+                {t('dashboard.integrationsPage.whatsappTestAcceptedHint')}
+                {whatsappTestResult.deliveryMode === 'template_hello_world' && (
+                  <div className="mt-1">{t('dashboard.integrationsPage.whatsappTestTemplateFallbackHint')}</div>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.2fr_1fr]">
+              <div className="space-y-2">
+                <Label htmlFor={`whatsapp-test-recipient-${integration.type}`}>
+                  {t('dashboard.integrationsPage.whatsappTestRecipientLabel')}
+                </Label>
+                <Input
+                  id={`whatsapp-test-recipient-${integration.type}`}
+                  type="tel"
+                  value={whatsappTestForm.recipientPhone}
+                  placeholder={t('dashboard.integrationsPage.whatsappTestRecipientPlaceholder')}
+                  onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, recipientPhone: event.target.value }))}
+                />
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                  {t('dashboard.integrationsPage.whatsappTestRecipientHint')}
+                </p>
+              </div>
+
+              {whatsappStatus?.displayPhoneNumber && (
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/40 px-3 py-3">
+                  <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
+                    {t('dashboard.integrationsPage.whatsappSenderAssetLabel')}
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-neutral-900 dark:text-white break-words">
+                    {whatsappStatus.displayPhoneNumber}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -853,14 +884,14 @@ const handleShopifyConnect = async () => {
             </Button>
 
             {whatsappTestResult && (
-              <div className="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-xs text-green-800 dark:text-green-300">
-                <div className="font-medium">{t('dashboard.integrationsPage.whatsappTestLastResult')}</div>
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/40 px-3 py-3 text-xs text-neutral-700 dark:text-neutral-300">
+                <div className="font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.whatsappTestLastResult')}</div>
                 <div>{t('dashboard.integrationsPage.whatsappTestSentTo')}: {whatsappTestResult.recipientPhone}</div>
-                {whatsappTestResult.connectedNumber && (
-                  <div>{t('dashboard.integrationsPage.whatsappConnectedNumber')}: {whatsappTestResult.connectedNumber}</div>
+                {whatsappTestResult.deliveryMode && (
+                  <div>{t('dashboard.integrationsPage.whatsappTestDeliveryMode')}: {whatsappTestResult.deliveryMode === 'template_hello_world' ? t('dashboard.integrationsPage.whatsappTestDeliveryModeTemplate') : t('dashboard.integrationsPage.whatsappTestDeliveryModeText')}</div>
                 )}
                 {whatsappTestResult.messageId && (
-                  <div>{t('dashboard.integrationsPage.whatsappTestMessageId')}: {whatsappTestResult.messageId}</div>
+                  <div className="break-all">{t('dashboard.integrationsPage.whatsappTestMessageId')}: {whatsappTestResult.messageId}</div>
                 )}
               </div>
             )}

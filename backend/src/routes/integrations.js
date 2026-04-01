@@ -1469,6 +1469,8 @@ router.post('/whatsapp/send', requireOwner, async (req, res) => {
 
     const connectedNumber = credentials.displayPhoneNumber || null;
     const connectedWabaId = credentials.wabaId || null;
+    const normalizedConnectedNumber = String(connectedNumber || '').replace(/[\s()-]/g, '');
+    const isMetaTestNumber = /^\+?1555/.test(normalizedConnectedNumber);
 
     // Prefer business-scoped token, fall back to partner/system-user token for embedded signup connections.
     const accessToken = business?.whatsappAccessToken
@@ -1479,25 +1481,36 @@ router.post('/whatsapp/send', requireOwner, async (req, res) => {
       return res.status(404).json({ error: 'WhatsApp access token not available' });
     }
 
-    // Send message via WhatsApp service
-    const result = await whatsappService.sendMessage(
-      accessToken,
-      business.whatsappPhoneNumberId,
-      recipientPhone,
-      message
-    );
+    // Meta test numbers are more reliable with the default template than free-form text.
+    const result = isMetaTestNumber
+      ? await whatsappService.sendTemplateMessage(
+        accessToken,
+        business.whatsappPhoneNumberId,
+        recipientPhone,
+        'hello_world',
+        [],
+        'en_US'
+      )
+      : await whatsappService.sendMessage(
+        accessToken,
+        business.whatsappPhoneNumberId,
+        recipientPhone,
+        message
+      );
 
     const messageId = result?.messages?.[0]?.id || result?.messages?.[0]?.message_status || null;
 
     res.json({
       success: true,
-      message: 'WhatsApp test message sent',
+      message: 'WhatsApp message accepted by Meta',
       result: {
         messageId,
         recipientPhone,
         connectedNumber,
         phoneNumberId: business.whatsappPhoneNumberId,
         wabaId: connectedWabaId,
+        acceptedByMeta: true,
+        deliveryMode: isMetaTestNumber ? 'template_hello_world' : 'text',
         raw: result
       }
     });
