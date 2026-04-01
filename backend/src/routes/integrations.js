@@ -1421,9 +1421,10 @@ router.get('/whatsapp/status', async (req, res) => {
   }
 });
 
-router.post('/whatsapp/send', async (req, res) => {
+router.post('/whatsapp/send', requireOwner, async (req, res) => {
   try {
-    const { recipientPhone, message } = req.body;
+    const recipientPhone = String(req.body?.recipientPhone || '').trim();
+    const message = String(req.body?.message || '').trim();
 
     if (!recipientPhone || !message) {
       return res.status(400).json({
@@ -1431,17 +1432,43 @@ router.post('/whatsapp/send', async (req, res) => {
       });
     }
 
-    const business = await prisma.business.findUnique({
-      where: { id: req.businessId },
-      select: {
-        whatsappPhoneNumberId: true,
-        whatsappAccessToken: true
-      }
-    });
+    if (message.length > 4096) {
+      return res.status(400).json({
+        error: 'Message is too long'
+      });
+    }
+
+    const [business, integration] = await Promise.all([
+      prisma.business.findUnique({
+        where: { id: req.businessId },
+        select: {
+          whatsappPhoneNumberId: true,
+          whatsappAccessToken: true
+        }
+      }),
+      prisma.integration.findUnique({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WHATSAPP'
+          }
+        },
+        select: {
+          credentials: true
+        }
+      })
+    ]);
 
     if (!business?.whatsappPhoneNumberId || !business?.whatsappAccessToken) {
       return res.status(404).json({ error: 'WhatsApp not connected' });
     }
+
+    const credentials = integration?.credentials && typeof integration.credentials === 'object'
+      ? integration.credentials
+      : {};
+
+    const connectedNumber = credentials.displayPhoneNumber || null;
+    const connectedWabaId = credentials.wabaId || null;
 
     // Decrypt access token (supports legacy encrypted and plaintext values)
     const accessToken = decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
@@ -1454,10 +1481,25 @@ router.post('/whatsapp/send', async (req, res) => {
       message
     );
 
-    res.json({ success: true, result });
+    const messageId = result?.messages?.[0]?.id || result?.messages?.[0]?.message_status || null;
+
+    res.json({
+      success: true,
+      message: 'WhatsApp test message sent',
+      result: {
+        messageId,
+        recipientPhone,
+        connectedNumber,
+        phoneNumberId: business.whatsappPhoneNumberId,
+        wabaId: connectedWabaId,
+        raw: result
+      }
+    });
   } catch (error) {
     console.error('WhatsApp send error:', error);
-    res.status(500).json({ error: 'Failed to send WhatsApp message' });
+    res.status(500).json({
+      error: error?.response?.data?.error?.message || 'Failed to send WhatsApp message'
+    });
   }
 });
 

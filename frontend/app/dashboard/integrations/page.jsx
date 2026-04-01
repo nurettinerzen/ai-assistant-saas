@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -148,6 +149,9 @@ export default function IntegrationsPage() {
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappForm, setWhatsappForm] = useState({ accessToken: '', phoneNumberId: '', verifyToken: '' });
+  const [whatsappTestForm, setWhatsappTestForm] = useState({ recipientPhone: '', message: '' });
+  const [whatsappTestSending, setWhatsappTestSending] = useState(false);
+  const [whatsappTestResult, setWhatsappTestResult] = useState(null);
   const {
     flowState: whatsappEmbeddedSignupState,
     flowError: whatsappEmbeddedSignupError,
@@ -217,6 +221,19 @@ export default function IntegrationsPage() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    setWhatsappTestForm((prev) => {
+      if (prev.message) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        message: t('dashboard.integrationsPage.whatsappTestDefaultMessage'),
+      };
+    });
+  }, [locale, t]);
 
   // Handler functions
   const handleGmailConnect = async () => {
@@ -292,6 +309,38 @@ export default function IntegrationsPage() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || t('dashboard.integrationsPage.whatsappRefreshFailed'));
+    }
+  };
+
+  const handleSendWhatsAppTestMessage = async () => {
+    if (!whatsappTestForm.recipientPhone.trim() || !whatsappTestForm.message.trim()) {
+      toast.error(t('dashboard.integrationsPage.whatsappTestFillAllFields'));
+      return;
+    }
+
+    try {
+      setWhatsappTestSending(true);
+      const response = await apiClient.integrations.sendWhatsAppTestMessage({
+        recipientPhone: whatsappTestForm.recipientPhone.trim(),
+        message: whatsappTestForm.message.trim(),
+      });
+
+      if (response.data?.success) {
+        setWhatsappTestResult({
+          recipientPhone: response.data?.result?.recipientPhone || whatsappTestForm.recipientPhone.trim(),
+          connectedNumber: response.data?.result?.connectedNumber || whatsappStatus?.displayPhoneNumber || null,
+          messageId: response.data?.result?.messageId || null,
+          sentAt: new Date().toISOString(),
+        });
+        toast.success(t('dashboard.integrationsPage.whatsappTestSendSuccess'));
+      } else {
+        toast.error(t('dashboard.integrationsPage.whatsappTestSendFailed'));
+      }
+    } catch (error) {
+      console.error('WhatsApp test send error:', error);
+      toast.error(error.response?.data?.error || t('dashboard.integrationsPage.whatsappTestSendFailed'));
+    } finally {
+      setWhatsappTestSending(false);
     }
   };
 
@@ -728,6 +777,95 @@ const handleShopifyConnect = async () => {
               <p className="text-xs text-red-600 dark:text-red-400">
                 {whatsappEmbeddedSignupError?.response?.data?.error || whatsappEmbeddedSignupError?.message}
               </p>
+            )}
+          </div>
+        )}
+
+        {isWhatsApp && whatsappConnected && !whatsappNeedsReconnect && can('integrations:connect') && (
+          <div className="mb-4 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 p-4 space-y-3">
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                {t('dashboard.integrationsPage.whatsappTestPanelTitle')}
+              </h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                {t('dashboard.integrationsPage.whatsappTestPanelDesc')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+              {whatsappStatus?.displayPhoneNumber && (
+                <div>
+                  {t('dashboard.integrationsPage.whatsappConnectedNumber')}: <span className="font-medium text-neutral-900 dark:text-white">{whatsappStatus.displayPhoneNumber}</span>
+                </div>
+              )}
+              {whatsappStatus?.phoneNumberId && (
+                <div>
+                  {t('dashboard.integrationsPage.whatsappPhoneNumberIdLabel')}: <span className="font-medium text-neutral-900 dark:text-white">{whatsappStatus.phoneNumberId}</span>
+                </div>
+              )}
+              {whatsappStatus?.wabaId && (
+                <div>
+                  {t('dashboard.integrationsPage.whatsappBusinessAccountLabel')}: <span className="font-medium text-neutral-900 dark:text-white">{whatsappStatus.wabaId}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor={`whatsapp-test-recipient-${integration.type}`}>
+                {t('dashboard.integrationsPage.whatsappTestRecipientLabel')}
+              </Label>
+              <Input
+                id={`whatsapp-test-recipient-${integration.type}`}
+                type="tel"
+                value={whatsappTestForm.recipientPhone}
+                placeholder={t('dashboard.integrationsPage.whatsappTestRecipientPlaceholder')}
+                onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, recipientPhone: event.target.value }))}
+              />
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                {t('dashboard.integrationsPage.whatsappTestRecipientHint')}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor={`whatsapp-test-message-${integration.type}`}>
+                {t('dashboard.integrationsPage.whatsappTestMessageLabel')}
+              </Label>
+              <Textarea
+                id={`whatsapp-test-message-${integration.type}`}
+                rows={4}
+                value={whatsappTestForm.message}
+                placeholder={t('dashboard.integrationsPage.whatsappTestMessagePlaceholder')}
+                onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, message: event.target.value }))}
+              />
+            </div>
+
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={handleSendWhatsAppTestMessage}
+              disabled={whatsappTestSending}
+            >
+              {whatsappTestSending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  {t('dashboard.integrationsPage.whatsappTestSending')}
+                </>
+              ) : (
+                t('dashboard.integrationsPage.whatsappTestSendButton')
+              )}
+            </Button>
+
+            {whatsappTestResult && (
+              <div className="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-xs text-green-800 dark:text-green-300">
+                <div className="font-medium">{t('dashboard.integrationsPage.whatsappTestLastResult')}</div>
+                <div>{t('dashboard.integrationsPage.whatsappTestSentTo')}: {whatsappTestResult.recipientPhone}</div>
+                {whatsappTestResult.connectedNumber && (
+                  <div>{t('dashboard.integrationsPage.whatsappConnectedNumber')}: {whatsappTestResult.connectedNumber}</div>
+                )}
+                {whatsappTestResult.messageId && (
+                  <div>{t('dashboard.integrationsPage.whatsappTestMessageId')}: {whatsappTestResult.messageId}</div>
+                )}
+              </div>
             )}
           </div>
         )}

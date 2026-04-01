@@ -151,6 +151,7 @@ export const apiClient = {
     connect: (provider, data) => api.post(`/api/integrations/${provider}/connect`, data),
     disconnect: (provider) => api.post(`/api/integrations/${provider}/disconnect`),
     test: (provider) => api.post(`/api/integrations/${provider}/test`),
+    sendWhatsAppTestMessage: (data) => api.post('/api/integrations/whatsapp/send', data),
   },
 
   // Knowledge Base
