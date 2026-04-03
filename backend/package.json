@@ -11,6 +11,7 @@
     "migrate": "npx prisma migrate dev",
     "migrate:deploy": "npx prisma migrate deploy",
     "migrate:status": "npx prisma migrate status",
+    "db:push": "npx prisma db push",
     "generate": "npx prisma generate",
     "studio": "npx prisma studio",
     "test-user": "node create-test-user.js",

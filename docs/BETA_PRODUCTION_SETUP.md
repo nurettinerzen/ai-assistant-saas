@@ -55,6 +55,15 @@ Minimum environment split:
 - `STRIPE_WEBHOOK_SECRET=<test webhook secret>`
 - `STRIPE_*_PRICE_ID*=<test prices>`
 
+If the beta database is a brand-new Supabase project, run a one-time schema bootstrap after the first deploy:
+
+1. Open the Render shell for the beta backend service.
+2. Run `cd /opt/render/project/src/backend`
+3. Run `npm run db:push`
+4. Restart or redeploy the beta backend service.
+
+This repo's Prisma migration history does not contain a full initial baseline for an empty database, so `db push` is the fastest way to create the beta tables the app expects. Do not use this shortcut for the live production database.
+
 ### Backend production
 
 - `NODE_ENV=production`
