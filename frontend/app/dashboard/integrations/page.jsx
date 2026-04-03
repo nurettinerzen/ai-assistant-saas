@@ -129,40 +129,23 @@ const INTEGRATION_LOGOS = {
   },
   TRENDYOL: {
     src: '/assets/integrations/trendyol.png',
-    width: 128,
-    height: 52,
-    className: 'h-7 w-auto object-contain',
+    width: 40,
+    height: 40,
+    className: 'h-10 w-10 rounded-lg object-cover shadow-sm border border-neutral-200 dark:border-neutral-700',
+    unoptimized: true,
   },
   HEPSIBURADA: {
     src: '/assets/integrations/hepsiburada.png',
-    width: 164,
-    height: 28,
-    className: 'h-7 w-auto object-contain',
+    width: 40,
+    height: 40,
+    className: 'h-10 w-10 rounded-lg object-cover shadow-sm border border-neutral-200 dark:border-neutral-700',
+    unoptimized: true,
   },
 };
-
-const MARKETPLACE_LOGO_TYPES = new Set(['TRENDYOL', 'HEPSIBURADA']);
 
 const IntegrationLogo = ({ type, className }) => {
   const logo = INTEGRATION_LOGOS[type];
   if (logo) {
-    if (MARKETPLACE_LOGO_TYPES.has(type)) {
-      return (
-        <span
-          className={className || 'relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-sm dark:border-neutral-700'}
-        >
-          <Image
-            src={logo.src}
-            alt={type}
-            fill
-            sizes="40px"
-            unoptimized
-            className="object-contain p-1"
-          />
-        </span>
-      );
-    }
-
     return (
       <Image
         src={logo.src}
@@ -170,6 +153,7 @@ const IntegrationLogo = ({ type, className }) => {
         width={logo.width}
         height={logo.height}
         className={className || logo.className}
+        unoptimized={logo.unoptimized}
       />
     );
   }
@@ -822,8 +806,8 @@ const handleShopifyConnect = async () => {
       IYZICO: t('dashboard.integrationsPage.iyzicoConnect'),
       ZAPIER: t('dashboard.integrationsPage.zapierConnect'),
       IKAS: t('dashboard.integrationsPage.ikasConnect'),
-      TRENDYOL: 'Trendyol mağazanızdaki müşteri sorularını çekin, AI cevap taslağı oluşturun ve panelden onaylayın.',
-      HEPSIBURADA: 'Hepsiburada sorularını çekin, AI ile yanıt hazırlayın ve panelden onaylayarak gönderin.',
+      TRENDYOL: 'Trendyol mağazanızı bağlayın ve müşteri sorularını panelden yönetin.',
+      HEPSIBURADA: 'Hepsiburada mağazanızı bağlayın ve müşteri sorularını panelden yönetin.',
       IDEASOFT: t('dashboard.integrationsPage.ideasoftConnect'),
       TICIMAX: t('dashboard.integrationsPage.ticimaxConnect')
     };
@@ -953,7 +937,7 @@ const handleShopifyConnect = async () => {
       <div key={integration.type} className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${disabled || isLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800' : 'hover:shadow-md'} border-neutral-200 dark:border-neutral-700`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Icon className={isMarketplaceBeta ? 'relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-sm dark:border-neutral-700' : `h-6 w-6 ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`} />
+            <Icon className={isMarketplaceBeta ? 'h-10 w-10 rounded-lg object-cover shadow-sm border border-neutral-200 dark:border-neutral-700' : `h-6 w-6 ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`} />
             <div>
               <div className="flex items-center gap-2">
                 <h3 className={`font-semibold ${disabled || isLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>{integration.name}</h3>
