@@ -13,8 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getChatWidgetFeedbackCopy } from '@/lib/chatWidgetFeedbackCopy';
+import runtimeConfig from '@/lib/runtime-config';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = runtimeConfig.apiUrl;
 const FEEDBACK_MIN_ASSISTANT_TURNS = 2;
 const LIGHTWEIGHT_CHATTER_PATTERN = /^(selam|merhaba|nasılsın|iyi misin|teşekkürler|teşekkür ederim|sağ ol|sağ olun|günaydın|iyi akşamlar|görüşürüz|bye|hi|hello|hey|how are you|thanks|thank you|good morning|good evening)[!.?, ]*$/i;
 
@@ -561,7 +562,7 @@ useEffect(() => {
           {showBranding && (
             <div className="px-4 py-2 bg-gray-50 dark:bg-neutral-900 border-t border-gray-100 dark:border-neutral-800 text-center shrink-0">
               <span className="text-xs text-gray-400 dark:text-gray-500">
-                Powered by <a href="https://telyx.ai" target="_blank" className="font-semibold hover:text-gray-600 dark:hover:text-gray-400" style={{ color: primaryColor }}>Telyx.ai</a>
+                Powered by <a href={runtimeConfig.siteUrl} target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-gray-600 dark:hover:text-gray-400" style={{ color: primaryColor }}>Telyx.ai</a>
               </span>
             </div>
           )}

@@ -38,6 +38,7 @@ import {
   logContentSafetyViolation
 } from '../utils/content-safety.js';
 import { isPhoneInboundEnabledForBusiness } from '../services/phoneInboundGate.js';
+import runtimeConfig from '../config/runtime.js';
 import { safeCompareHex } from '../security/constantTime.js';
 
 const router = express.Router();
@@ -2017,7 +2018,7 @@ router.get('/signed-url/:assistantId', async (req, res) => {
 router.get('/webhook-diagnostics/:agentId', authenticateToken, async (req, res) => {
   try {
     const { agentId } = req.params;
-    const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
+    const backendUrl = runtimeConfig.backendUrl;
     const sync = String(req.query.sync || '').toLowerCase() === 'true';
 
     let workspaceSync = null;

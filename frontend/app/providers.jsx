@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useEffect, useRef, useState } from 'react';
+import runtimeConfig from '@/lib/runtime-config';
 
 export function Providers({ children }) {
   const buildLogged = useRef(false);
@@ -33,7 +34,7 @@ export function Providers({ children }) {
       || 'unknown';
     const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || 'unknown';
 
-    console.info(`[Frontend Build] version=${appVersion} commit=${commitHash}`);
+    console.info(`[Frontend Build] env=${runtimeConfig.appEnv} version=${appVersion} commit=${commitHash}`);
   }, []);
 
   return (

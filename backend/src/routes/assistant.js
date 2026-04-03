@@ -19,6 +19,7 @@ import {
   getDefaultCapabilitiesForCallDirection,
   normalizeChannelCapabilities
 } from '../services/assistantChannels.js';
+import runtimeConfig from '../config/runtime.js';
 
 const router = express.Router();
 
@@ -374,7 +375,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       };
 
       // Webhook tools - inline in agent config (not separate via tool_ids)
-      const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
+      const backendUrl = runtimeConfig.backendUrl;
       const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
       const activeToolDefinitions = getActiveTools(business);
 
@@ -1013,7 +1014,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         };
 
         // Webhook tools - inline in agent config
-        const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
+        const backendUrl = runtimeConfig.backendUrl;
         // IMPORTANT: Include agentId in webhook URL since 11Labs doesn't send it in body
         const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${assistant.elevenLabsAgentId}`;
         const activeToolDefinitions = getActiveTools(business);
@@ -1371,7 +1372,7 @@ router.post('/:id/sync', authenticateToken, checkPermission('assistants:edit'), 
     };
 
     // Webhook tools - inline in agent config
-    const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
+    const backendUrl = runtimeConfig.backendUrl;
     const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${assistant.elevenLabsAgentId}`;
     const activeToolDefinitions = getActiveTools(business);
 

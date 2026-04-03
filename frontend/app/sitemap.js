@@ -1,3 +1,5 @@
+import runtimeConfig from '@/lib/runtime-config';
+
 const STATIC_ROUTES = [
   '/',
   '/pricing',
@@ -10,8 +12,11 @@ const STATIC_ROUTES = [
 ];
 
 export default function sitemap() {
-  const envBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://telyx.ai';
-  const baseUrl = envBaseUrl.endsWith('/') ? envBaseUrl.slice(0, -1) : envBaseUrl;
+  if (runtimeConfig.isBetaApp) {
+    return [];
+  }
+
+  const baseUrl = runtimeConfig.siteUrl;
   const now = new Date();
 
   return STATIC_ROUTES.map((route) => ({

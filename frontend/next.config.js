@@ -1,5 +1,17 @@
 const path = require('path');
 
+const normalizeAppEnv = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+
+  if (['production', 'prod', 'live'].includes(normalized)) return 'production';
+  if (['beta', 'staging', 'stage', 'preview', 'preprod'].includes(normalized)) return 'beta';
+  if (normalized === 'test') return 'test';
+
+  return 'development';
+};
+
+const appEnv = normalizeAppEnv(process.env.NEXT_PUBLIC_APP_ENV || process.env.NODE_ENV);
+const isBetaApp = appEnv === 'beta';
 const frameAncestors = process.env.CSP_FRAME_ANCESTORS || "'none'";
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -24,6 +36,9 @@ const securityHeaders = [
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   { key: 'Cross-Origin-Resource-Policy', value: 'same-site' },
 ];
+const indexingHeaders = isBetaApp
+  ? [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }]
+  : [];
 
 const noStoreHeaders = [
   { key: 'Cache-Control', value: 'no-store' },
@@ -50,7 +65,7 @@ const nextConfig = {
     return [
       {
         source: '/:path*',
-        headers: securityHeaders,
+        headers: [...securityHeaders, ...indexingHeaders],
       },
       {
         source: '/auth/:path*',

@@ -31,6 +31,7 @@ import {
   getFixedOveragePrice,
   getTokenPricePerK
 } from '../config/plans.js';
+import runtimeConfig from '../config/runtime.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -234,7 +235,7 @@ router.post('/topup', async (req, res) => {
       subscription.business?.users?.[0]?.email || req.user?.email
     );
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.telyx.ai';
+    const frontendUrl = runtimeConfig.frontendUrl;
     const session = await stripeService.createCreditPurchaseSession({
       stripeCustomerId,
       minutes,
@@ -545,7 +546,7 @@ router.post('/create-checkout', async (req, res) => {
         subscription,
         subscription.business?.users?.[0]?.email || req.user?.email
       );
-      const frontendUrl = process.env.FRONTEND_URL || 'https://app.telyx.ai';
+      const frontendUrl = runtimeConfig.frontendUrl;
       const session = await stripeService.createCreditPurchaseSession({
         stripeCustomerId,
         minutes,

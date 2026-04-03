@@ -5,7 +5,28 @@ import { getCountry } from '../config/countries.js';
 
 dotenv.config();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+function createMissingStripeProxy(path = ['stripe']) {
+  return new Proxy(() => {}, {
+    get(_, prop) {
+      if (prop === 'then') return undefined;
+      return createMissingStripeProxy([...path, String(prop)]);
+    },
+    apply() {
+      throw new Error(
+        `Stripe is not configured. Missing STRIPE_SECRET_KEY while calling ${path.join('.')}. ` +
+        'Add a Stripe key to enable billing flows.'
+      );
+    }
+  });
+}
+
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : createMissingStripeProxy();
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.warn('⚠️ STRIPE_SECRET_KEY not set. Stripe billing routes are disabled until a key is configured.');
+}
 
 /**
  * Stripe Service with Multi-Currency Support

@@ -28,6 +28,7 @@ import { useChatWidgetSettings, useChatStats, useUpdateChatWidget } from '@/hook
 import { useAssistants } from '@/hooks/useAssistants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { getChatWidgetFeedbackCopy } from '@/lib/chatWidgetFeedbackCopy';
+import runtimeConfig from '@/lib/runtime-config';
 
 
 export default function ChatWidgetPage() {
@@ -159,24 +160,25 @@ export default function ChatWidgetPage() {
   };
 
   const generateEmbedCode = () => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const apiUrl = runtimeConfig.apiUrl;
+    const siteUrl = runtimeConfig.siteUrl;
 
-  const positionMap = {
-    'bottom-right': 'bottom: 20px; right: 20px;',
-    'bottom-left': 'bottom: 20px; left: 20px;',
-    'top-right': 'top: 20px; right: 20px;',
-    'top-left': 'top: 20px; left: 20px;'
-  };
+    const positionMap = {
+      'bottom-right': 'bottom: 20px; right: 20px;',
+      'bottom-left': 'bottom: 20px; left: 20px;',
+      'top-right': 'top: 20px; right: 20px;',
+      'top-left': 'top: 20px; left: 20px;'
+    };
 
-  // Use actual values or fallback to translated defaults
-  const actualButtonText = buttonText || t('dashboard.chatWidgetPage.defaultButtonText');
-  const actualWelcomeMessage = welcomeMessage || t('dashboard.chatWidgetPage.defaultWelcomeMessage');
-  const actualPlaceholder = placeholderText || t('dashboard.chatWidgetPage.defaultPlaceholder');
-  // Free users can't disable branding
-  const actualShowBranding = isPro ? showBranding : true;
-  const feedbackI18n = JSON.stringify(feedbackCopy);
+    // Use actual values or fallback to translated defaults
+    const actualButtonText = buttonText || t('dashboard.chatWidgetPage.defaultButtonText');
+    const actualWelcomeMessage = welcomeMessage || t('dashboard.chatWidgetPage.defaultWelcomeMessage');
+    const actualPlaceholder = placeholderText || t('dashboard.chatWidgetPage.defaultPlaceholder');
+    // Free users can't disable branding
+    const actualShowBranding = isPro ? showBranding : true;
+    const feedbackI18n = JSON.stringify(feedbackCopy);
 
-  return `<!-- Telyx.ai Chat Widget -->
+    return `<!-- Telyx.ai Chat Widget -->
 <script>
 (function() {
   var CONFIG = {
@@ -375,7 +377,7 @@ export default function ChatWidgetPage() {
     var brandingText = document.createElement('span');
     brandingText.textContent = 'Powered by ';
     var brandingLink = document.createElement('a');
-    brandingLink.href = 'https://telyx.ai';
+    brandingLink.href = '${siteUrl}';
     brandingLink.target = '_blank';
     brandingLink.rel = 'noopener noreferrer';
     brandingLink.textContent = 'Telyx.ai';
@@ -576,7 +578,7 @@ export default function ChatWidgetPage() {
   input.onkeypress = function(e) { if (e.key === 'Enter') sendMessage(); };
 })();
 </script>`;
-};
+  };
 
   const copyEmbedCode = () => {
     const code = generateEmbedCode();

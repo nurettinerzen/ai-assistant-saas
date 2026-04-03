@@ -2,10 +2,27 @@ import './globals.css';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ThemeProvider } from 'next-themes';
 import { Providers } from './providers';
+import runtimeConfig from '@/lib/runtime-config';
+
+const metadataBase = runtimeConfig.siteUrl ? new URL(runtimeConfig.siteUrl) : undefined;
 
 export const metadata = {
-  title: 'Telyx AI',
+  metadataBase,
+  title: runtimeConfig.isBetaApp ? 'Telyx AI Beta' : 'Telyx AI',
   description: 'Yapay zeka destekli telefon, chat, e-posta ve WhatsApp ile işletme iletişiminizi otomatikleştirin.',
+  robots: runtimeConfig.isBetaApp
+    ? {
+        index: false,
+        follow: false,
+        googleBot: {
+          index: false,
+          follow: false,
+        },
+      }
+    : {
+        index: true,
+        follow: true,
+      },
   icons: {
     icon: [
       {
@@ -30,6 +47,11 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        {runtimeConfig.isBetaApp && (
+          <div className="border-b border-amber-300 bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-950">
+            Beta ortami. Tum degisiklikleri burada test edin; gercek odeme ve canli musteri verisini kullanmayin.
+          </div>
+        )}
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <LanguageProvider>

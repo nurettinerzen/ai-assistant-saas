@@ -8,10 +8,12 @@
 
 import { Resend } from 'resend';
 import { sanitizeEmailAddress, sanitizeHeaderValue, escapeHtml } from '../utils/mailSanitizer.js';
+import runtimeConfig from '../config/runtime.js';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Telyx.AI <info@telyx.ai>';
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const FRONTEND_URL = runtimeConfig.frontendUrl;
+const SITE_URL = runtimeConfig.siteUrl;
 
 let resend = null;
 
@@ -97,7 +99,7 @@ export const sendVerificationEmail = async (email, verificationUrl, businessName
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p style="margin: 0;">Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -144,7 +146,7 @@ export const sendPasswordResetEmail = async (email, resetUrl) => {
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -199,7 +201,7 @@ export const sendWelcomeEmail = async (email, userName) => {
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -247,7 +249,7 @@ export const sendLowBalanceAlert = async (email, currentBalance) => {
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -304,7 +306,7 @@ export const sendOverageInvoice = async (email, overageMinutes, amount, billingP
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -352,7 +354,7 @@ export const sendEmailChangeVerification = async (newEmail, verificationUrl) => 
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -398,7 +400,7 @@ export const sendAssistantCreatedEmail = async (email, businessName) => {
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -454,7 +456,7 @@ export const sendPhoneActivatedEmail = async (email, businessName, phoneNumber) 
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -502,7 +504,7 @@ export const sendLimitWarningEmail = async (email, businessName, limitType, usag
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -557,7 +559,7 @@ export const sendLimitReachedEmail = async (email, businessName, limitType, usag
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -616,7 +618,7 @@ export const sendPaymentSuccessEmail = async (email, businessName, amount, plan)
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -670,7 +672,7 @@ export const sendPaymentFailedEmail = async (email, businessName) => {
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -719,7 +721,7 @@ export const sendMonthlyResetEmail = async (email, businessName, plan) => {
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -787,7 +789,7 @@ export const sendWeeklySummaryEmail = async (email, businessName, stats) => {
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -839,7 +841,7 @@ export const sendTrialExpiredNotification = async ({ email, businessName }) => {
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -889,7 +891,7 @@ export const sendOverageLimitReachedEmail = async (email, businessName, overageM
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -938,7 +940,7 @@ export const sendAutoReloadFailedEmail = async (email, businessName, amount) => 
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea; word-break: break-all;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>
@@ -1016,7 +1018,7 @@ export const sendTeamInvitationEmail = async ({ email, inviterName, businessName
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p style="margin: 0;">Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" style="color: #667eea;">https://telyx.ai</a></p>
+          <a href="${SITE_URL}" style="color: #667eea;">${SITE_URL}</a></p>
         </div>
       </div>
     </body>

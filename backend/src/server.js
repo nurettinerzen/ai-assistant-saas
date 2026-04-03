@@ -101,6 +101,7 @@ import { assertAllRoutesProtected } from './middleware/routeEnforcement.js';
 // Log redaction for sensitive data
 import { getSafeRequestPath, logRedactionMiddleware } from './middleware/logRedaction.js';
 import BUILD_INFO from './config/buildInfo.js';
+import runtimeConfig from './config/runtime.js';
 import { preventParameterPollution } from './middleware/parameterPollution.js';
 import { authRateLimiter, apiRateLimiter } from './middleware/rateLimiter.js';
 import { assertProductionSecurityPosture } from './security/productionGuardrails.js';
@@ -218,6 +219,10 @@ const corsAllowedHeaders = [
 
 if (process.env.NODE_ENV !== 'test') {
   console.log(`🔖 [Backend Build] version=${BUILD_INFO.version} commit=${BUILD_INFO.commitHash} buildTime=${BUILD_INFO.buildTime}`);
+  console.log(`🌍 [Backend Runtime] nodeEnv=${runtimeConfig.nodeEnv} appEnv=${runtimeConfig.appEnv} frontend=${runtimeConfig.frontendUrl} backend=${runtimeConfig.backendUrl} site=${runtimeConfig.siteUrl} stripe=${runtimeConfig.stripeMode}`);
+  runtimeConfig.runtimeWarnings.forEach((warning) => {
+    console.warn(`⚠️ [Backend Runtime] ${warning}`);
+  });
 }
 
 if (allowedOrigins.size === 0) {
@@ -522,7 +527,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`✅ Server running on port ${PORT}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
     console.log(`🔖 Build: version=${BUILD_INFO.version} commit=${BUILD_INFO.commitHash}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌍 Environment: node=${runtimeConfig.nodeEnv} app=${runtimeConfig.appEnv}`);
     console.log('🔌 Webhook Routes:');
     console.log(`   - ${WHATSAPP_WEBHOOK_PATH} [GET verification, POST events]`);
     console.log('   - /api/subscription/webhook [POST]');

@@ -1,0 +1,50 @@
+name: Promote Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Branch or tag to promote to production
+        required: true
+        default: main
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch source branch
+        run: |
+          git fetch origin "${{ github.event.inputs.source_ref }}"
+
+      - name: Fast-forward production branch
+        run: |
+          SOURCE_REF="origin/${{ github.event.inputs.source_ref }}"
+
+          if git ls-remote --exit-code --heads origin production; then
+            git fetch origin production
+            git checkout -B production origin/production
+            git merge --ff-only "$SOURCE_REF"
+          else
+            git checkout -B production "$SOURCE_REF"
+          fi
+
+          git push origin production
+
+      - name: Promotion summary
+        run: |
+          echo "Promoted ${{ github.event.inputs.source_ref }} to production branch."

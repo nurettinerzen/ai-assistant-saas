@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - production
   workflow_dispatch:
 
 jobs:
@@ -24,6 +25,7 @@ jobs:
       - name: Run production deploy script (dry-run)
         env:
           NODE_ENV: production
+          APP_ENV: production
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           chmod +x backend/deploy/production-deploy.sh

@@ -3,6 +3,8 @@
  * All environment variables are validated and exported from here
  */
 
+import runtimeConfig from './runtime.js';
+
 // Required environment variables - will throw if not defined
 const requiredEnvVars = [
   'DATABASE_URL',
@@ -28,10 +30,14 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   isDev: process.env.NODE_ENV !== 'production',
   isProd: process.env.NODE_ENV === 'production',
+  appEnv: runtimeConfig.appEnv,
+  isBetaApp: runtimeConfig.isBetaApp,
+  isProductionApp: runtimeConfig.isProductionApp,
 
   // URLs
-  frontendUrl: process.env.FRONTEND_URL,
-  backendUrl: process.env.BACKEND_URL,
+  frontendUrl: runtimeConfig.frontendUrl,
+  backendUrl: runtimeConfig.backendUrl,
+  siteUrl: runtimeConfig.siteUrl,
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',').map(origin => origin.trim()) || [],
 
   // Database

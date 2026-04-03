@@ -23,6 +23,7 @@ import {
   isPhoneInboundForceDisabled
 } from '../services/phoneInboundGate.js';
 import { buildSecurityConfigDigest, compareBaselineDigest } from '../security/configIntegrity.js';
+import runtimeConfig from '../config/runtime.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -1033,7 +1034,7 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
             after_completion: {
               type: 'redirect',
               redirect: {
-                url: `${process.env.FRONTEND_URL || 'https://app.telyx.ai'}/dashboard/subscription?success=true`
+                url: `${runtimeConfig.frontendUrl}/dashboard/subscription?success=true`
               }
             }
           });
@@ -1097,7 +1098,7 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
       after_completion: {
         type: 'redirect',
         redirect: {
-          url: `${process.env.FRONTEND_URL || 'https://app.telyx.ai'}/dashboard/subscription?success=true`
+          url: `${runtimeConfig.frontendUrl}/dashboard/subscription?success=true`
         }
       }
     });
