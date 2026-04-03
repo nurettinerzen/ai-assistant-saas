@@ -129,19 +129,21 @@ const INTEGRATION_LOGOS = {
   },
   TRENDYOL: {
     src: '/assets/integrations/trendyol.png',
-    width: 32,
-    height: 32,
-    className: 'h-8 w-8 rounded-md object-cover shadow-sm border border-neutral-200 dark:border-neutral-700',
+    width: 28,
+    height: 28,
+    className: 'h-7 w-7 rounded-md object-cover',
     unoptimized: true,
   },
   HEPSIBURADA: {
     src: '/assets/integrations/hepsiburada.png',
-    width: 32,
-    height: 32,
-    className: 'h-8 w-8 rounded-md object-cover shadow-sm border border-neutral-200 dark:border-neutral-700',
+    width: 28,
+    height: 28,
+    className: 'h-7 w-7 rounded-md object-cover',
     unoptimized: true,
   },
 };
+
+const CARD_ICON_WRAPPER_CLASS = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-950/40';
 
 const IntegrationLogo = ({ type, className }) => {
   const logo = INTEGRATION_LOGOS[type];
@@ -936,10 +938,12 @@ const handleShopifyConnect = async () => {
     return (
       <div key={integration.type} className={`flex h-full flex-col bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${disabled || isLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800' : 'hover:shadow-md'} border-neutral-200 dark:border-neutral-700`}>
         <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Icon className={isMarketplaceBeta ? 'h-8 w-8 rounded-md object-cover shadow-sm border border-neutral-200 dark:border-neutral-700' : `h-6 w-6 ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`} />
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="flex min-h-10 items-center gap-3">
+            <div className={CARD_ICON_WRAPPER_CLASS}>
+              <Icon className={isMarketplaceBeta ? 'h-7 w-7 rounded-md object-cover' : `h-6 w-6 ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`} />
+            </div>
+            <div className="min-h-10 flex items-center">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className={`font-semibold ${disabled || isLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>{integration.name}</h3>
                 {isLocked && (
                   <Badge variant="secondary" className="bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs">
@@ -1287,10 +1291,12 @@ const handleShopifyConnect = async () => {
             return (
             <div className={`flex h-full flex-col bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700' : isCrmConnected ? 'border-neutral-400 dark:border-neutral-600 hover:shadow-md' : 'border-neutral-200 dark:border-neutral-700 hover:shadow-md'}`}>
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <IntegrationLogo type="CUSTOM" />
-                  <div>
-                    <div className="flex items-center gap-2">
+                <div className="flex min-h-10 items-center gap-3">
+                  <div className={CARD_ICON_WRAPPER_CLASS}>
+                    <IntegrationLogo type="CUSTOM" className="h-6 w-6 object-contain" />
+                  </div>
+                  <div className="min-h-10 flex items-center">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className={`font-semibold ${isCRMLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>
                         {t('dashboard.integrationsPage.customCrmWebhook')}
                       </h3>
@@ -1381,9 +1387,11 @@ const handleShopifyConnect = async () => {
           {/* Gmail Card */}
           <div className={`flex h-full flex-col bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <IntegrationLogo type="GMAIL" />
-                <div>
+              <div className="flex min-h-10 items-center gap-3">
+                <div className={CARD_ICON_WRAPPER_CLASS}>
+                  <IntegrationLogo type="GMAIL" className="h-6 w-6 object-contain" />
+                </div>
+                <div className="min-h-10 flex items-center">
                   <h3 className="font-semibold text-neutral-900 dark:text-white">Gmail</h3>
                 </div>
               </div>
@@ -1417,9 +1425,11 @@ const handleShopifyConnect = async () => {
           {/* Outlook Card */}
           <div className={`flex h-full flex-col bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <IntegrationLogo type="OUTLOOK" />
-                <div>
+              <div className="flex min-h-10 items-center gap-3">
+                <div className={CARD_ICON_WRAPPER_CLASS}>
+                  <IntegrationLogo type="OUTLOOK" className="h-6 w-6 object-contain" />
+                </div>
+                <div className="min-h-10 flex items-center">
                   <h3 className="font-semibold text-neutral-900 dark:text-white">Microsoft 365</h3>
                 </div>
               </div>
