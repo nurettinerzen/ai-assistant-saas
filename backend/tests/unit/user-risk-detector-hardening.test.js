@@ -113,6 +113,26 @@ describe('user risk detector hardening', () => {
     expect(state.abuseCounter).toBe(0);
   });
 
+  it('does not immediately lock on first abuse even if semantic classifier suggests LOCK_TEMP', async () => {
+    classifySemanticRiskMock.mockResolvedValue({
+      category: 'ABUSE',
+      action: 'LOCK_TEMP',
+      lockReason: 'ABUSE',
+      severity: 'HIGH',
+      confidence: 0.92,
+      rationale: 'likely abusive language',
+      source: 'semantic'
+    });
+
+    const state = {};
+    const first = await detectUserRisks('lam', 'TR', state);
+
+    expect(first.shouldLock).toBe(false);
+    expect(first.softRefusal).toBe(true);
+    expect(first.softBlockReason).toBe('ABUSE_WARNING');
+    expect(state.abuseCounter).toBe(1);
+  });
+
   it('warns on first spam and locks on repeated spam within the window', async () => {
     classifySemanticRiskMock.mockResolvedValue({
       category: 'SPAM',
@@ -138,10 +158,30 @@ describe('user risk detector hardening', () => {
     expect(state.spamCounter).toBe(0);
   });
 
+  it('does not immediately lock on first spam even if semantic classifier suggests LOCK_TEMP', async () => {
+    classifySemanticRiskMock.mockResolvedValue({
+      category: 'SPAM',
+      action: 'LOCK_TEMP',
+      lockReason: 'SPAM',
+      severity: 'MEDIUM',
+      confidence: 0.9,
+      rationale: 'spam-like short fragment',
+      source: 'semantic'
+    });
+
+    const state = {};
+    const first = await detectUserRisks('lam', 'TR', state);
+
+    expect(first.shouldLock).toBe(false);
+    expect(first.softRefusal).toBe(true);
+    expect(first.softBlockReason).toBe('SPAM_WARNING');
+    expect(state.spamCounter).toBe(1);
+  });
+
   it('soft-refuses then locks repeated security bypass attempts semantically', async () => {
     classifySemanticRiskMock.mockResolvedValue({
       category: 'SECURITY_BYPASS',
-      action: 'SOFT_REFUSAL',
+      action: 'LOCK_TEMP',
       lockReason: 'SECURITY_BYPASS',
       severity: 'HIGH',
       confidence: 0.93,

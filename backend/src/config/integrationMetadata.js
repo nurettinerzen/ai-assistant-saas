@@ -73,6 +73,46 @@ export const INTEGRATION_METADATA = {
     region: 'TR'
   },
 
+  TRENDYOL: {
+    relevantFor: ['ECOMMERCE', 'OTHER'],
+    priority: {
+      ECOMMERCE: 'RECOMMENDED',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Trendyol',
+    description: 'Trendyol pazaryeri soru cevap entegrasyonu',
+    category: 'marketplace',
+    authType: 'api_key',
+    region: 'TR'
+  },
+
+  HEPSIBURADA: {
+    relevantFor: ['ECOMMERCE', 'OTHER'],
+    priority: {
+      ECOMMERCE: 'RECOMMENDED',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Hepsiburada',
+    description: 'Hepsiburada pazaryeri soru cevap entegrasyonu',
+    category: 'marketplace',
+    authType: 'api_key',
+    region: 'TR'
+  },
+
+  SIKAYETVAR: {
+    relevantFor: ['ECOMMERCE', 'SERVICE', 'OTHER'],
+    priority: {
+      ECOMMERCE: 'OPTIONAL',
+      SERVICE: 'RECOMMENDED',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Şikayetvar',
+    description: 'Şikayetvar şikayet yönetimi entegrasyonu',
+    category: 'complaints',
+    authType: 'api_key',
+    region: 'TR'
+  },
+
   // Note: Gmail and Outlook are handled separately in frontend (not in this metadata)
   // Note: Custom CRM/ERP is also handled separately in frontend integration cards
 };

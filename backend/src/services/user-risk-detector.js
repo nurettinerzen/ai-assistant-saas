@@ -894,7 +894,10 @@ export async function detectUserRisks(message, language = 'TR', state = {}) {
       incrementTimedCounter(state, 'abuseCounter', 'abuseWindowStart');
       stateUpdated = true;
 
-      if (semanticRisk.action === 'LOCK_TEMP' || state.abuseCounter >= ABUSE_LOCK_THRESHOLD) {
+      // LLM classifies the category; lock policy is enforced here by counters.
+      // This prevents a single over-aggressive semantic judgment from instantly
+      // locking a session that should have received a warning first.
+      if (state.abuseCounter >= ABUSE_LOCK_THRESHOLD) {
         state.abuseCounter = 0;
         state.abuseWindowStart = null;
         stateUpdated = true;
@@ -938,7 +941,9 @@ export async function detectUserRisks(message, language = 'TR', state = {}) {
       incrementTimedCounter(state, 'threatCounter', 'threatWindowStart');
       stateUpdated = true;
 
-      if (semanticRisk.action === 'LOCK_PERMANENT' && state.threatCounter >= THREAT_LOCK_THRESHOLD) {
+      // Threats follow a warn-then-lock policy; only explicit doxxing gets an
+      // immediate lock via the DOXXING category below.
+      if (state.threatCounter >= THREAT_LOCK_THRESHOLD) {
         state.threatCounter = 0;
         state.threatWindowStart = null;
         stateUpdated = true;
@@ -998,7 +1003,7 @@ export async function detectUserRisks(message, language = 'TR', state = {}) {
       incrementTimedCounter(state, 'spamCounter', 'spamWindowStart');
       stateUpdated = true;
 
-      if (semanticRisk.action === 'LOCK_TEMP' || state.spamCounter >= SPAM_LOCK_THRESHOLD) {
+      if (state.spamCounter >= SPAM_LOCK_THRESHOLD) {
         state.spamCounter = 0;
         state.spamWindowStart = null;
         stateUpdated = true;
@@ -1041,10 +1046,7 @@ export async function detectUserRisks(message, language = 'TR', state = {}) {
       incrementTimedCounter(state, 'securityBypassCounter', 'securityBypassWindowStart');
       stateUpdated = true;
 
-      const shouldLockBypass =
-        semanticRisk.action === 'LOCK_TEMP' ||
-        semanticRisk.action === 'LOCK_PERMANENT' ||
-        state.securityBypassCounter >= SECURITY_BYPASS_LOCK_THRESHOLD;
+      const shouldLockBypass = state.securityBypassCounter >= SECURITY_BYPASS_LOCK_THRESHOLD;
 
       if (shouldLockBypass) {
         state.securityBypassCounter = 0;
