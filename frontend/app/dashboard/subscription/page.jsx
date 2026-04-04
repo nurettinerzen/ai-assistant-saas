@@ -289,7 +289,7 @@ export default function SubscriptionPage() {
       setUpgrading(true);
       const response = planId === 'PAYG'
         ? await apiClient.post('/api/subscription/switch-to-payg', {})
-        : await apiClient.subscription.upgrade(planId);
+        : await apiClient.subscription.upgrade(planId, locale);
 
       // Handle different response types
       if (response.data?.type === 'payg_switch') {
@@ -407,7 +407,7 @@ export default function SubscriptionPage() {
   const handleBuyAddOn = async (kind, packageId) => {
     try {
       setPurchasingAddOn(`${kind}:${packageId}`);
-      const response = await apiClient.subscription.createAddOnCheckout({ kind, packageId });
+      const response = await apiClient.subscription.createAddOnCheckout({ kind, packageId, locale });
       if (response.data?.sessionUrl) {
         window.location.href = response.data.sessionUrl;
         return;
@@ -917,10 +917,10 @@ export default function SubscriptionPage() {
                   {getPlanFeatures().map((feature, i) => (
                     <li
                       key={i}
-                      className="flex items-center gap-2 text-sm"
+                      className="flex items-start gap-2 text-[13px] leading-snug"
                     >
-                      <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                      <span className="text-neutral-700 dark:text-neutral-300 truncate">
+                      <Check className="mt-0.5 h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      <span className="break-words text-neutral-700 dark:text-neutral-300 line-clamp-2">
                         {feature.text}
                       </span>
                     </li>

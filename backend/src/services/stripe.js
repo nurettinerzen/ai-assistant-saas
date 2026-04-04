@@ -130,6 +130,22 @@ class StripeService {
     return methodsByCountry[countryCode] || ['card'];
   }
 
+  resolveCheckoutLocale(preferredLocale, countryCode) {
+    const normalized = String(preferredLocale || '').toLowerCase();
+
+    if (normalized.startsWith('tr')) return 'tr';
+    if (normalized.startsWith('pt')) return 'pt-BR';
+    if (normalized.startsWith('en')) {
+      return countryCode === 'GB' ? 'en-GB' : 'en';
+    }
+    if (normalized.startsWith('de')) return 'de';
+    if (normalized.startsWith('fr')) return 'fr';
+    if (normalized.startsWith('es')) return 'es';
+    if (normalized.startsWith('nl')) return 'nl';
+
+    return this.getStripeLocale(countryCode);
+  }
+
   /**
    * Create a checkout session with multi-currency support
    * @param {object} options - Checkout options
@@ -146,7 +162,8 @@ class StripeService {
     countryCode = 'TR',
     successUrl,
     cancelUrl,
-    businessId
+    businessId,
+    checkoutLocale
   }) {
     try {
       const plan = getPlanWithPricing(planId, countryCode);
@@ -195,7 +212,7 @@ class StripeService {
         // Customer can update billing info
         billing_address_collection: 'auto',
         // Localization
-        locale: this.getStripeLocale(countryCode)
+        locale: this.resolveCheckoutLocale(checkoutLocale, countryCode)
       });
 
       return session;
@@ -217,7 +234,8 @@ class StripeService {
     countryCode = 'TR',
     successUrl,
     cancelUrl,
-    businessId
+    businessId,
+    checkoutLocale
   }) {
     try {
       const paymentMethods = this.getPaymentMethodsForCountry(countryCode);
@@ -245,7 +263,7 @@ class StripeService {
           minutes: minutes.toString(),
           country: countryCode
         },
-        locale: this.getStripeLocale(countryCode)
+        locale: this.resolveCheckoutLocale(checkoutLocale, countryCode)
       });
 
       return session;
@@ -271,7 +289,8 @@ class StripeService {
     packageId,
     quantity,
     unitPrice,
-    amount
+    amount,
+    checkoutLocale
   }) {
     try {
       const paymentMethods = this.getPaymentMethodsForCountry(countryCode);
@@ -310,7 +329,7 @@ class StripeService {
           subscriptionId: String(subscriptionId),
           country: countryCode
         },
-        locale: this.getStripeLocale(countryCode)
+        locale: this.resolveCheckoutLocale(checkoutLocale, countryCode)
       });
     } catch (error) {
       console.error('Create addon checkout session error:', error);

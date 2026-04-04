@@ -40,6 +40,20 @@ export default function DashboardLayout({ children }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const initialLoadDone = useRef(false);
 
+  const isPaymentReturnFlow = () => {
+    if (typeof window === 'undefined') return false;
+    if (window.location.pathname !== '/dashboard/subscription') return false;
+
+    const params = new URLSearchParams(window.location.search || '');
+    return Boolean(
+      params.get('session_id')
+      || params.get('wallet_topup')
+      || params.get('addon')
+      || params.get('success')
+      || params.get('status')
+    );
+  };
+
   useEffect(() => {
     // Try to load from cache first for instant display
     // IMPORTANT: Only use cache if it has subscription data to prevent sidebar flash
@@ -83,7 +97,7 @@ export default function DashboardLayout({ children }) {
       // Email verification check - redirect to pending page if not verified
       // Skip check for invited team members (they were invited via email, so implicitly verified)
       const isInvitedMember = userData.acceptedAt || (userData.role && userData.role !== 'OWNER');
-      if (!userData.emailVerified && !isInvitedMember) {
+      if (!userData.emailVerified && !isInvitedMember && !isPaymentReturnFlow()) {
         router.push('/auth/email-pending');
         return;
       }

@@ -123,7 +123,7 @@ export default function TrialExpiredModal({
   const handleUpgradeToStarter = async () => {
     setLoading('starter');
     try {
-      const response = await apiClient.post('/api/subscription/upgrade', { plan: 'STARTER' });
+      const response = await apiClient.post('/api/subscription/upgrade', { planId: 'STARTER', locale });
 
       if (response.data?.sessionUrl) {
         // Stripe checkout
