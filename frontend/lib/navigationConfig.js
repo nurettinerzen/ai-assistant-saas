@@ -119,7 +119,7 @@ export const NAVIGATION_ITEMS = {
     labelEn: 'Chat History',
     descriptionTr: 'Geçmiş sohbet oturumlarını ve mesajları görüntüleyin.',
     descriptionEn: 'View past chat sessions and messages.',
-    href: '/dashboard/chat-history',
+    href: '/dashboard/chats',
     group: 'monitoring',
   },
 
