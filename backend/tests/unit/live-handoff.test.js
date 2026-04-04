@@ -185,5 +185,33 @@ describe('liveHandoff service', () => {
       }),
     }));
   });
-});
 
+  it('backfills customer phone on existing chat logs when provided later', async () => {
+    chatLogFindUniqueMock.mockResolvedValueOnce({
+      businessId: 77,
+      assistantId: 'asst_1',
+      channel: 'WHATSAPP',
+      customerPhone: null,
+      status: 'active',
+      messages: [{ role: 'user', content: 'hello' }],
+    });
+    chatLogUpsertMock.mockResolvedValueOnce({ id: 'log_2' });
+
+    await appendChatLogMessages({
+      sessionId: 'sess_6',
+      businessId: 77,
+      channel: 'WHATSAPP',
+      customerPhone: '905551112233',
+      messages: [{ role: 'system', content: 'claimed' }],
+    });
+
+    expect(chatLogUpsertMock).toHaveBeenCalledWith(expect.objectContaining({
+      update: expect.objectContaining({
+        customerPhone: '905551112233',
+      }),
+      create: expect.objectContaining({
+        customerPhone: '905551112233',
+      }),
+    }));
+  });
+});

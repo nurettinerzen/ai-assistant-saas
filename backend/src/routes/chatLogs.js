@@ -67,6 +67,37 @@ async function getOwnedChatLog(id, businessId) {
   });
 }
 
+async function hydrateWhatsAppCustomerPhone(chatLog, businessId) {
+  if (!chatLog || chatLog.channel !== 'WHATSAPP' || chatLog.customerPhone || !chatLog.sessionId) {
+    return chatLog;
+  }
+
+  const mapping = await prisma.sessionMapping.findUnique({
+    where: { sessionId: chatLog.sessionId },
+    select: {
+      businessId: true,
+      channel: true,
+      channelUserId: true,
+    }
+  });
+
+  if (!mapping || mapping.businessId !== businessId || mapping.channel !== 'WHATSAPP' || !mapping.channelUserId) {
+    return chatLog;
+  }
+
+  const updated = await prisma.chatLog.update({
+    where: { id: chatLog.id },
+    data: { customerPhone: mapping.channelUserId },
+    include: {
+      assistant: {
+        select: { name: true }
+      }
+    }
+  });
+
+  return updated;
+}
+
 async function getBusinessForWhatsAppReply(businessId) {
   return prisma.business.findUnique({
     where: { id: businessId },
@@ -265,7 +296,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const chatLog = await getOwnedChatLog(id, req.businessId);
+    const chatLog = await hydrateWhatsAppCustomerPhone(
+      await getOwnedChatLog(id, req.businessId),
+      req.businessId
+    );
 
     if (!chatLog) {
       return res.status(404).json({ error: 'Chat log not found' });
@@ -308,7 +342,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 router.post('/:id/handoff/request', authenticateToken, async (req, res) => {
   try {
-    const chatLog = await getOwnedChatLog(req.params.id, req.businessId);
+    const chatLog = await hydrateWhatsAppCustomerPhone(
+      await getOwnedChatLog(req.params.id, req.businessId),
+      req.businessId
+    );
 
     if (!chatLog) {
       return res.status(404).json({ error: 'Chat log not found' });
@@ -356,7 +393,10 @@ router.post('/:id/handoff/request', authenticateToken, async (req, res) => {
 
 router.post('/:id/handoff/claim', authenticateToken, async (req, res) => {
   try {
-    const chatLog = await getOwnedChatLog(req.params.id, req.businessId);
+    const chatLog = await hydrateWhatsAppCustomerPhone(
+      await getOwnedChatLog(req.params.id, req.businessId),
+      req.businessId
+    );
 
     if (!chatLog) {
       return res.status(404).json({ error: 'Chat log not found' });
@@ -403,7 +443,10 @@ router.post('/:id/handoff/claim', authenticateToken, async (req, res) => {
 
 router.post('/:id/handoff/release', authenticateToken, async (req, res) => {
   try {
-    const chatLog = await getOwnedChatLog(req.params.id, req.businessId);
+    const chatLog = await hydrateWhatsAppCustomerPhone(
+      await getOwnedChatLog(req.params.id, req.businessId),
+      req.businessId
+    );
 
     if (!chatLog) {
       return res.status(404).json({ error: 'Chat log not found' });
@@ -449,7 +492,10 @@ router.post('/:id/handoff/release', authenticateToken, async (req, res) => {
 
 router.post('/:id/handoff/reply', authenticateToken, async (req, res) => {
   try {
-    const chatLog = await getOwnedChatLog(req.params.id, req.businessId);
+    const chatLog = await hydrateWhatsAppCustomerPhone(
+      await getOwnedChatLog(req.params.id, req.businessId),
+      req.businessId
+    );
 
     if (!chatLog) {
       return res.status(404).json({ error: 'Chat log not found' });

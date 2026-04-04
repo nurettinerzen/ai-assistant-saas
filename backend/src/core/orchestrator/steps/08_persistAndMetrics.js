@@ -28,6 +28,8 @@ export async function persistAndEmitMetrics(params) {
     failedTool,
     responseGrounding = 'GROUNDED',
     channel,
+    channelUserId = null,
+    customerPhone = null,
     businessId,
     metrics,
     assistantMessageMeta = null,
@@ -126,10 +128,18 @@ export async function persistAndEmitMetrics(params) {
     assistantMessage
   ];
 
+  const resolvedCustomerPhone = (
+    chatLog?.customerPhone ||
+    customerPhone ||
+    (channel === 'WHATSAPP' ? channelUserId : null) ||
+    null
+  );
+
   await prisma.chatLog.upsert({
     where: { sessionId },
     update: {
       messages: updatedMessages,
+      ...(resolvedCustomerPhone ? { customerPhone: resolvedCustomerPhone } : {}),
       ...(channel && { channel }),
       updatedAt: new Date()
     },
@@ -137,6 +147,7 @@ export async function persistAndEmitMetrics(params) {
       sessionId,
       businessId,
       channel: channel || 'CHAT',
+      ...(resolvedCustomerPhone ? { customerPhone: resolvedCustomerPhone } : {}),
       messages: updatedMessages,
       createdAt: new Date(),
       updatedAt: new Date()
