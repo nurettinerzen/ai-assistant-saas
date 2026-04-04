@@ -259,6 +259,7 @@ export async function appendChatLogMessages({
     where: { sessionId },
     update: {
       messages: updatedMessages,
+      customerPhone: existing?.customerPhone || customerPhone || null,
       messageCount: updatedMessages.length,
       status: existing?.status || 'active',
       updatedAt: new Date(),
