@@ -192,6 +192,7 @@ router.post('/topup', async (req, res) => {
   try {
     const { businessId } = req.user;
     const amount = Number(req.body?.amount || 0);
+    const checkoutLocale = req.body?.locale;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Geçersiz yükleme tutarı' });
@@ -243,7 +244,8 @@ router.post('/topup', async (req, res) => {
       countryCode: country,
       successUrl: `${frontendUrl}/dashboard/subscription?wallet_topup=success&session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${frontendUrl}/dashboard/subscription?wallet_topup=cancel`,
-      businessId: businessId.toString()
+      businessId: businessId.toString(),
+      checkoutLocale
     });
 
     res.json({
@@ -583,6 +585,7 @@ router.post('/create-checkout', async (req, res) => {
   try {
     const { businessId } = req.user;
     const { minutes, paymentProvider = 'stripe' } = req.body;
+    const checkoutLocale = req.body?.locale;
 
     if (!minutes || minutes <= 0) {
       return res.status(400).json({ error: 'Geçersiz dakika miktarı' });
@@ -635,7 +638,8 @@ router.post('/create-checkout', async (req, res) => {
         countryCode: country,
         successUrl: `${frontendUrl}/dashboard/subscription?wallet_topup=success&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${frontendUrl}/dashboard/subscription?wallet_topup=cancel`,
-        businessId: businessId.toString()
+        businessId: businessId.toString(),
+        checkoutLocale
       });
 
       return res.json({

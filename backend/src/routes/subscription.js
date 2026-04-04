@@ -1904,6 +1904,7 @@ router.post('/addons/checkout', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
     const { kind, packageId } = req.body || {};
+    const checkoutLocale = req.body?.locale;
 
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
@@ -1959,7 +1960,8 @@ router.post('/addons/checkout', verifyBusinessAccess, async (req, res) => {
       packageId: selectedPackage.id,
       quantity: selectedPackage.quantity,
       unitPrice: selectedPackage.unitPrice,
-      amount: selectedPackage.amount
+      amount: selectedPackage.amount,
+      checkoutLocale
     });
 
     res.json({
@@ -2046,7 +2048,7 @@ router.get('/payment-provider', verifyBusinessAccess, async (req, res) => {
 router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
-    const { priceId, planId, forceProvider } = req.body;
+    const { priceId, planId, forceProvider, locale: checkoutLocale } = req.body;
 
     if (!priceId && !planId) {
       return res.status(400).json({ error: 'Price ID or Plan ID required' });
@@ -2131,7 +2133,8 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
       metadata: {
         businessId: businessId.toString(),
         priceId: finalPriceId
-      }
+      },
+      locale: stripeService.resolveCheckoutLocale(checkoutLocale, user.business.country || 'TR')
     });
 
     res.json({
@@ -2413,7 +2416,7 @@ router.post('/undo-scheduled-change', verifyBusinessAccess, async (req, res) => 
 router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
-    const { planId } = req.body;
+    const { planId, locale: checkoutLocale } = req.body;
 
     if (!planId) {
       return res.status(400).json({ error: 'Plan ID is required' });
@@ -2726,7 +2729,8 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
         businessId: businessId.toString(),
         priceId: priceId,
         planId: normalizedPlanId
-      }
+      },
+      locale: stripeService.resolveCheckoutLocale(checkoutLocale, user.business.country || 'TR')
     });
 
     return res.json({

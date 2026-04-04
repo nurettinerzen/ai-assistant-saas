@@ -160,7 +160,8 @@ export default function BuyCreditModal({ isOpen, onClose, onSuccess }) {
     try {
       const response = await apiClient.post('/api/balance/topup', {
         amount,
-        currency: currency === '₺' ? 'TRY' : currency === '$' ? 'USD' : 'BRL'
+        currency: currency === '₺' ? 'TRY' : currency === '$' ? 'USD' : 'BRL',
+        locale
       });
 
       // Handle different response types

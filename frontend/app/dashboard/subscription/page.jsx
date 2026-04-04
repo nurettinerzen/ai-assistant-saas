@@ -289,7 +289,7 @@ export default function SubscriptionPage() {
       setUpgrading(true);
       const response = planId === 'PAYG'
         ? await apiClient.post('/api/subscription/switch-to-payg', {})
-        : await apiClient.subscription.upgrade(planId);
+        : await apiClient.subscription.upgrade(planId, locale);
 
       // Handle different response types
       if (response.data?.type === 'payg_switch') {
@@ -407,7 +407,7 @@ export default function SubscriptionPage() {
   const handleBuyAddOn = async (kind, packageId) => {
     try {
       setPurchasingAddOn(`${kind}:${packageId}`);
-      const response = await apiClient.subscription.createAddOnCheckout({ kind, packageId });
+      const response = await apiClient.subscription.createAddOnCheckout({ kind, packageId, locale });
       if (response.data?.sessionUrl) {
         window.location.href = response.data.sessionUrl;
         return;
