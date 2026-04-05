@@ -39,14 +39,16 @@ describe('liveHandoff service', () => {
   it('detects explicit human handoff phrases in Turkish and English', () => {
     expect(shouldTriggerHumanHandoff('Canli destek almak istiyorum')).toBe(true);
     expect(shouldTriggerHumanHandoff('yetkili biriyle görüşmek istiyorum')).toBe(true);
+    expect(shouldTriggerHumanHandoff('yetkili biriyle gorusmek istiyorum')).toBe(true);
     expect(shouldTriggerHumanHandoff('temsilciye bağlar mısın')).toBe(true);
+    expect(shouldTriggerHumanHandoff('temsilciye baglar misin')).toBe(true);
     expect(shouldTriggerHumanHandoff('I want to talk to a human agent')).toBe(true);
     expect(shouldTriggerHumanHandoff('siparisim nerede')).toBe(false);
   });
 
   it('builds customer-facing handoff notifications', () => {
-    expect(getLiveHandoffClaimedMessage('TR', 'Nurettin')).toContain('Nurettin');
-    expect(getLiveHandoffClaimedMessage('EN')).toContain('joined this conversation');
+    expect(getLiveHandoffClaimedMessage('TR', 'Nurettin')).toContain('Canli destek ekibimiz');
+    expect(getLiveHandoffClaimedMessage('EN')).toContain('live support teammate');
     expect(getLiveHandoffReturnedToAiMessage('TR')).toContain('yapay zeka');
     expect(getLiveHandoffReturnedToAiMessage('EN')).toContain('AI assistant');
   });
