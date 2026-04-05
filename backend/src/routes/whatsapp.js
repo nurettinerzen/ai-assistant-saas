@@ -24,7 +24,10 @@ import { isFeatureEnabled } from '../config/feature-flags.js';
 import { getToolFailResponse, validateResponseAfterToolFail, executeToolWithRetry } from '../services/tool-fail-handler.js';
 import { getGatedTools, canExecuteTool } from '../services/tool-gating.js';
 import { logClassification, logRoutingDecision, logViolation, logToolExecution } from '../services/routing-metrics.js';
-import { sendWhatsAppMessage as sendWhatsAppMessageCentral } from '../services/whatsapp-sender.js';
+import {
+  sendWhatsAppInteractiveButtonsMessage as sendWhatsAppInteractiveButtonsMessageCentral,
+  sendWhatsAppMessage as sendWhatsAppMessageCentral
+} from '../services/whatsapp-sender.js';
 
 // CORE: Channel-agnostic orchestrator
 import { handleIncomingMessage } from '../core/handleIncomingMessage.js';
@@ -54,6 +57,7 @@ import { resolveChatAssistantForBusiness } from '../services/assistantChannels.j
 import { syncPersistedAssistantReply } from '../services/reply-parity.js';
 import { safeCompareHex } from '../security/constantTime.js';
 import { queueUnifiedResponseTrace } from '../services/trace/responseTraceLogger.js';
+import { logAssistantFeedback } from '../services/operationalIncidentLogger.js';
 import { classifySemanticSupportIntent } from '../services/semantic-guard-classifier.js';
 import {
   buildWhatsappWrittenIdempotencyKey,
@@ -79,6 +83,17 @@ import {
   SUPPORT_OFFER_MODE,
   shouldTriggerHumanHandoff,
 } from '../services/liveHandoff.js';
+import {
+  getNormalizedWhatsAppFeedbackState,
+  getWhatsAppFeedbackPrompt,
+  getWhatsAppFeedbackThankYouMessage,
+  isWhatsAppFeedbackEnabled,
+  markWhatsAppFeedbackPromptSent,
+  markWhatsAppFeedbackSubmitted,
+  parseWhatsAppFeedbackSelection,
+  registerAssistantReplyForWhatsAppFeedback,
+  shouldPromptWhatsAppFeedback
+} from '../services/whatsappFeedback.js';
 
 const router = express.Router();
 const VERIFY_TOKEN_ENV_KEYS = [
@@ -109,6 +124,47 @@ function getLiveHandoffAcknowledgement(language = 'TR') {
   return String(language || 'TR').toUpperCase() === 'EN'
     ? 'A teammate will take over this WhatsApp conversation shortly. Please stay in this thread.'
     : 'Bir temsilcimiz bu WhatsApp yazışmasını birazdan devralacak. Lütfen bu konuşmada kalın.';
+}
+
+function extractIncomingWhatsAppMessage(message = {}) {
+  const textBody = typeof message?.text?.body === 'string' ? message.text.body.trim() : '';
+  if (textBody) {
+    return {
+      text: textBody,
+      messageType: message?.type || 'text',
+      interactiveReply: null,
+    };
+  }
+
+  const buttonReply = message?.interactive?.button_reply;
+  if (buttonReply?.id || buttonReply?.title) {
+    return {
+      text: String(buttonReply?.title || '').trim(),
+      messageType: 'interactive_button_reply',
+      interactiveReply: {
+        id: String(buttonReply?.id || '').trim(),
+        title: String(buttonReply?.title || '').trim(),
+      },
+    };
+  }
+
+  const listReply = message?.interactive?.list_reply;
+  if (listReply?.id || listReply?.title) {
+    return {
+      text: String(listReply?.title || '').trim(),
+      messageType: 'interactive_list_reply',
+      interactiveReply: {
+        id: String(listReply?.id || '').trim(),
+        title: String(listReply?.title || '').trim(),
+      },
+    };
+  }
+
+  return {
+    text: '',
+    messageType: message?.type || 'unknown',
+    interactiveReply: null,
+  };
 }
 
 async function startWhatsappCallbackFlow({
@@ -576,12 +632,15 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
       if (value?.messages && value.messages.length > 0) {
         const message = value.messages[0];
         const from = message.from; // Sender's phone number
-        const messageBody = message.text?.body; // Message content
+        const extractedIncoming = extractIncomingWhatsAppMessage(message);
+        const messageBody = extractedIncoming.text; // Message content
         const messageId = message.id;
 
-        // Skip if not a text message
+        // Skip if not a text/interactive reply message
         if (!messageBody) {
-          console.log('⚠️ Non-text message received, skipping');
+          console.log('⚠️ Unsupported WhatsApp message received, skipping', {
+            type: extractedIncoming.messageType
+          });
           return res.sendStatus(200);
         }
 
@@ -609,7 +668,9 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
         // Process message asynchronously (don't await)
         processWhatsAppMessage(business, from, messageBody, messageId, {
           requestId: req.requestId || null,
-          phoneNumberId
+          phoneNumberId,
+          messageType: extractedIncoming.messageType,
+          interactiveReply: extractedIncoming.interactiveReply,
         }).catch(err => {
           console.error('❌ Async message processing error:', err);
         });
@@ -671,6 +732,14 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
     const state = await getState(sessionId);
     const handoff = getNormalizedHandoffState(state);
     const supportRouting = getSupportRoutingState(state);
+    const feedbackState = getNormalizedWhatsAppFeedbackState(state);
+    const feedbackSelection = (
+      isWhatsAppFeedbackEnabled()
+      && feedbackState.promptSentAt
+      && traceMeta.interactiveReply
+    )
+      ? parseWhatsAppFeedbackSelection(traceMeta.interactiveReply)
+      : null;
     const userTranscriptMessage = {
       role: 'user',
       content: messageBody,
@@ -878,6 +947,66 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
       }
     }
 
+    if (feedbackSelection) {
+      const alreadySubmitted = Boolean(feedbackState.submittedAt);
+      const thankYouMessage = getWhatsAppFeedbackThankYouMessage(language, feedbackSelection.sentiment);
+
+      if (!alreadySubmitted) {
+        await updateState(sessionId, {
+          businessId: business.id,
+          messageCount: state.messageCount || 0,
+          whatsappFeedback: markWhatsAppFeedbackSubmitted(state, {
+            sentiment: feedbackSelection.sentiment,
+            messageId,
+          }).whatsappFeedback,
+        });
+
+        await logAssistantFeedback({
+          businessId: business.id,
+          traceId: feedbackState.responseTraceId || null,
+          requestId: traceMeta.requestId || null,
+          sessionId,
+          messageId,
+          userId: from,
+          channel: 'WHATSAPP',
+          sentiment: feedbackSelection.sentiment,
+          reason: null,
+          comment: null,
+          assistantReplyPreview: null,
+          source: 'whatsapp_interactive_feedback',
+        }).catch((error) => {
+          console.error('⚠️ [WhatsApp] Failed to persist feedback:', error.message);
+        });
+      }
+
+      await appendChatLogMessages({
+        sessionId,
+        businessId: business.id,
+        channel: 'WHATSAPP',
+        assistantId: business.assistants?.[0]?.id || null,
+        customerPhone: from,
+        messages: [
+          userTranscriptMessage,
+          {
+            role: 'assistant',
+            content: thankYouMessage,
+            metadata: {
+              source: 'feedback_acknowledgement',
+              sentiment: feedbackSelection.sentiment,
+            }
+          }
+        ]
+      });
+
+      await sendWhatsAppMessage(business, from, thankYouMessage, {
+        inboundMessageId: `${messageId}:feedback-ack`,
+        skipUsageMetering: true,
+      });
+
+      console.log(`📝 [WhatsApp] Feedback received for session ${sessionId}: ${feedbackSelection.sentiment}`);
+      return;
+    }
+
     if (handoff.mode === HANDOFF_MODE.REQUESTED || handoff.mode === HANDOFF_MODE.ACTIVE) {
       await appendChatLogMessages({
         sessionId,
@@ -1010,7 +1139,7 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
       }
     };
 
-    queueUnifiedResponseTrace({
+    const queuedTrace = queueUnifiedResponseTrace({
       ...traceInput,
       context: {
         ...(traceInput.context || {}),
@@ -1021,6 +1150,69 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
       postprocessors: postprocessorsApplied,
       finalResponse: aiResponse
     });
+
+    if (isWhatsAppFeedbackEnabled()) {
+      const latestState = result.state || await getState(sessionId);
+      const feedbackStateEnvelope = registerAssistantReplyForWhatsAppFeedback(latestState, {
+        traceId: result.traceId || queuedTrace?.traceId || null,
+      });
+
+      await updateState(sessionId, {
+        businessId: business.id,
+        messageCount: latestState.messageCount || state.messageCount || 0,
+        whatsappFeedback: feedbackStateEnvelope.whatsappFeedback,
+      });
+
+      if (shouldPromptWhatsAppFeedback({
+        state: feedbackStateEnvelope,
+        handoffMode: getNormalizedHandoffState(feedbackStateEnvelope).mode,
+        supportRoutingPending: getSupportRoutingState(feedbackStateEnvelope).pendingChoice,
+        callbackPending: feedbackStateEnvelope?.callbackFlow?.pending === true,
+      })) {
+        const feedbackPrompt = getWhatsAppFeedbackPrompt(language);
+        const promptMessageId = `feedback-prompt:${sessionId}:${feedbackStateEnvelope.whatsappFeedback.assistantTurns}`;
+        const promptSendResult = await sendWhatsAppInteractiveButtonsMessage(
+          business,
+          from,
+          feedbackPrompt,
+          {
+            inboundMessageId: promptMessageId,
+            skipUsageMetering: true,
+          }
+        );
+
+        if (promptSendResult?.success !== false) {
+          const promptedState = markWhatsAppFeedbackPromptSent(feedbackStateEnvelope, {
+            traceId: result.traceId || queuedTrace?.traceId || null,
+            promptMessageId,
+          });
+
+          await updateState(sessionId, {
+            businessId: business.id,
+            messageCount: latestState.messageCount || state.messageCount || 0,
+            whatsappFeedback: promptedState.whatsappFeedback,
+          });
+
+          await appendChatLogMessages({
+            sessionId,
+            businessId: business.id,
+            channel: 'WHATSAPP',
+            assistantId: resolved.assistant?.id || null,
+            customerPhone: from,
+            messages: [
+              {
+                role: 'assistant',
+                content: feedbackPrompt.bodyText,
+                metadata: {
+                  source: 'feedback_prompt',
+                  buttons: feedbackPrompt.buttons,
+                }
+              }
+            ]
+          });
+        }
+      }
+    }
   } catch (error) {
     console.error('❌ Error processing WhatsApp message:', error);
 
@@ -1765,6 +1957,35 @@ async function sendWhatsAppMessage(business, to, text, options = {}) {
     }
 
     console.error('❌ Error sending WhatsApp message:', {
+      businessId: business?.id || null,
+      to,
+      error: error.message,
+      details: error.details || null
+    });
+    throw error;
+  }
+}
+
+async function sendWhatsAppInteractiveButtonsMessage(business, to, payload, options = {}) {
+  try {
+    const result = await sendWhatsAppInteractiveButtonsMessageCentral(business, to, payload, options);
+
+    if (!result || result.success === false) {
+      const outboundError = new Error(result?.error || 'WhatsApp outbound interactive send failed');
+      outboundError.name = 'WhatsAppInteractiveSendError';
+      outboundError.details = result || null;
+      throw outboundError;
+    }
+
+    if (result.duplicate) {
+      console.log(`♻️ [WhatsApp] Duplicate interactive send blocked for business ${business.name}`);
+    } else {
+      console.log(`✅ WhatsApp interactive message sent for business ${business.name}:`, result.messageId);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('❌ Error sending WhatsApp interactive message:', {
       businessId: business?.id || null,
       to,
       error: error.message,

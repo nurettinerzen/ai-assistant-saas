@@ -30,21 +30,36 @@ function getWhatsAppAccessTokenForBusiness(business) {
   );
 }
 
-/**
- * Send WhatsApp message using business credentials
- * With outbound idempotency to prevent duplicate sends
- *
- * @param {Object} business - Business object
- * @param {string} to - Recipient phone number
- * @param {string} text - Message text
- * @param {Object} options - Options
- * @param {string} options.inboundMessageId - Original webhook message ID (for idempotency)
- * @returns {Promise<Object>} Send result
- */
-export async function sendWhatsAppMessage(business, to, text, options = {}) {
+function resolveWhatsAppSendContext(business) {
+  let accessToken;
+  let phoneNumberId;
+
+  if (business._useEnvCredentials) {
+    accessToken = getWhatsAppAccessTokenForBusiness(business);
+    phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    console.log('📤 Using env credentials for WhatsApp send');
+  } else {
+    if (!business.whatsappPhoneNumberId) {
+      throw new Error('WhatsApp credentials not configured for business');
+    }
+
+    accessToken = getWhatsAppAccessTokenForBusiness(business);
+    phoneNumberId = business.whatsappPhoneNumberId;
+  }
+
+  if (!accessToken) {
+    throw new Error('WhatsApp access token not configured for business');
+  }
+
+  return {
+    accessToken,
+    phoneNumberId,
+  };
+}
+
+async function sendWhatsAppPayload(business, to, payload, options = {}) {
   const { inboundMessageId } = options;
 
-  // IDEMPOTENCY CHECK: Prevent duplicate outbound sends
   if (inboundMessageId) {
     try {
       const existing = await prisma.outboundMessage.findUnique({
@@ -53,7 +68,7 @@ export async function sendWhatsAppMessage(business, to, text, options = {}) {
             businessId: business.id,
             channel: 'WHATSAPP',
             recipientId: to,
-            inboundMessageId
+            inboundMessageId,
           }
         }
       });
@@ -69,42 +84,18 @@ export async function sendWhatsAppMessage(business, to, text, options = {}) {
       }
     } catch (dbError) {
       console.warn('⚠️ [WhatsAppSender] Idempotency check failed, proceeding:', dbError.message);
-      // Continue with send on DB error
     }
   }
 
   try {
-    // Determine credentials source
-    let accessToken;
-    let phoneNumberId;
+    const { accessToken, phoneNumberId } = resolveWhatsAppSendContext(business);
 
-    if (business._useEnvCredentials) {
-      // Use environment variables (testing/dev)
-      accessToken = getWhatsAppAccessTokenForBusiness(business);
-      phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-      console.log('📤 Using env credentials for WhatsApp send');
-    } else {
-      // Use business's encrypted credentials
-      if (!business.whatsappPhoneNumberId) {
-        throw new Error('WhatsApp credentials not configured for business');
-      }
-
-      accessToken = getWhatsAppAccessTokenForBusiness(business);
-      phoneNumberId = business.whatsappPhoneNumberId;
-    }
-
-    if (!accessToken) {
-      throw new Error('WhatsApp access token not configured for business');
-    }
-
-    // Send message via WhatsApp API
     const response = await axios.post(
       `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`,
       {
         messaging_product: 'whatsapp',
         to,
-        type: 'text',
-        text: { body: text }
+        ...payload,
       },
       {
         headers: {
@@ -117,7 +108,6 @@ export async function sendWhatsAppMessage(business, to, text, options = {}) {
     const waMessageId = response.data.messages?.[0]?.id;
     console.log(`✅ WhatsApp message sent to ${to}`);
 
-    // CACHE SEND: Store for idempotency
     if (inboundMessageId) {
       try {
         await prisma.outboundMessage.create({
@@ -134,7 +124,6 @@ export async function sendWhatsAppMessage(business, to, text, options = {}) {
         console.log(`💾 [WhatsAppSender] Cached outbound message (messageId: ${inboundMessageId})`);
       } catch (dbError) {
         console.warn('⚠️ [WhatsAppSender] Failed to cache outbound message:', dbError.message);
-        // Non-critical, continue
       }
     }
 
@@ -143,7 +132,6 @@ export async function sendWhatsAppMessage(business, to, text, options = {}) {
       messageId: waMessageId,
       data: response.data
     };
-
   } catch (error) {
     console.error('❌ WhatsApp send error:', {
       to,
@@ -155,6 +143,80 @@ export async function sendWhatsAppMessage(business, to, text, options = {}) {
       error: error.response?.data?.error?.message || error.message
     };
   }
+}
+
+/**
+ * Send WhatsApp message using business credentials
+ * With outbound idempotency to prevent duplicate sends
+ *
+ * @param {Object} business - Business object
+ * @param {string} to - Recipient phone number
+ * @param {string} text - Message text
+ * @param {Object} options - Options
+ * @param {string} options.inboundMessageId - Original webhook message ID (for idempotency)
+ * @returns {Promise<Object>} Send result
+ */
+export async function sendWhatsAppMessage(business, to, text, options = {}) {
+  return sendWhatsAppPayload(
+    business,
+    to,
+    {
+      type: 'text',
+      text: { body: text }
+    },
+    options
+  );
+}
+
+export async function sendWhatsAppInteractiveButtonsMessage(
+  business,
+  to,
+  { bodyText, footerText = null, headerText = null, buttons = [] } = {},
+  options = {}
+) {
+  const trimmedButtons = Array.isArray(buttons) ? buttons.slice(0, 3) : [];
+  if (!bodyText || trimmedButtons.length === 0) {
+    throw new Error('WhatsApp interactive message requires bodyText and at least one button');
+  }
+
+  return sendWhatsAppPayload(
+    business,
+    to,
+    {
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        ...(headerText
+          ? {
+              header: {
+                type: 'text',
+                text: headerText
+              }
+            }
+          : {}),
+        body: {
+          text: bodyText
+        },
+        ...(footerText
+          ? {
+              footer: {
+                text: footerText
+              }
+            }
+          : {}),
+        action: {
+          buttons: trimmedButtons.map((button) => ({
+            type: 'reply',
+            reply: {
+              id: String(button.id),
+              title: String(button.title),
+            }
+          }))
+        }
+      }
+    },
+    options
+  );
 }
 
 /**
@@ -239,6 +301,7 @@ setInterval(() => {
 
 export default {
   sendWhatsAppMessage,
+  sendWhatsAppInteractiveButtonsMessage,
   sendTypingIndicator,
   cleanupExpiredOutboundMessages
 };
