@@ -219,6 +219,59 @@ export async function sendWhatsAppInteractiveButtonsMessage(
   );
 }
 
+export async function sendWhatsAppInteractiveListMessage(
+  business,
+  to,
+  { bodyText, footerText = null, headerText = null, buttonText, sections = [] } = {},
+  options = {}
+) {
+  const trimmedSections = Array.isArray(sections) ? sections.slice(0, 10) : [];
+  if (!bodyText || !buttonText || trimmedSections.length === 0) {
+    throw new Error('WhatsApp interactive list message requires bodyText, buttonText and at least one section');
+  }
+
+  return sendWhatsAppPayload(
+    business,
+    to,
+    {
+      type: 'interactive',
+      interactive: {
+        type: 'list',
+        ...(headerText
+          ? {
+              header: {
+                type: 'text',
+                text: headerText
+              }
+            }
+          : {}),
+        body: {
+          text: bodyText
+        },
+        ...(footerText
+          ? {
+              footer: {
+                text: footerText
+              }
+            }
+          : {}),
+        action: {
+          button: String(buttonText),
+          sections: trimmedSections.map((section) => ({
+            title: String(section.title),
+            rows: (Array.isArray(section.rows) ? section.rows : []).slice(0, 10).map((row) => ({
+              id: String(row.id),
+              title: String(row.title),
+              ...(row.description ? { description: String(row.description) } : {}),
+            }))
+          }))
+        }
+      }
+    },
+    options
+  );
+}
+
 /**
  * Send typing indicator (optional - for better UX)
  *
@@ -302,6 +355,7 @@ setInterval(() => {
 export default {
   sendWhatsAppMessage,
   sendWhatsAppInteractiveButtonsMessage,
+  sendWhatsAppInteractiveListMessage,
   sendTypingIndicator,
   cleanupExpiredOutboundMessages
 };

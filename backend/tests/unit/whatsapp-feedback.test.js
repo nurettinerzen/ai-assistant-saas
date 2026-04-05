@@ -2,38 +2,50 @@ import { describe, expect, it } from '@jest/globals';
 
 const {
   WHATSAPP_FEEDBACK_BUTTON_IDS,
+  WHATSAPP_FEEDBACK_REASON_IDS,
   getNormalizedWhatsAppFeedbackState,
+  getWhatsAppNegativeFeedbackReasonPrompt,
   getWhatsAppFeedbackPrompt,
   getWhatsAppFeedbackThankYouMessage,
+  isMeaningfulWhatsAppFeedbackMessage,
   markWhatsAppFeedbackPromptSent,
+  markWhatsAppFeedbackReasonPromptSent,
   markWhatsAppFeedbackSubmitted,
+  parseWhatsAppFeedbackReasonSelection,
   parseWhatsAppFeedbackSelection,
   registerAssistantReplyForWhatsAppFeedback,
+  registerUserMessageForWhatsAppFeedback,
   shouldPromptWhatsAppFeedback,
 } = await import('../../src/services/whatsappFeedback.js');
 
 describe('whatsappFeedback service', () => {
   it('increments assistant turn count and stores trace id', () => {
-    const next = registerAssistantReplyForWhatsAppFeedback({}, { traceId: 'trace_123' });
+    const withMeaningfulUser = registerUserMessageForWhatsAppFeedback({}, 'Siparişim nerede?');
+    const next = registerAssistantReplyForWhatsAppFeedback(withMeaningfulUser, { traceId: 'trace_123' });
 
     expect(getNormalizedWhatsAppFeedbackState(next)).toMatchObject({
       assistantTurns: 1,
+      meaningfulUserTurns: 1,
       responseTraceId: 'trace_123',
       promptSentAt: null,
       submittedAt: null,
     });
   });
 
-  it('prompts only after enough assistant turns and only once', () => {
-    const oneTurn = registerAssistantReplyForWhatsAppFeedback({}, { traceId: 'trace_1' });
+  it('prompts only after enough assistant turns, context, and only once', () => {
+    const base = registerUserMessageForWhatsAppFeedback({}, 'Siparişim nerede?');
+    const oneTurn = registerAssistantReplyForWhatsAppFeedback(base, { traceId: 'trace_1' });
     expect(shouldPromptWhatsAppFeedback({ state: oneTurn })).toBe(false);
 
     const twoTurns = registerAssistantReplyForWhatsAppFeedback(oneTurn, { traceId: 'trace_2' });
-    expect(shouldPromptWhatsAppFeedback({ state: twoTurns })).toBe(true);
+    expect(shouldPromptWhatsAppFeedback({ state: twoTurns })).toBe(false);
 
-    const prompted = markWhatsAppFeedbackPromptSent(twoTurns, {
-      traceId: 'trace_2',
-      promptMessageId: 'feedback-prompt:sess_1:2',
+    const threeTurns = registerAssistantReplyForWhatsAppFeedback(twoTurns, { traceId: 'trace_3' });
+    expect(shouldPromptWhatsAppFeedback({ state: threeTurns })).toBe(true);
+
+    const prompted = markWhatsAppFeedbackPromptSent(threeTurns, {
+      traceId: 'trace_3',
+      promptMessageId: 'feedback-prompt:sess_1:3',
       now: '2026-04-05T12:00:00.000Z',
     });
     expect(shouldPromptWhatsAppFeedback({ state: prompted })).toBe(false);
@@ -41,7 +53,13 @@ describe('whatsappFeedback service', () => {
 
   it('does not prompt while a live handoff or callback flow is active', () => {
     const base = registerAssistantReplyForWhatsAppFeedback(
-      registerAssistantReplyForWhatsAppFeedback({}, { traceId: 'trace_1' }),
+      registerAssistantReplyForWhatsAppFeedback(
+        registerAssistantReplyForWhatsAppFeedback(
+          registerUserMessageForWhatsAppFeedback({}, 'Ürünümü iade etmek istiyorum'),
+          { traceId: 'trace_1' }
+        ),
+        { traceId: 'trace_2' }
+      ),
       { traceId: 'trace_2' }
     );
 
@@ -67,14 +85,19 @@ describe('whatsappFeedback service', () => {
     })).toBeNull();
   });
 
-  it('marks submission and returns localized prompt/thank-you copy', () => {
-    const prompted = markWhatsAppFeedbackPromptSent({}, {
+  it('parses negative reasons and returns localized prompt/thank-you copy', () => {
+    const prompted = markWhatsAppFeedbackPromptSent(registerUserMessageForWhatsAppFeedback({}, 'Kargom nerede?'), {
       traceId: 'trace_9',
-      promptMessageId: 'feedback-prompt:sess_2:2',
+      promptMessageId: 'feedback-prompt:sess_2:3',
       now: '2026-04-05T12:00:00.000Z',
     });
-    const submitted = markWhatsAppFeedbackSubmitted(prompted, {
+    const promptedReason = markWhatsAppFeedbackReasonPromptSent(prompted, {
+      reasonPromptMessageId: 'feedback-reason:sess_2:3',
+      now: '2026-04-05T12:00:30.000Z',
+    });
+    const submitted = markWhatsAppFeedbackSubmitted(promptedReason, {
       sentiment: 'negative',
+      reason: 'WRONG_ANSWER',
       messageId: 'wamid.feedback',
       now: '2026-04-05T12:01:00.000Z',
     });
@@ -83,10 +106,22 @@ describe('whatsappFeedback service', () => {
       submittedAt: '2026-04-05T12:01:00.000Z',
       submittedMessageId: 'wamid.feedback',
       sentiment: 'negative',
+      reason: 'WRONG_ANSWER',
     });
 
     expect(getWhatsAppFeedbackPrompt('TR').buttons).toHaveLength(2);
+    expect(getWhatsAppNegativeFeedbackReasonPrompt('TR').sections[0].rows).toHaveLength(6);
     expect(getWhatsAppFeedbackThankYouMessage('EN', 'positive')).toContain('Thanks');
     expect(getWhatsAppFeedbackThankYouMessage('TR', 'negative')).toContain('teşekkür');
+    expect(parseWhatsAppFeedbackReasonSelection({
+      id: WHATSAPP_FEEDBACK_REASON_IDS.WRONG_ANSWER,
+      title: 'Yanlış bilgi verdi',
+    })).toMatchObject({ reason: 'WRONG_ANSWER' });
+  });
+
+  it('does not treat light chatter as meaningful context', () => {
+    expect(isMeaningfulWhatsAppFeedbackMessage('selam')).toBe(false);
+    expect(isMeaningfulWhatsAppFeedbackMessage('nasılsın')).toBe(false);
+    expect(isMeaningfulWhatsAppFeedbackMessage('siparişim nerede')).toBe(true);
   });
 });

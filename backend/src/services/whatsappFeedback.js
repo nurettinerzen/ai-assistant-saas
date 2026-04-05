@@ -5,7 +5,17 @@ export const WHATSAPP_FEEDBACK_BUTTON_IDS = Object.freeze({
   NEGATIVE: 'wa_feedback_negative',
 });
 
-const MIN_ASSISTANT_TURNS = 2;
+export const WHATSAPP_FEEDBACK_REASON_IDS = Object.freeze({
+  WRONG_ANSWER: 'wa_feedback_reason_wrong_answer',
+  MISUNDERSTOOD: 'wa_feedback_reason_misunderstood',
+  NOT_RESOLVED: 'wa_feedback_reason_not_resolved',
+  NOT_SPECIFIC: 'wa_feedback_reason_not_specific',
+  BLOCKED_PROGRESS: 'wa_feedback_reason_blocked_progress',
+  OTHER: 'wa_feedback_reason_other',
+});
+
+const MIN_ASSISTANT_TURNS = 3;
+const LIGHTWEIGHT_CHATTER_PATTERN = /^(selam|merhaba|nasılsın|naber|iyi misin|teşekkürler|teşekkür ederim|sağ ol|sağ olun|günaydın|iyi akşamlar|görüşürüz|bye|hi|hello|hey|how are you|thanks|thank you|good morning|good evening)[!.?, ]*$/i;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -17,6 +27,24 @@ function normalizeAssistantTurns(value) {
   return Math.max(0, Math.trunc(numeric));
 }
 
+function normalizeMeaningfulTurns(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.trunc(numeric));
+}
+
+export function isMeaningfulWhatsAppFeedbackMessage(message = '') {
+  const normalized = String(message || '').trim();
+  if (!normalized) return false;
+  if (LIGHTWEIGHT_CHATTER_PATTERN.test(normalized)) return false;
+
+  const hasDigits = /\d/.test(normalized);
+  const hasQuestion = /[?？]/.test(normalized);
+  const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+
+  return hasDigits || hasQuestion || wordCount >= 2 || normalized.length >= 12;
+}
+
 export function isWhatsAppFeedbackEnabled() {
   return isFeatureEnabled('WHATSAPP_FEEDBACK_V1') || isFeatureEnabled('WHATSAPP_LIVE_HANDOFF_V2');
 }
@@ -26,12 +54,16 @@ export function getNormalizedWhatsAppFeedbackState(state = {}) {
 
   return {
     assistantTurns: normalizeAssistantTurns(feedback.assistantTurns),
+    meaningfulUserTurns: normalizeMeaningfulTurns(feedback.meaningfulUserTurns),
     promptSentAt: feedback.promptSentAt || null,
     promptMessageId: feedback.promptMessageId || null,
+    reasonPromptSentAt: feedback.reasonPromptSentAt || null,
+    reasonPromptMessageId: feedback.reasonPromptMessageId || null,
     responseTraceId: feedback.responseTraceId || null,
     submittedAt: feedback.submittedAt || null,
     submittedMessageId: feedback.submittedMessageId || null,
     sentiment: feedback.sentiment || null,
+    reason: feedback.reason || null,
   };
 }
 
@@ -48,6 +80,19 @@ export function registerAssistantReplyForWhatsAppFeedback(state = {}, { traceId 
   };
 }
 
+export function registerUserMessageForWhatsAppFeedback(state = {}, message = '') {
+  const current = getNormalizedWhatsAppFeedbackState(state);
+  const increment = isMeaningfulWhatsAppFeedbackMessage(message) ? 1 : 0;
+
+  return {
+    ...state,
+    whatsappFeedback: {
+      ...current,
+      meaningfulUserTurns: current.meaningfulUserTurns + increment,
+    },
+  };
+}
+
 export function shouldPromptWhatsAppFeedback({
   state = {},
   handoffMode = 'AI',
@@ -57,6 +102,7 @@ export function shouldPromptWhatsAppFeedback({
   const feedback = getNormalizedWhatsAppFeedbackState(state);
   if (feedback.submittedAt || feedback.promptSentAt) return false;
   if (feedback.assistantTurns < MIN_ASSISTANT_TURNS) return false;
+  if (feedback.meaningfulUserTurns < 1) return false;
   if (handoffMode !== 'AI') return false;
   if (supportRoutingPending || callbackPending) return false;
   return true;
@@ -74,14 +120,33 @@ export function markWhatsAppFeedbackPromptSent(
       ...current,
       promptSentAt: now,
       promptMessageId: promptMessageId || current.promptMessageId || null,
+      reasonPromptSentAt: null,
+      reasonPromptMessageId: null,
       responseTraceId: traceId || current.responseTraceId || null,
+    },
+  };
+}
+
+export function markWhatsAppFeedbackReasonPromptSent(
+  state = {},
+  { reasonPromptMessageId = null, now = new Date().toISOString() } = {}
+) {
+  const current = getNormalizedWhatsAppFeedbackState(state);
+
+  return {
+    ...state,
+    whatsappFeedback: {
+      ...current,
+      reasonPromptSentAt: now,
+      reasonPromptMessageId: reasonPromptMessageId || current.reasonPromptMessageId || null,
+      sentiment: 'negative',
     },
   };
 }
 
 export function markWhatsAppFeedbackSubmitted(
   state = {},
-  { sentiment = 'positive', messageId = null, now = new Date().toISOString() } = {}
+  { sentiment = 'positive', reason = null, messageId = null, now = new Date().toISOString() } = {}
 ) {
   const current = getNormalizedWhatsAppFeedbackState(state);
   const normalizedSentiment = String(sentiment || '').toLowerCase() === 'negative'
@@ -95,6 +160,7 @@ export function markWhatsAppFeedbackSubmitted(
       submittedAt: now,
       submittedMessageId: messageId || current.submittedMessageId || null,
       sentiment: normalizedSentiment,
+      reason: reason || current.reason || null,
     },
   };
 }
@@ -118,6 +184,48 @@ export function getWhatsAppFeedbackPrompt(language = 'TR') {
       { id: WHATSAPP_FEEDBACK_BUTTON_IDS.POSITIVE, title: 'Yardımcı oldu' },
       { id: WHATSAPP_FEEDBACK_BUTTON_IDS.NEGATIVE, title: 'Yardımcı olmadı' },
     ],
+  };
+}
+
+export function getWhatsAppNegativeFeedbackReasonPrompt(language = 'TR') {
+  if (String(language || 'TR').toUpperCase() === 'EN') {
+    return {
+      bodyText: 'What went wrong?',
+      footerText: 'Choose the closest reason.',
+      buttonText: 'Select reason',
+      sections: [
+        {
+          title: 'Feedback reasons',
+          rows: [
+            { id: WHATSAPP_FEEDBACK_REASON_IDS.WRONG_ANSWER, title: 'Incorrect information' },
+            { id: WHATSAPP_FEEDBACK_REASON_IDS.MISUNDERSTOOD, title: "Didn't understand me" },
+            { id: WHATSAPP_FEEDBACK_REASON_IDS.NOT_RESOLVED, title: "Didn't solve my issue" },
+            { id: WHATSAPP_FEEDBACK_REASON_IDS.NOT_SPECIFIC, title: 'Was not clear enough' },
+            { id: WHATSAPP_FEEDBACK_REASON_IDS.BLOCKED_PROGRESS, title: 'Stopped the flow unnecessarily' },
+            { id: WHATSAPP_FEEDBACK_REASON_IDS.OTHER, title: 'Other' },
+          ]
+        }
+      ]
+    };
+  }
+
+  return {
+    bodyText: 'Sorun neydi?',
+    footerText: 'Size en yakın nedeni seçin.',
+    buttonText: 'Neden seç',
+    sections: [
+      {
+        title: 'Geri bildirim nedenleri',
+        rows: [
+          { id: WHATSAPP_FEEDBACK_REASON_IDS.WRONG_ANSWER, title: 'Yanlış bilgi verdi' },
+          { id: WHATSAPP_FEEDBACK_REASON_IDS.MISUNDERSTOOD, title: 'Ne demek istediğimi anlamadı' },
+          { id: WHATSAPP_FEEDBACK_REASON_IDS.NOT_RESOLVED, title: 'Sorunumu çözmedi' },
+          { id: WHATSAPP_FEEDBACK_REASON_IDS.NOT_SPECIFIC, title: 'Soruma net cevap vermedi' },
+          { id: WHATSAPP_FEEDBACK_REASON_IDS.BLOCKED_PROGRESS, title: 'Gereksiz yere durdurdu' },
+          { id: WHATSAPP_FEEDBACK_REASON_IDS.OTHER, title: 'Diğer' },
+        ]
+      }
+    ]
   };
 }
 
@@ -150,15 +258,44 @@ export function parseWhatsAppFeedbackSelection(interactiveReply = null) {
   return null;
 }
 
+export function parseWhatsAppFeedbackReasonSelection(interactiveReply = null) {
+  const reply = isPlainObject(interactiveReply) ? interactiveReply : {};
+  const id = String(reply.id || '').trim();
+  const title = String(reply.title || '').trim() || null;
+  if (!id) return null;
+
+  const mapping = {
+    [WHATSAPP_FEEDBACK_REASON_IDS.WRONG_ANSWER]: 'WRONG_ANSWER',
+    [WHATSAPP_FEEDBACK_REASON_IDS.MISUNDERSTOOD]: 'MISUNDERSTOOD',
+    [WHATSAPP_FEEDBACK_REASON_IDS.NOT_RESOLVED]: 'NOT_RESOLVED',
+    [WHATSAPP_FEEDBACK_REASON_IDS.NOT_SPECIFIC]: 'NOT_SPECIFIC',
+    [WHATSAPP_FEEDBACK_REASON_IDS.BLOCKED_PROGRESS]: 'BLOCKED_PROGRESS',
+    [WHATSAPP_FEEDBACK_REASON_IDS.OTHER]: 'OTHER',
+  };
+
+  if (!mapping[id]) return null;
+  return {
+    id,
+    title,
+    reason: mapping[id],
+  };
+}
+
 export default {
   WHATSAPP_FEEDBACK_BUTTON_IDS,
+  WHATSAPP_FEEDBACK_REASON_IDS,
   getNormalizedWhatsAppFeedbackState,
+  getWhatsAppNegativeFeedbackReasonPrompt,
   getWhatsAppFeedbackPrompt,
   getWhatsAppFeedbackThankYouMessage,
+  isMeaningfulWhatsAppFeedbackMessage,
   isWhatsAppFeedbackEnabled,
   markWhatsAppFeedbackPromptSent,
+  markWhatsAppFeedbackReasonPromptSent,
   markWhatsAppFeedbackSubmitted,
   parseWhatsAppFeedbackSelection,
+  parseWhatsAppFeedbackReasonSelection,
   registerAssistantReplyForWhatsAppFeedback,
+  registerUserMessageForWhatsAppFeedback,
   shouldPromptWhatsAppFeedback,
 };

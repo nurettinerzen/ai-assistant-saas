@@ -25,6 +25,7 @@ import { getToolFailResponse, validateResponseAfterToolFail, executeToolWithRetr
 import { getGatedTools, canExecuteTool } from '../services/tool-gating.js';
 import { logClassification, logRoutingDecision, logViolation, logToolExecution } from '../services/routing-metrics.js';
 import {
+  sendWhatsAppInteractiveListMessage as sendWhatsAppInteractiveListMessageCentral,
   sendWhatsAppInteractiveButtonsMessage as sendWhatsAppInteractiveButtonsMessageCentral,
   sendWhatsAppMessage as sendWhatsAppMessageCentral
 } from '../services/whatsapp-sender.js';
@@ -85,13 +86,17 @@ import {
 } from '../services/liveHandoff.js';
 import {
   getNormalizedWhatsAppFeedbackState,
+  getWhatsAppNegativeFeedbackReasonPrompt,
   getWhatsAppFeedbackPrompt,
   getWhatsAppFeedbackThankYouMessage,
   isWhatsAppFeedbackEnabled,
   markWhatsAppFeedbackPromptSent,
+  markWhatsAppFeedbackReasonPromptSent,
   markWhatsAppFeedbackSubmitted,
+  parseWhatsAppFeedbackReasonSelection,
   parseWhatsAppFeedbackSelection,
   registerAssistantReplyForWhatsAppFeedback,
+  registerUserMessageForWhatsAppFeedback,
   shouldPromptWhatsAppFeedback
 } from '../services/whatsappFeedback.js';
 
@@ -740,11 +745,27 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
     )
       ? parseWhatsAppFeedbackSelection(traceMeta.interactiveReply)
       : null;
+    const feedbackReasonSelection = (
+      isWhatsAppFeedbackEnabled()
+      && feedbackState.reasonPromptSentAt
+      && traceMeta.interactiveReply
+    )
+      ? parseWhatsAppFeedbackReasonSelection(traceMeta.interactiveReply)
+      : null;
     const userTranscriptMessage = {
       role: 'user',
       content: messageBody,
       timestamp: new Date().toISOString(),
     };
+
+    if (isWhatsAppFeedbackEnabled() && !feedbackSelection && !feedbackReasonSelection) {
+      const feedbackUserState = registerUserMessageForWhatsAppFeedback(state, messageBody);
+      await updateState(sessionId, {
+        businessId: business.id,
+        messageCount: state.messageCount || 0,
+        whatsappFeedback: feedbackUserState.whatsappFeedback,
+      });
+    }
 
     const liveSupportAvailability = isWhatsAppLiveHandoffEnabled()
       ? await getLiveSupportAvailability({
@@ -948,15 +969,121 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
     }
 
     if (feedbackSelection) {
+      if (feedbackSelection.sentiment === 'positive') {
+        const alreadySubmitted = Boolean(feedbackState.submittedAt);
+        const thankYouMessage = getWhatsAppFeedbackThankYouMessage(language, feedbackSelection.sentiment);
+
+        if (!alreadySubmitted) {
+          await updateState(sessionId, {
+            businessId: business.id,
+            messageCount: state.messageCount || 0,
+            whatsappFeedback: markWhatsAppFeedbackSubmitted(state, {
+              sentiment: feedbackSelection.sentiment,
+              messageId,
+            }).whatsappFeedback,
+          });
+
+          await logAssistantFeedback({
+            businessId: business.id,
+            traceId: feedbackState.responseTraceId || null,
+            requestId: traceMeta.requestId || null,
+            sessionId,
+            messageId,
+            userId: from,
+            channel: 'WHATSAPP',
+            sentiment: feedbackSelection.sentiment,
+            reason: 'HELPFUL',
+            comment: null,
+            assistantReplyPreview: null,
+            source: 'whatsapp_interactive_feedback',
+          }).catch((error) => {
+            console.error('⚠️ [WhatsApp] Failed to persist feedback:', error.message);
+          });
+        }
+
+        await appendChatLogMessages({
+          sessionId,
+          businessId: business.id,
+          channel: 'WHATSAPP',
+          assistantId: business.assistants?.[0]?.id || null,
+          customerPhone: from,
+          messages: [
+            userTranscriptMessage,
+            {
+              role: 'assistant',
+              content: thankYouMessage,
+              metadata: {
+                source: 'feedback_acknowledgement',
+                sentiment: feedbackSelection.sentiment,
+              }
+            }
+          ]
+        });
+
+        await sendWhatsAppMessage(business, from, thankYouMessage, {
+          inboundMessageId: `${messageId}:feedback-ack`,
+          skipUsageMetering: true,
+        });
+
+        console.log(`📝 [WhatsApp] Feedback received for session ${sessionId}: ${feedbackSelection.sentiment}`);
+        return;
+      }
+
+      const reasonPrompt = getWhatsAppNegativeFeedbackReasonPrompt(language);
+      const reasonPromptMessageId = `${messageId}:feedback-reason`;
+
+      await updateState(sessionId, {
+        businessId: business.id,
+        messageCount: state.messageCount || 0,
+        whatsappFeedback: markWhatsAppFeedbackReasonPromptSent(state, {
+          reasonPromptMessageId,
+        }).whatsappFeedback,
+      });
+
+      await appendChatLogMessages({
+        sessionId,
+        businessId: business.id,
+        channel: 'WHATSAPP',
+        assistantId: business.assistants?.[0]?.id || null,
+        customerPhone: from,
+        messages: [
+          userTranscriptMessage,
+          {
+            role: 'assistant',
+            content: reasonPrompt.bodyText,
+            metadata: {
+              source: 'feedback_reason_prompt',
+              sections: reasonPrompt.sections,
+            }
+          }
+        ]
+      });
+
+      await sendWhatsAppInteractiveListMessage(
+        business,
+        from,
+        reasonPrompt,
+        {
+          inboundMessageId: reasonPromptMessageId,
+          skipUsageMetering: true,
+        }
+      );
+
+      console.log(`📝 [WhatsApp] Negative feedback reason prompt sent for session ${sessionId}`);
+      return;
+    }
+
+    if (feedbackReasonSelection) {
       const alreadySubmitted = Boolean(feedbackState.submittedAt);
-      const thankYouMessage = getWhatsAppFeedbackThankYouMessage(language, feedbackSelection.sentiment);
+      const thankYouMessage = getWhatsAppFeedbackThankYouMessage(language, 'negative');
 
       if (!alreadySubmitted) {
         await updateState(sessionId, {
           businessId: business.id,
           messageCount: state.messageCount || 0,
           whatsappFeedback: markWhatsAppFeedbackSubmitted(state, {
-            sentiment: feedbackSelection.sentiment,
+            sentiment: 'negative',
+            reason: feedbackReasonSelection.reason,
             messageId,
           }).whatsappFeedback,
         });
@@ -969,13 +1096,13 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
           messageId,
           userId: from,
           channel: 'WHATSAPP',
-          sentiment: feedbackSelection.sentiment,
-          reason: null,
+          sentiment: 'negative',
+          reason: feedbackReasonSelection.reason,
           comment: null,
           assistantReplyPreview: null,
           source: 'whatsapp_interactive_feedback',
         }).catch((error) => {
-          console.error('⚠️ [WhatsApp] Failed to persist feedback:', error.message);
+          console.error('⚠️ [WhatsApp] Failed to persist feedback reason:', error.message);
         });
       }
 
@@ -992,18 +1119,19 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
             content: thankYouMessage,
             metadata: {
               source: 'feedback_acknowledgement',
-              sentiment: feedbackSelection.sentiment,
+              sentiment: 'negative',
+              reason: feedbackReasonSelection.reason,
             }
           }
         ]
       });
 
       await sendWhatsAppMessage(business, from, thankYouMessage, {
-        inboundMessageId: `${messageId}:feedback-ack`,
+        inboundMessageId: `${messageId}:feedback-reason-ack`,
         skipUsageMetering: true,
       });
 
-      console.log(`📝 [WhatsApp] Feedback received for session ${sessionId}: ${feedbackSelection.sentiment}`);
+      console.log(`📝 [WhatsApp] Negative feedback reason received for session ${sessionId}: ${feedbackReasonSelection.reason}`);
       return;
     }
 
@@ -1986,6 +2114,35 @@ async function sendWhatsAppInteractiveButtonsMessage(business, to, payload, opti
     return result;
   } catch (error) {
     console.error('❌ Error sending WhatsApp interactive message:', {
+      businessId: business?.id || null,
+      to,
+      error: error.message,
+      details: error.details || null
+    });
+    throw error;
+  }
+}
+
+async function sendWhatsAppInteractiveListMessage(business, to, payload, options = {}) {
+  try {
+    const result = await sendWhatsAppInteractiveListMessageCentral(business, to, payload, options);
+
+    if (!result || result.success === false) {
+      const outboundError = new Error(result?.error || 'WhatsApp outbound list send failed');
+      outboundError.name = 'WhatsAppInteractiveListSendError';
+      outboundError.details = result || null;
+      throw outboundError;
+    }
+
+    if (result.duplicate) {
+      console.log(`♻️ [WhatsApp] Duplicate interactive list send blocked for business ${business.name}`);
+    } else {
+      console.log(`✅ WhatsApp interactive list message sent for business ${business.name}:`, result.messageId);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('❌ Error sending WhatsApp interactive list message:', {
       businessId: business?.id || null,
       to,
       error: error.message,
