@@ -42,6 +42,19 @@ function formatDateTime(value, locale) {
   }
 }
 
+function formatMessageTime(value, locale) {
+  if (!value) return '—';
+
+  try {
+    return new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value));
+  } catch {
+    return '—';
+  }
+}
+
 function buildInboxPreview(messages = []) {
   if (!Array.isArray(messages) || messages.length === 0) return '';
   const lastMessage = messages[messages.length - 1];
@@ -649,7 +662,7 @@ export default function WhatsAppInboxPage() {
           <div className="whitespace-pre-wrap break-words">{message?.content || '—'}</div>
           {getMessageTimestamp(message) && (
             <div className="mt-2 text-[10px] opacity-60">
-              {formatDateTime(getMessageTimestamp(message), locale)}
+              {formatMessageTime(getMessageTimestamp(message), locale)}
             </div>
           )}
         </div>

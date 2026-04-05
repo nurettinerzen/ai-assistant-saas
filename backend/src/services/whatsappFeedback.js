@@ -17,6 +17,7 @@ export const WHATSAPP_FEEDBACK_REASON_IDS = Object.freeze({
 const LIGHTWEIGHT_CHATTER_PATTERN = /^(selam|merhaba|nasılsın|naber|iyi misin|teşekkürler|teşekkür ederim|sağ ol|sağ olun|günaydın|iyi akşamlar|görüşürüz|bye|hi|hello|hey|how are you|thanks|thank you|good morning|good evening)[!.?, ]*$/i;
 const CLOSING_MESSAGE_PATTERN = /^(tamam(dır)?(\s+(teşekkürler|teşekkür ederim|sağ ol|sağ olun))?|teşekkürler|teşekkür ederim|sağ ol|sağ olun|oldu|çözüldü|başka yok|yok teşekkürler|iyi günler|iyi akşamlar|görüşürüz|hoşçakal|hoscakal|bye|goodbye|thanks|thank you|all good|that'?s all|no thanks)[!.?, ]*$/i;
 const MAX_FEEDBACK_PROMPTS = 2;
+const STALE_FEEDBACK_RESET_MS = 30 * 60 * 1000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -72,6 +73,7 @@ export function getNormalizedWhatsAppFeedbackState(state = {}) {
     promptSentAt: feedback.promptSentAt || null,
     promptMessageId: feedback.promptMessageId || null,
     lastPromptTrigger: feedback.lastPromptTrigger || null,
+    lastCycleClosedAt: feedback.lastCycleClosedAt || null,
     reasonPromptSentAt: feedback.reasonPromptSentAt || null,
     reasonPromptMessageId: feedback.reasonPromptMessageId || null,
     responseTraceId: feedback.responseTraceId || null,
@@ -152,6 +154,73 @@ export function markWhatsAppFeedbackPromptSent(
       responseTraceId: traceId || current.responseTraceId || null,
     },
   };
+}
+
+export function markWhatsAppFeedbackCycleClosed(
+  state = {},
+  { now = new Date().toISOString() } = {}
+) {
+  const current = getNormalizedWhatsAppFeedbackState(state);
+
+  return {
+    ...state,
+    whatsappFeedback: {
+      ...current,
+      lastCycleClosedAt: now,
+    },
+  };
+}
+
+export function resetWhatsAppFeedbackCycle(state = {}) {
+  return {
+    ...state,
+    whatsappFeedback: {
+      assistantTurns: 0,
+      meaningfulUserTurns: 0,
+      promptCount: 0,
+      promptSentAt: null,
+      promptMessageId: null,
+      lastPromptTrigger: null,
+      lastCycleClosedAt: null,
+      reasonPromptSentAt: null,
+      reasonPromptMessageId: null,
+      responseTraceId: null,
+      submittedAt: null,
+      submittedMessageId: null,
+      sentiment: null,
+      reason: null,
+    },
+  };
+}
+
+function isOlderThan(timestamp, thresholdMs) {
+  if (!timestamp) return false;
+  const parsed = new Date(timestamp).getTime();
+  if (!Number.isFinite(parsed)) return false;
+  return (Date.now() - parsed) >= thresholdMs;
+}
+
+export function shouldResetWhatsAppFeedbackCycle({
+  state = {},
+  message = '',
+  handoffMode = 'AI',
+  supportRoutingPending = false,
+  callbackPending = false,
+}) {
+  const feedback = getNormalizedWhatsAppFeedbackState(state);
+
+  if (handoffMode !== 'AI') return false;
+  if (supportRoutingPending || callbackPending) return false;
+  if (!isMeaningfulWhatsAppFeedbackMessage(message)) return false;
+  if (isClosingWhatsAppFeedbackMessage(message)) return false;
+
+  if (feedback.submittedAt) return true;
+  if (feedback.lastCycleClosedAt) return true;
+  if (feedback.promptCount >= MAX_FEEDBACK_PROMPTS) return true;
+  if (feedback.lastPromptTrigger === 'closing') return true;
+  if (isOlderThan(feedback.promptSentAt, STALE_FEEDBACK_RESET_MS)) return true;
+
+  return false;
 }
 
 export function markWhatsAppFeedbackReasonPromptSent(
@@ -318,6 +387,7 @@ export default {
   isClosingWhatsAppFeedbackMessage,
   isMeaningfulWhatsAppFeedbackMessage,
   isWhatsAppFeedbackEnabled,
+  markWhatsAppFeedbackCycleClosed,
   markWhatsAppFeedbackPromptSent,
   markWhatsAppFeedbackReasonPromptSent,
   markWhatsAppFeedbackSubmitted,
@@ -325,5 +395,7 @@ export default {
   parseWhatsAppFeedbackReasonSelection,
   registerAssistantReplyForWhatsAppFeedback,
   registerUserMessageForWhatsAppFeedback,
+  resetWhatsAppFeedbackCycle,
   shouldPromptWhatsAppFeedback,
+  shouldResetWhatsAppFeedbackCycle,
 };

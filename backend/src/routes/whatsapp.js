@@ -91,6 +91,7 @@ import {
   getWhatsAppFeedbackThankYouMessage,
   isClosingWhatsAppFeedbackMessage,
   isWhatsAppFeedbackEnabled,
+  markWhatsAppFeedbackCycleClosed,
   markWhatsAppFeedbackPromptSent,
   markWhatsAppFeedbackReasonPromptSent,
   markWhatsAppFeedbackSubmitted,
@@ -98,7 +99,9 @@ import {
   parseWhatsAppFeedbackSelection,
   registerAssistantReplyForWhatsAppFeedback,
   registerUserMessageForWhatsAppFeedback,
-  shouldPromptWhatsAppFeedback
+  resetWhatsAppFeedbackCycle,
+  shouldPromptWhatsAppFeedback,
+  shouldResetWhatsAppFeedbackCycle
 } from '../services/whatsappFeedback.js';
 
 const router = express.Router();
@@ -735,9 +738,28 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
       return; // EXIT - Do not process message
     }
 
-    const state = await getState(sessionId);
+    let state = await getState(sessionId);
     const handoff = getNormalizedHandoffState(state);
     const supportRouting = getSupportRoutingState(state);
+
+    if (
+      isWhatsAppFeedbackEnabled()
+      && shouldResetWhatsAppFeedbackCycle({
+        state,
+        message: messageBody,
+        handoffMode: handoff.mode,
+        supportRoutingPending: supportRouting.pendingChoice,
+        callbackPending: state?.callbackFlow?.pending === true,
+      })
+    ) {
+      state = resetWhatsAppFeedbackCycle(state);
+      await updateState(sessionId, {
+        businessId: business.id,
+        messageCount: state.messageCount || 0,
+        whatsappFeedback: state.whatsappFeedback,
+      });
+    }
+
     const feedbackState = getNormalizedWhatsAppFeedbackState(state);
     const feedbackSelection = (
       isWhatsAppFeedbackEnabled()
@@ -1357,6 +1379,15 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
             ]
           });
         }
+      }
+
+      if (isClosingWhatsAppFeedbackMessage(messageBody)) {
+        const closedFeedbackState = markWhatsAppFeedbackCycleClosed(feedbackStateEnvelope);
+        await updateState(sessionId, {
+          businessId: business.id,
+          messageCount: latestState.messageCount || state.messageCount || 0,
+          whatsappFeedback: closedFeedbackState.whatsappFeedback,
+        });
       }
     }
   } catch (error) {

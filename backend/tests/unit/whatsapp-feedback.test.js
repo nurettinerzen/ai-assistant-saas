@@ -14,9 +14,11 @@ const {
   markWhatsAppFeedbackSubmitted,
   parseWhatsAppFeedbackReasonSelection,
   parseWhatsAppFeedbackSelection,
+  resetWhatsAppFeedbackCycle,
   registerAssistantReplyForWhatsAppFeedback,
   registerUserMessageForWhatsAppFeedback,
   shouldPromptWhatsAppFeedback,
+  shouldResetWhatsAppFeedbackCycle,
 } = await import('../../src/services/whatsappFeedback.js');
 
 describe('whatsappFeedback service', () => {
@@ -134,5 +136,30 @@ describe('whatsappFeedback service', () => {
     expect(isClosingWhatsAppFeedbackMessage('tamam teşekkürler')).toBe(true);
     expect(isClosingWhatsAppFeedbackMessage('iyi günler')).toBe(true);
     expect(isClosingWhatsAppFeedbackMessage('siparişim nerede')).toBe(false);
+  });
+
+  it('resets stale feedback cycle when a new meaningful request starts', () => {
+    const oldState = {
+      whatsappFeedback: {
+        assistantTurns: 3,
+        meaningfulUserTurns: 2,
+        promptCount: 2,
+        promptSentAt: '2026-04-05T11:00:00.000Z',
+        lastPromptTrigger: 'closing',
+      }
+    };
+
+    expect(shouldResetWhatsAppFeedbackCycle({
+      state: oldState,
+      message: 'Siparişimi tekrar kontrol eder misin?',
+    })).toBe(true);
+
+    expect(resetWhatsAppFeedbackCycle(oldState).whatsappFeedback).toMatchObject({
+      assistantTurns: 0,
+      meaningfulUserTurns: 0,
+      promptCount: 0,
+      promptSentAt: null,
+      lastPromptTrigger: null,
+    });
   });
 });
