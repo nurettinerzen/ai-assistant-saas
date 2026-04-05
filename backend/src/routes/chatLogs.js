@@ -510,7 +510,7 @@ router.post('/:id/handoff/claim', authenticateToken, async (req, res) => {
         await sendWhatsAppMessage(
           business,
           chatLog.customerPhone,
-          getLiveHandoffClaimedMessage(business.language, getActorName(req.user)),
+          getLiveHandoffClaimedMessage(business.language),
           {
             inboundMessageId: `handoff-claim:${chatLog.sessionId}:${Date.now()}`,
             skipUsageMetering: true,
