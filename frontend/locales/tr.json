@@ -3058,7 +3058,10 @@
       "aiLabel": "AI",
       "featureDisabledTitle": "WhatsApp live handoff beta için kapalı",
       "featureDisabledDescription": "Bu panel yalnızca beta testinde açılacak şekilde feature flag arkasına alındı.",
-      "completedDescription": "Bu konuşma tamamlandı. Canlı devralma aksiyonları artık kapalı."
+      "completedDescription": "Bu konuşma tamamlandı. Canlı devralma aksiyonları artık kapalı.",
+      "globalAlertTitle": "Yeni canlı destek talebi",
+      "globalAlertDescription": "{phone} numaralı müşteri canlı destek bekliyor.",
+      "openInbox": "Inbox'ı aç"
     },
     "chatHistoryPage": {
       "title": "Sohbet Geçmişi",

@@ -3058,7 +3058,10 @@
       "aiLabel": "AI",
       "featureDisabledTitle": "WhatsApp live handoff is disabled for this environment",
       "featureDisabledDescription": "This workspace is protected behind a feature flag and should only be enabled for beta testing.",
-      "completedDescription": "This conversation is completed. Live takeover actions are no longer available."
+      "completedDescription": "This conversation is completed. Live takeover actions are no longer available.",
+      "globalAlertTitle": "New live support request",
+      "globalAlertDescription": "Customer {phone} is waiting for live support.",
+      "openInbox": "Open inbox"
     },
     "chatHistoryPage": {
       "title": "Chat History",

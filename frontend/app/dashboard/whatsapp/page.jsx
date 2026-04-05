@@ -378,7 +378,7 @@ export default function WhatsAppInboxPage() {
       if (document.visibilityState === 'visible') {
         loadConversations({ silent: true });
       }
-    }, 15000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [debouncedSearch]);
@@ -390,7 +390,7 @@ export default function WhatsAppInboxPage() {
       if (document.visibilityState === 'visible') {
         loadChatDetails(selectedChatId, { silent: true });
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [selectedChatId]);
