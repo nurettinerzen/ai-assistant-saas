@@ -38,14 +38,14 @@ describe('whatsappFeedback service', () => {
     expect(shouldPromptWhatsAppFeedback({ state: oneTurn })).toBe(false);
 
     const twoTurns = registerAssistantReplyForWhatsAppFeedback(oneTurn, { traceId: 'trace_2' });
-    expect(shouldPromptWhatsAppFeedback({ state: twoTurns })).toBe(false);
+    expect(shouldPromptWhatsAppFeedback({ state: twoTurns })).toBe(true);
 
     const threeTurns = registerAssistantReplyForWhatsAppFeedback(twoTurns, { traceId: 'trace_3' });
     expect(shouldPromptWhatsAppFeedback({ state: threeTurns })).toBe(true);
 
-    const prompted = markWhatsAppFeedbackPromptSent(threeTurns, {
-      traceId: 'trace_3',
-      promptMessageId: 'feedback-prompt:sess_1:3',
+    const prompted = markWhatsAppFeedbackPromptSent(twoTurns, {
+      traceId: 'trace_2',
+      promptMessageId: 'feedback-prompt:sess_1:2',
       now: '2026-04-05T12:00:00.000Z',
     });
     expect(shouldPromptWhatsAppFeedback({ state: prompted })).toBe(false);

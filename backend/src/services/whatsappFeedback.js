@@ -14,7 +14,7 @@ export const WHATSAPP_FEEDBACK_REASON_IDS = Object.freeze({
   OTHER: 'wa_feedback_reason_other',
 });
 
-const MIN_ASSISTANT_TURNS = 3;
+const MIN_ASSISTANT_TURNS = 2;
 const LIGHTWEIGHT_CHATTER_PATTERN = /^(selam|merhaba|nasılsın|naber|iyi misin|teşekkürler|teşekkür ederim|sağ ol|sağ olun|günaydın|iyi akşamlar|görüşürüz|bye|hi|hello|hey|how are you|thanks|thank you|good morning|good evening)[!.?, ]*$/i;
 
 function isPlainObject(value) {

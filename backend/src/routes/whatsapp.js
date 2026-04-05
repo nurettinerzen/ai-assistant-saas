@@ -758,8 +758,9 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
       timestamp: new Date().toISOString(),
     };
 
+    let feedbackUserState = null;
     if (isWhatsAppFeedbackEnabled() && !feedbackSelection && !feedbackReasonSelection) {
-      const feedbackUserState = registerUserMessageForWhatsAppFeedback(state, messageBody);
+      feedbackUserState = registerUserMessageForWhatsAppFeedback(state, messageBody);
       await updateState(sessionId, {
         businessId: business.id,
         messageCount: state.messageCount || 0,
@@ -1280,8 +1281,18 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
     });
 
     if (isWhatsAppFeedbackEnabled()) {
-      const latestState = result.state || await getState(sessionId);
-      const feedbackStateEnvelope = registerAssistantReplyForWhatsAppFeedback(latestState, {
+      const latestState = await getState(sessionId);
+      const baseFeedbackState = feedbackUserState
+        ? {
+            ...latestState,
+            whatsappFeedback: {
+              ...getNormalizedWhatsAppFeedbackState(latestState),
+              ...feedbackUserState.whatsappFeedback,
+            }
+          }
+        : latestState;
+
+      const feedbackStateEnvelope = registerAssistantReplyForWhatsAppFeedback(baseFeedbackState, {
         traceId: result.traceId || queuedTrace?.traceId || null,
       });
 
