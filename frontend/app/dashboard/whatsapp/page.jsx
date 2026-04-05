@@ -492,12 +492,27 @@ export default function WhatsAppInboxPage() {
     }
   };
 
+  const handleReplySubmit = (event) => {
+    event.preventDefault();
+
+    if (!replyDraft.trim() || handoffAction === 'reply') {
+      return;
+    }
+
+    handleSendReply();
+  };
+
   const handleReplyKeyDown = (event) => {
-    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent?.isComposing) {
+    const isEnter = event.key === 'Enter' || event.keyCode === 13;
+    const isModified = event.shiftKey || event.altKey || event.ctrlKey || event.metaKey;
+    const isComposing = event.isComposing || event.nativeEvent?.isComposing;
+
+    if (!isEnter || isModified || isComposing) {
       return;
     }
 
     event.preventDefault();
+    event.stopPropagation();
 
     if (!replyDraft.trim() || handoffAction === 'reply') {
       return;
@@ -767,16 +782,18 @@ export default function WhatsAppInboxPage() {
 
                 <div className="border-t border-neutral-200 px-5 py-4 dark:border-neutral-800">
                   {selectedChat?.handoff?.canReply ? (
-                    <div className="space-y-3">
+                    <form className="space-y-3" onSubmit={handleReplySubmit}>
                       <Textarea
                         value={replyDraft}
                         onChange={(event) => setReplyDraft(event.target.value)}
                         onKeyDown={handleReplyKeyDown}
+                        onKeyDownCapture={handleReplyKeyDown}
                         rows={4}
                         placeholder={t.replyPlaceholder}
+                        enterKeyHint="send"
                       />
                       <div className="flex justify-end">
-                        <Button onClick={handleSendReply} disabled={!replyDraft.trim() || handoffAction === 'reply'}>
+                        <Button type="submit" disabled={!replyDraft.trim() || handoffAction === 'reply'}>
                           {handoffAction === 'reply' ? (
                             <>
                               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -790,7 +807,7 @@ export default function WhatsAppInboxPage() {
                           )}
                         </Button>
                       </div>
-                    </div>
+                    </form>
                   ) : (
                     <div className="text-xs text-neutral-500 dark:text-neutral-400">
                       {selectedChat?.handoff?.mode === 'AI'
