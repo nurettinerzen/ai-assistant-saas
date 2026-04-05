@@ -158,23 +158,63 @@ const PLACEHOLDER_NAMES = new Set([
   'na'
 ]);
 
+const PLACEHOLDER_PHONES = new Set([
+  'none',
+  'null',
+  'undefined',
+  'unknown',
+  'bilinmiyor',
+  'n/a',
+  'na',
+  '-'
+]);
+
 function isPlaceholderName(name) {
   if (!name) return true;
   const normalized = String(name).trim().toLowerCase();
   return !normalized || PLACEHOLDER_NAMES.has(normalized);
 }
 
+function normalizeCallbackPhone(value) {
+  if (value === undefined || value === null) return null;
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (PLACEHOLDER_PHONES.has(raw.toLowerCase())) return null;
+
+  const compact = raw.replace(/[^\d+]/g, '');
+  const digits = compact.replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 13) return null;
+
+  return compact.startsWith('+') ? `+${digits}` : digits;
+}
+
 function buildCallbackValidationError(language, missingFields) {
   const askFor = missingFields.length > 0 ? missingFields : ['customer_name', 'phone'];
+  const isEnglish = String(language || 'TR').toUpperCase() === 'EN';
+  let message;
+
+  if (askFor.length === 1 && askFor[0] === 'customer_name') {
+    message = isEnglish
+      ? 'To create your callback, could you share your name?'
+      : 'Geri arama talebinizi oluşturmak için adınızı paylaşır mısınız?';
+  } else if (askFor.length === 1 && askFor[0] === 'phone') {
+    message = isEnglish
+      ? 'To create your callback, could you share your phone number?'
+      : 'Geri arama talebinizi oluşturmak için telefon numaranızı paylaşır mısınız?';
+  } else {
+    message = isEnglish
+      ? 'To create your callback, could you share your name and phone number?'
+      : 'Geri arama talebinizi oluşturmak için adınızı ve telefon numaranızı paylaşır mısınız?';
+  }
+
   return {
     outcome: ToolOutcome.VALIDATION_ERROR,
     success: true,
     validationError: true,
     askFor,
     data: { askFor },
-    message: language === 'TR'
-      ? 'Sizi arayabilmemiz için ad-soyad ve telefon numaranızı paylaşır mısınız?'
-      : 'To create your callback, could you share your full name and phone number?'
+    message
   };
 }
 
@@ -185,6 +225,14 @@ export default {
     try {
       let { customerName, customerPhone, topic, priority = 'NORMAL' } = args;
       const language = business.language || 'TR';
+      customerPhone =
+        normalizeCallbackPhone(customerPhone) ||
+        normalizeCallbackPhone(context?.extractedSlots?.phone) ||
+        normalizeCallbackPhone(context?.channelUserId) ||
+        normalizeCallbackPhone(context?.from) ||
+        normalizeCallbackPhone(context?.phone) ||
+        normalizeCallbackPhone(context?.callerPhone) ||
+        normalizeCallbackPhone(context?.phoneNumber);
 
       // Deterministic contract: callback cannot proceed without real name + phone.
       const missing = [];

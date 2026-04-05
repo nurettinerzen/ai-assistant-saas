@@ -34,11 +34,15 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const { t, locale } = useLanguage();
+  const whatsappLiveHandoffEnabled = process.env.NEXT_PUBLIC_WHATSAPP_LIVE_HANDOFF_V2 === 'true';
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [whatsappPendingCount, setWhatsappPendingCount] = useState(0);
+  const [liveSupportAlert, setLiveSupportAlert] = useState(null);
   const initialLoadDone = useRef(false);
+  const knownPendingIdsRef = useRef(new Set());
 
   const shouldBypassEmailVerification = () => {
     if (typeof window === 'undefined') return false;
@@ -177,6 +181,66 @@ export default function DashboardLayout({ children }) {
     }
   };
 
+  useEffect(() => {
+    if (!whatsappLiveHandoffEnabled || !user?.businessId) {
+      setWhatsappPendingCount(0);
+      setLiveSupportAlert(null);
+      knownPendingIdsRef.current = new Set();
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadPendingHandoffs = async ({ silent = false } = {}) => {
+      try {
+        const response = await apiClient.get('/api/chat-logs', {
+          params: {
+            page: 1,
+            limit: 50,
+            channel: 'WHATSAPP',
+          }
+        });
+
+        if (cancelled) return;
+
+        const pendingThreads = (response.data?.chatLogs || [])
+          .filter((chat) => chat?.status === 'active' && chat?.handoff?.mode === 'REQUESTED')
+          .sort((left, right) => new Date(right.updatedAt || right.createdAt || 0) - new Date(left.updatedAt || left.createdAt || 0));
+
+        setWhatsappPendingCount(pendingThreads.length);
+
+        const nextIds = new Set(pendingThreads.map((chat) => chat.id));
+        const newThreads = pendingThreads.filter((chat) => !knownPendingIdsRef.current.has(chat.id));
+        knownPendingIdsRef.current = nextIds;
+
+        if (pathname !== '/dashboard/whatsapp' && newThreads.length > 0) {
+          const newestThread = newThreads[0];
+          setLiveSupportAlert({
+            id: newestThread.id,
+            customerPhone: newestThread.customerPhone || null,
+          });
+        }
+      } catch (error) {
+        if (!silent) {
+          console.warn('Failed to load pending WhatsApp handoffs:', error?.message || error);
+        }
+      }
+    };
+
+    loadPendingHandoffs();
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadPendingHandoffs({ silent: true });
+      }
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [whatsappLiveHandoffEnabled, user?.businessId, pathname]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-950">
@@ -203,7 +267,7 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
-      <Sidebar user={user} credits={credits} />
+      <Sidebar user={user} credits={credits} business={user?.business} whatsappPendingCount={whatsappPendingCount} />
 
       {/* Main content - adjusted for 240px sidebar (w-60) */}
       <div className="flex-1 lg:ml-60 overflow-auto h-screen">
@@ -246,6 +310,47 @@ export default function DashboardLayout({ children }) {
 
       {/* Toast notifications */}
       <Toaster position="bottom-right" richColors />
+
+      {liveSupportAlert && (
+        <div className="pointer-events-none fixed inset-0 z-[70] flex items-start justify-center px-4 pt-20">
+          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-amber-200 bg-white/95 p-4 shadow-2xl backdrop-blur dark:border-amber-900 dark:bg-neutral-950/95">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8.228 9c.549-1.165 1.918-2 3.772-2 2.485 0 4.5 1.567 4.5 3.5 0 1.423-1.093 2.648-2.662 3.203-.69.244-1.088.61-1.088 1.047V15m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                  {t('dashboard.whatsappInboxPage.globalAlertTitle')}
+                </h3>
+                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
+                  {t('dashboard.whatsappInboxPage.globalAlertDescription').replace('{phone}', liveSupportAlert.customerPhone || 'WhatsApp')}
+                </p>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLiveSupportAlert(null)}
+                    className="rounded-lg border border-neutral-200 px-3 py-1.5 text-sm text-neutral-600 transition hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                  >
+                    {t('common.close')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      router.push(`/dashboard/whatsapp?chatId=${liveSupportAlert.id}`);
+                      setLiveSupportAlert(null);
+                    }}
+                    className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-amber-600"
+                  >
+                    {t('dashboard.whatsappInboxPage.openInbox')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Onboarding Modal */}
       {showOnboarding && (

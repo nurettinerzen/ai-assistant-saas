@@ -71,6 +71,10 @@ function handleChatter({ userMessage, state, language, sessionId, messageRouting
 const CALLBACK_NAME_INTRO_PATTERN = /\b(ad[ıi]m|ad\s*soyad[ıi]m|ismim|isim|ben(?:im)?\s*ad[ıi]m|my\s+name\s+is|i\s+am)\b/i;
 const CALLBACK_PLACEHOLDER_NAMES = new Set(['customer', 'unknown', 'anonymous', 'test', 'user', 'n/a', 'na', '-']);
 const CALLBACK_NAME_BLOCKLIST = /\b(yetkili|temsilci|geri|ara|callback|human|manager|representative|operator|destek|support)\b/i;
+const CALLBACK_NAME_SOFT_STOPWORDS = new Set([
+  'evet', 'evt', 'tamam', 'ok', 'okay', 'olur', 'tabi', 'tabii', 'lütfen', 'lutfen',
+  'merhaba', 'selam', 'geri', 'arama', 'callback', 'aradim', 'arayin', 'bagla', 'bağla'
+]);
 
 function normalizePhoneCandidate(rawPhone) {
   if (!rawPhone) return null;
@@ -90,7 +94,7 @@ function looksLikePlaceholderName(name) {
   return CALLBACK_PLACEHOLDER_NAMES.has(String(name).trim().toLowerCase());
 }
 
-function extractNameCandidate(message = '', { allowLoose = false } = {}) {
+function extractNameCandidate(message = '', { allowLoose = false, allowSingleToken = false } = {}) {
   const text = String(message || '').replace(/(\+?\d[\d\s\-()]{8,}\d)/g, ' ').trim();
   if (!text) return null;
 
@@ -104,8 +108,15 @@ function extractNameCandidate(message = '', { allowLoose = false } = {}) {
 
   if (!candidate) {
     const tokens = text.match(/[A-Za-zÇĞİÖŞÜçğıöşü]{2,}/g) || [];
-    if (tokens.length < 2 || tokens.length > 3) return null;
-    candidate = tokens.join(' ');
+    if (tokens.length === 1) {
+      if (!allowSingleToken) return null;
+      const singleToken = String(tokens[0] || '').trim();
+      if (!singleToken || CALLBACK_NAME_SOFT_STOPWORDS.has(singleToken.toLowerCase())) return null;
+      candidate = singleToken;
+    } else {
+      if (tokens.length < 2 || tokens.length > 3) return null;
+      candidate = tokens.join(' ');
+    }
   }
 
   if (!candidate) return null;
@@ -114,12 +125,16 @@ function extractNameCandidate(message = '', { allowLoose = false } = {}) {
   return candidate.trim();
 }
 
-function upsertCallbackContext({ state, userMessage, allowLooseName = false }) {
+function upsertCallbackContext({ state, userMessage, allowLooseName = false, fallbackPhone = null }) {
   const existingName = state.callbackFlow?.customerName || state.extractedSlots?.customer_name || null;
-  const existingPhone = state.callbackFlow?.customerPhone || state.extractedSlots?.phone || null;
+  const existingPhone = state.callbackFlow?.customerPhone || state.extractedSlots?.phone || fallbackPhone || null;
+  const allowSingleTokenName = allowLooseName && !existingName && Boolean(existingPhone);
 
   const extractedPhone = extractPhoneCandidate(userMessage);
-  const extractedName = extractNameCandidate(userMessage, { allowLoose: allowLooseName });
+  const extractedName = extractNameCandidate(userMessage, {
+    allowLoose: allowLooseName,
+    allowSingleToken: allowSingleTokenName
+  });
 
   const customerName = extractedName || existingName || null;
   const customerPhone = extractedPhone || existingPhone || null;
@@ -140,7 +155,7 @@ function upsertCallbackContext({ state, userMessage, allowLooseName = false }) {
 }
 
 export async function makeRoutingDecision(params) {
-  const { classification, state, userMessage, conversationHistory, language, business, sessionId = '' } = params;
+  const { classification, state, userMessage, conversationHistory, language, business, sessionId = '', channel = 'CHAT', channelUserId = null } = params;
   const routerPassthroughEnabled = isRouterPassthroughEnabled();
 
   // Get last assistant message
@@ -169,15 +184,22 @@ export async function makeRoutingDecision(params) {
   });
 
   const callbackPending = state.callbackFlow?.pending === true;
+  const supportSuggestedFlow = String(
+    classification?.suggestedFlow ||
+    routing?.suggestedFlow ||
+    ''
+  ).toUpperCase();
   const callbackRequestedByClassifier =
-    String(classification?.suggestedFlow || '').toUpperCase() === 'CALLBACK_REQUEST' ||
-    String(routing?.suggestedFlow || '').toUpperCase() === 'CALLBACK_REQUEST';
+    supportSuggestedFlow === 'CALLBACK_REQUEST';
+  const liveHandoffRequestedByClassifier = supportSuggestedFlow === 'LIVE_HANDOFF_REQUEST';
+  const supportPreferenceClarifyRequestedByClassifier = supportSuggestedFlow === 'SUPPORT_PREFERENCE_CLARIFY';
 
   if (callbackPending || callbackRequestedByClassifier) {
     const { customerName, customerPhone } = upsertCallbackContext({
       state,
       userMessage,
-      allowLooseName: callbackPending
+      allowLooseName: callbackPending,
+      fallbackPhone: channel === 'WHATSAPP' ? channelUserId : null,
     });
 
     const missingFields = [];
@@ -209,6 +231,33 @@ export async function makeRoutingDecision(params) {
       metadata: {
         mode: callbackPending ? 'callback_pending_flow' : 'callback_classifier_flow',
         missingFields
+      }
+    };
+  }
+
+  if (liveHandoffRequestedByClassifier || supportPreferenceClarifyRequestedByClassifier) {
+    const intent = liveHandoffRequestedByClassifier
+      ? 'live_handoff_request'
+      : 'support_preference_clarify';
+
+    return {
+      directResponse: false,
+      routing: {
+        ...messageRouting,
+        routing: {
+          ...messageRouting.routing,
+          action: 'RUN_INTENT_ROUTER',
+          reason: liveHandoffRequestedByClassifier
+            ? 'Classifier routed turn to live handoff handling'
+            : 'Classifier detected ambiguous human-help preference',
+          suggestedFlow: supportSuggestedFlow,
+          intent,
+        }
+      },
+      supportIntent: true,
+      metadata: {
+        mode: intent,
+        suggestedFlow: supportSuggestedFlow,
       }
     };
   }

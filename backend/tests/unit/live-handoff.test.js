@@ -4,6 +4,7 @@ const getStateMock = jest.fn();
 const updateStateMock = jest.fn();
 const chatLogFindUniqueMock = jest.fn();
 const chatLogUpsertMock = jest.fn();
+const businessHoursFindUniqueMock = jest.fn();
 
 await jest.unstable_mockModule('../../src/services/state-manager.js', () => ({
   getState: getStateMock,
@@ -16,18 +17,29 @@ await jest.unstable_mockModule('../../src/config/database.js', () => ({
       findUnique: chatLogFindUniqueMock,
       upsert: chatLogUpsertMock,
     },
+    businessHours: {
+      findUnique: businessHoursFindUniqueMock,
+    },
   },
 }));
 
 const {
   HANDOFF_MODE,
+  SUPPORT_OFFER_MODE,
   appendChatLogMessages,
   buildHandoffView,
+  clearSupportRoutingState,
+  getLiveSupportAvailability,
   getLiveHandoffClaimedMessage,
+  getLiveSupportClarifyMessage,
   getLiveHandoffReturnedToAiMessage,
+  getLiveSupportUnavailableMessage,
+  getSupportRoutingState,
+  getWhatsappCallbackCollectionMessage,
   claimHumanHandoff,
   requestHumanHandoff,
   returnConversationToAi,
+  setSupportRoutingPending,
   shouldTriggerHumanHandoff,
 } = await import('../../src/services/liveHandoff.js');
 
@@ -40,6 +52,8 @@ describe('liveHandoff service', () => {
     expect(shouldTriggerHumanHandoff('Canli destek almak istiyorum')).toBe(true);
     expect(shouldTriggerHumanHandoff('yetkili biriyle görüşmek istiyorum')).toBe(true);
     expect(shouldTriggerHumanHandoff('yetkili biriyle gorusmek istiyorum')).toBe(true);
+    expect(shouldTriggerHumanHandoff('yetkili biriyle görüşebilir miyim')).toBe(true);
+    expect(shouldTriggerHumanHandoff('yetkili biriyle gorusebilir miyim')).toBe(true);
     expect(shouldTriggerHumanHandoff('temsilciye bağlar mısın')).toBe(true);
     expect(shouldTriggerHumanHandoff('temsilciye baglar misin')).toBe(true);
     expect(shouldTriggerHumanHandoff('I want to talk to a human agent')).toBe(true);
@@ -51,6 +65,9 @@ describe('liveHandoff service', () => {
     expect(getLiveHandoffClaimedMessage('EN')).toContain('live support teammate');
     expect(getLiveHandoffReturnedToAiMessage('TR')).toContain('yapay zeka');
     expect(getLiveHandoffReturnedToAiMessage('EN')).toContain('AI assistant');
+    expect(getLiveSupportClarifyMessage('TR')).toContain('canlı bir temsilciye');
+    expect(getLiveSupportUnavailableMessage('EN')).toContain('callback request');
+    expect(getWhatsappCallbackCollectionMessage('TR')).toContain('adınızı');
   });
 
   it('creates a REQUESTED handoff when customer asks for live support', async () => {
@@ -155,6 +172,74 @@ describe('liveHandoff service', () => {
     );
   });
 
+  it('stores and clears support routing preference state', async () => {
+    getStateMock.mockResolvedValueOnce({
+      sessionId: 'sess_support',
+      businessId: 12,
+      messageCount: 3,
+    });
+
+    const pending = await setSupportRoutingPending({
+      sessionId: 'sess_support',
+      businessId: 12,
+      offerMode: SUPPORT_OFFER_MODE.CALLBACK_ONLY,
+      liveSupportAvailable: false,
+      reason: 'live_support_unavailable',
+    });
+
+    expect(pending.pendingChoice).toBe(true);
+    expect(pending.offerMode).toBe(SUPPORT_OFFER_MODE.CALLBACK_ONLY);
+    expect(pending.liveSupportAvailable).toBe(false);
+
+    getStateMock.mockResolvedValueOnce({
+      sessionId: 'sess_support',
+      businessId: 12,
+      messageCount: 3,
+      supportRouting: {
+        pendingChoice: true,
+        offerMode: SUPPORT_OFFER_MODE.CALLBACK_ONLY,
+        liveSupportAvailable: false,
+      },
+    });
+
+    const cleared = await clearSupportRoutingState({
+      sessionId: 'sess_support',
+      businessId: 12,
+    });
+
+    expect(cleared.pendingChoice).toBe(false);
+    expect(cleared.offerMode).toBe(SUPPORT_OFFER_MODE.CHOICE);
+    expect(cleared.liveSupportAvailable).toBe(true);
+  });
+
+  it('derives live support availability from business hours', async () => {
+    businessHoursFindUniqueMock.mockResolvedValue({
+      monday: { open: '09:00', close: '17:00', closed: false },
+      tuesday: { open: '09:00', close: '17:00', closed: false },
+      wednesday: { open: '09:00', close: '17:00', closed: false },
+      thursday: { open: '09:00', close: '17:00', closed: false },
+      friday: { open: '09:00', close: '17:00', closed: false },
+      saturday: { open: '09:00', close: '17:00', closed: true },
+      sunday: { open: '09:00', close: '17:00', closed: true },
+    });
+
+    const available = await getLiveSupportAvailability({
+      businessId: 44,
+      timezone: 'Europe/Istanbul',
+      now: new Date('2026-04-06T10:30:00+03:00'),
+    });
+
+    const unavailable = await getLiveSupportAvailability({
+      businessId: 44,
+      timezone: 'Europe/Istanbul',
+      now: new Date('2026-04-06T19:30:00+03:00'),
+    });
+
+    expect(available.available).toBe(true);
+    expect(unavailable.available).toBe(false);
+    expect(unavailable.reason).toBe('outside_hours');
+  });
+
   it('builds viewer-specific handoff permissions', () => {
     const view = buildHandoffView({
       humanHandoff: {
@@ -167,6 +252,7 @@ describe('liveHandoff service', () => {
     expect(view.currentUserIsAssignee).toBe(true);
     expect(view.canReply).toBe(true);
     expect(view.canReturnToAi).toBe(true);
+    expect(getSupportRoutingState({ supportRouting: { pendingChoice: true } }).pendingChoice).toBe(true);
   });
 
   it('appends transcript messages to ChatLog', async () => {

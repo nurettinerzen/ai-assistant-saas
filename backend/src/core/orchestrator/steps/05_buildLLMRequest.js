@@ -10,6 +10,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { convertToolsToGeminiFunctions as convertToolsToGemini } from '../../../services/gemini-utils.js';
 import { getEntityClarificationHint, getEntityHint, getEntityMatchType } from '../../../services/entityTopicResolver.js';
 import { getFlow } from '../../../config/flow-definitions.js';
+import { isFeatureEnabled } from '../../../config/feature-flags.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -170,7 +171,10 @@ export async function buildLLMRequest(params) {
     metrics,
     assistant,
     business,
-    entityResolution
+    entityResolution,
+    channel = 'CHAT',
+    liveSupportAvailable = null,
+    channelUserId = null,
   } = params;
   const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
   const { gatedTools, resolvedFlow, allowlistMode } = resolveFlowScopedTools({
@@ -207,7 +211,13 @@ export async function buildLLMRequest(params) {
 
   // Callback precondition guidance (belt-and-suspenders with toolLoop precondition check)
   // LLM should ask for name/phone BEFORE calling create_callback
-  if (!state.extractedSlots?.customer_name || !state.extractedSlots?.phone) {
+  const knownCallbackName = state.callbackFlow?.customerName || state.extractedSlots?.customer_name || null;
+  const knownCallbackPhone =
+    state.callbackFlow?.customerPhone ||
+    state.extractedSlots?.phone ||
+    (channel === 'WHATSAPP' ? channelUserId : null);
+
+  if (!knownCallbackName || !knownCallbackPhone) {
     enhancedSystemPrompt += `\n\nKRİTİK: create_callback aracını çağırmadan ÖNCE müşterinin adını ve telefon numarasını öğren. Bu bilgiler olmadan geri arama kaydı oluşturamazsın.`;
   }
 
@@ -220,6 +230,64 @@ export async function buildLLMRequest(params) {
 - Sipariş numarası, telefon son 4, kimlik doğrulama isteme.
 - create_callback çağrısında topic sorusu sorma; topic otomatik üretilecek.
 - Ad-soyad ve telefon mevcutsa create_callback çağır, yoksa sadece eksik alanı sor.`;
+
+    if (knownCallbackName && knownCallbackPhone) {
+      enhancedSystemPrompt += `
+- Bu konuşmada ad-soyad ve telefon zaten mevcut. BU TURDA create_callback aracını MUTLAKA çağır.
+- Telefonu tekrar isteme. Adı tekrar isteme. Serbest metinle oyalama yapma.`;
+    } else if (!knownCallbackName && knownCallbackPhone) {
+      enhancedSystemPrompt += `
+- Telefon numarası zaten mevcut, tekrar telefon isteme.
+- SADECE ad-soyad iste.`;
+    } else if (knownCallbackName && !knownCallbackPhone) {
+      enhancedSystemPrompt += `
+- Ad-soyad zaten mevcut, tekrar ad isteme.
+- SADECE telefon numarasını iste.`;
+    }
+  }
+
+  const whatsappLiveHandoffEnabled =
+    channel === 'WHATSAPP' &&
+    isFeatureEnabled('WHATSAPP_LIVE_HANDOFF_V2');
+  const supportChoicePending = state.supportRouting?.pendingChoice === true;
+  const supportOfferMode = state.supportRouting?.offerMode === 'callback_only'
+    ? 'callback_only'
+    : 'choice';
+  const customerSeemsStuck =
+    state.flowStatus === 'not_found' ||
+    state.flowStatus === 'validation_error' ||
+    Boolean(state.lastNotFound);
+
+  if (whatsappLiveHandoffEnabled) {
+    enhancedSystemPrompt += `
+
+## CANLI DESTEK / CALLBACK YÖNLENDİRME
+- Kullanıcı açıkça canlı insan / temsilci / gerçek kişi isterse bunu callback ile karıştırma.
+- Kullanıcı o anda bir insanla devam etmek istiyorsa varsayılan seçenek canlı devralmadır.
+- Callback SADECE kullanıcı açıkça daha sonra aranmak istediğinde veya canlı ekip uygun olmadığında tercih edilir.
+- Callback seçilmeden ad/telefon toplamaya başlama.`;
+
+    if (supportChoicePending) {
+      enhancedSystemPrompt += supportOfferMode === 'callback_only'
+        ? `
+- Şu anda canlı ekip müsait değil. Kullanıcı callback teklifini kabul ederse SADECE callback için gereken eksik bilgiyi topla.
+- Kullanıcı yine canlı destek isterse şu an canlı ekibin müsait olmadığını kibarca söyle ve callback öner.`
+        : `
+- Kullanıcıya daha önce "şimdi canlı temsilci mi, sonra callback mi?" tercihi soruldu.
+- Kullanıcı "şimdi / bağla / canlı / temsilci" gibi bir tercih yaparsa canlı devralma niyetini destekle.
+- Kullanıcı "sonra / ara / geri dönüş / callback" derse callback akışına geç.
+- Kullanıcı sadece "evet / tamam" deyip tercih belirtmezse aynı soruyu KISA biçimde tekrar sor.`;
+    }
+
+    if (customerSeemsStuck && !supportChoicePending && state.activeFlow !== 'CALLBACK_REQUEST') {
+      enhancedSystemPrompt += liveSupportAvailable === false
+        ? `
+- Kullanıcıyı çözüme götüremiyorsan canlı ekibin şu an müsait olmayabileceğini varsay ve callback teklif et.
+- Örnek ton: "İsterseniz sizin için geri arama talebi oluşturabilirim."`
+        : `
+- Kullanıcıyı çözüme götüremiyorsan veya üst üste takıldıysan canlı destek seçeneğini proaktif teklif et.
+- En doğru kısa teklif: "İsterseniz sizi şimdi canlı bir temsilciye bağlayabilirim, dilerseniz geri arama talebi de oluşturabilirim."`;
+    }
   }
 
   // ========================================

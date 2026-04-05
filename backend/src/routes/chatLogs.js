@@ -14,6 +14,7 @@ import {
   claimHumanHandoff,
   getLiveHandoffClaimedMessage,
   getLiveHandoffReturnedToAiMessage,
+  isWhatsAppLiveHandoffEnabled,
   noteHumanReply,
   requestHumanHandoff,
   returnConversationToAi,
@@ -21,6 +22,7 @@ import {
 
 const router = express.Router();
 const ACTIVE_CHAT_WINDOW_MS = 30 * 60 * 1000;
+const PHONE_PLACEHOLDER_VALUES = new Set(['none', 'null', 'undefined', 'unknown', 'bilinmiyor', 'n/a', 'na', '-']);
 
 function getActorName(user = {}) {
   return user?.name || user?.email || 'Team member';
@@ -28,6 +30,25 @@ function getActorName(user = {}) {
 
 function getReplyText(req) {
   return String(req.body?.message || req.body?.text || '').trim();
+}
+
+function hasMeaningfulPhone(value) {
+  if (value === undefined || value === null) return false;
+  const raw = String(value).trim();
+  if (!raw) return false;
+  if (PHONE_PLACEHOLDER_VALUES.has(raw.toLowerCase())) return false;
+  return raw.replace(/\D/g, '').length >= 10;
+}
+
+function ensureWhatsAppLiveHandoffEnabled(res) {
+  if (isWhatsAppLiveHandoffEnabled()) {
+    return true;
+  }
+
+  res.status(403).json({
+    error: 'WhatsApp live handoff is currently disabled in this environment'
+  });
+  return false;
 }
 
 function normalizeChatLogStatus(chatLog) {
@@ -50,7 +71,12 @@ function buildChatLogHandoffView(chatLog, state, viewerUserId) {
   const normalizedChatLog = normalizeChatLogStatus(chatLog);
 
   if (!normalizedChatLog || normalizedChatLog.status !== 'active') {
-    return buildHandoffView(undefined, viewerUserId);
+    return {
+      ...buildHandoffView(undefined, viewerUserId),
+      canClaim: false,
+      canReply: false,
+      canReturnToAi: false,
+    };
   }
 
   return buildHandoffView(state, viewerUserId);
@@ -88,7 +114,7 @@ async function hydrateWhatsAppPhonesForChatLogs(chatLogs, businessId) {
 
   const missingPhoneLogs = chatLogs.filter((log) => (
     log?.channel === 'WHATSAPP' &&
-    !log?.customerPhone &&
+    !hasMeaningfulPhone(log?.customerPhone) &&
     log?.sessionId
   ));
 
@@ -127,7 +153,9 @@ async function hydrateWhatsAppPhonesForChatLogs(chatLogs, businessId) {
 
   return chatLogs.map((log) => ({
     ...log,
-    customerPhone: log.customerPhone || phoneBySessionId.get(log.sessionId) || null,
+    customerPhone: hasMeaningfulPhone(log.customerPhone)
+      ? log.customerPhone
+      : (phoneBySessionId.get(log.sessionId) || null),
   }));
 }
 
@@ -146,7 +174,7 @@ async function getOwnedChatLog(id, businessId) {
 }
 
 async function hydrateWhatsAppCustomerPhone(chatLog, businessId) {
-  if (!chatLog || chatLog.channel !== 'WHATSAPP' || chatLog.customerPhone || !chatLog.sessionId) {
+  if (!chatLog || chatLog.channel !== 'WHATSAPP' || hasMeaningfulPhone(chatLog.customerPhone) || !chatLog.sessionId) {
     return chatLog;
   }
 
@@ -415,6 +443,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 router.post('/:id/handoff/request', authenticateToken, async (req, res) => {
   try {
+    if (!ensureWhatsAppLiveHandoffEnabled(res)) return;
+
     const chatLog = await hydrateWhatsAppCustomerPhone(
       await getOwnedChatLog(req.params.id, req.businessId),
       req.businessId
@@ -426,6 +456,10 @@ router.post('/:id/handoff/request', authenticateToken, async (req, res) => {
 
     if (chatLog.channel !== 'WHATSAPP') {
       return res.status(400).json({ error: 'Live handoff is currently available only for WhatsApp conversations' });
+    }
+
+    if (normalizeChatLogStatus(chatLog)?.status !== 'active') {
+      return res.status(409).json({ error: 'This conversation is no longer active' });
     }
 
     const state = await requestHumanHandoff({
@@ -466,6 +500,8 @@ router.post('/:id/handoff/request', authenticateToken, async (req, res) => {
 
 router.post('/:id/handoff/claim', authenticateToken, async (req, res) => {
   try {
+    if (!ensureWhatsAppLiveHandoffEnabled(res)) return;
+
     const chatLog = await hydrateWhatsAppCustomerPhone(
       await getOwnedChatLog(req.params.id, req.businessId),
       req.businessId
@@ -477,6 +513,10 @@ router.post('/:id/handoff/claim', authenticateToken, async (req, res) => {
 
     if (chatLog.channel !== 'WHATSAPP') {
       return res.status(400).json({ error: 'Live handoff is currently available only for WhatsApp conversations' });
+    }
+
+    if (normalizeChatLogStatus(chatLog)?.status !== 'active') {
+      return res.status(409).json({ error: 'This conversation is no longer active' });
     }
 
     const state = await claimHumanHandoff({
@@ -533,6 +573,8 @@ router.post('/:id/handoff/claim', authenticateToken, async (req, res) => {
 
 router.post('/:id/handoff/release', authenticateToken, async (req, res) => {
   try {
+    if (!ensureWhatsAppLiveHandoffEnabled(res)) return;
+
     const chatLog = await hydrateWhatsAppCustomerPhone(
       await getOwnedChatLog(req.params.id, req.businessId),
       req.businessId
@@ -544,6 +586,10 @@ router.post('/:id/handoff/release', authenticateToken, async (req, res) => {
 
     if (chatLog.channel !== 'WHATSAPP') {
       return res.status(400).json({ error: 'Live handoff is currently available only for WhatsApp conversations' });
+    }
+
+    if (normalizeChatLogStatus(chatLog)?.status !== 'active') {
+      return res.status(409).json({ error: 'This conversation is no longer active' });
     }
 
     const state = await returnConversationToAi({
@@ -599,6 +645,8 @@ router.post('/:id/handoff/release', authenticateToken, async (req, res) => {
 
 router.post('/:id/handoff/reply', authenticateToken, async (req, res) => {
   try {
+    if (!ensureWhatsAppLiveHandoffEnabled(res)) return;
+
     const chatLog = await hydrateWhatsAppCustomerPhone(
       await getOwnedChatLog(req.params.id, req.businessId),
       req.businessId
@@ -610,6 +658,10 @@ router.post('/:id/handoff/reply', authenticateToken, async (req, res) => {
 
     if (chatLog.channel !== 'WHATSAPP') {
       return res.status(400).json({ error: 'Live handoff is currently available only for WhatsApp conversations' });
+    }
+
+    if (normalizeChatLogStatus(chatLog)?.status !== 'active') {
+      return res.status(409).json({ error: 'This conversation is no longer active' });
     }
 
     if (!chatLog.customerPhone) {
