@@ -71,6 +71,10 @@ function handleChatter({ userMessage, state, language, sessionId, messageRouting
 const CALLBACK_NAME_INTRO_PATTERN = /\b(ad[ıi]m|ad\s*soyad[ıi]m|ismim|isim|ben(?:im)?\s*ad[ıi]m|my\s+name\s+is|i\s+am)\b/i;
 const CALLBACK_PLACEHOLDER_NAMES = new Set(['customer', 'unknown', 'anonymous', 'test', 'user', 'n/a', 'na', '-']);
 const CALLBACK_NAME_BLOCKLIST = /\b(yetkili|temsilci|geri|ara|callback|human|manager|representative|operator|destek|support)\b/i;
+const CALLBACK_NAME_SOFT_STOPWORDS = new Set([
+  'evet', 'evt', 'tamam', 'ok', 'okay', 'olur', 'tabi', 'tabii', 'lütfen', 'lutfen',
+  'merhaba', 'selam', 'geri', 'arama', 'callback', 'aradim', 'arayin', 'bagla', 'bağla'
+]);
 
 function normalizePhoneCandidate(rawPhone) {
   if (!rawPhone) return null;
@@ -90,7 +94,7 @@ function looksLikePlaceholderName(name) {
   return CALLBACK_PLACEHOLDER_NAMES.has(String(name).trim().toLowerCase());
 }
 
-function extractNameCandidate(message = '', { allowLoose = false } = {}) {
+function extractNameCandidate(message = '', { allowLoose = false, allowSingleToken = false } = {}) {
   const text = String(message || '').replace(/(\+?\d[\d\s\-()]{8,}\d)/g, ' ').trim();
   if (!text) return null;
 
@@ -104,8 +108,15 @@ function extractNameCandidate(message = '', { allowLoose = false } = {}) {
 
   if (!candidate) {
     const tokens = text.match(/[A-Za-zÇĞİÖŞÜçğıöşü]{2,}/g) || [];
-    if (tokens.length < 2 || tokens.length > 3) return null;
-    candidate = tokens.join(' ');
+    if (tokens.length === 1) {
+      if (!allowSingleToken) return null;
+      const singleToken = String(tokens[0] || '').trim();
+      if (!singleToken || CALLBACK_NAME_SOFT_STOPWORDS.has(singleToken.toLowerCase())) return null;
+      candidate = singleToken;
+    } else {
+      if (tokens.length < 2 || tokens.length > 3) return null;
+      candidate = tokens.join(' ');
+    }
   }
 
   if (!candidate) return null;
@@ -117,9 +128,13 @@ function extractNameCandidate(message = '', { allowLoose = false } = {}) {
 function upsertCallbackContext({ state, userMessage, allowLooseName = false, fallbackPhone = null }) {
   const existingName = state.callbackFlow?.customerName || state.extractedSlots?.customer_name || null;
   const existingPhone = state.callbackFlow?.customerPhone || state.extractedSlots?.phone || fallbackPhone || null;
+  const allowSingleTokenName = allowLooseName && !existingName && Boolean(existingPhone);
 
   const extractedPhone = extractPhoneCandidate(userMessage);
-  const extractedName = extractNameCandidate(userMessage, { allowLoose: allowLooseName });
+  const extractedName = extractNameCandidate(userMessage, {
+    allowLoose: allowLooseName,
+    allowSingleToken: allowSingleTokenName
+  });
 
   const customerName = extractedName || existingName || null;
   const customerPhone = extractedPhone || existingPhone || null;

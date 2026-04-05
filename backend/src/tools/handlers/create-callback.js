@@ -166,15 +166,30 @@ function isPlaceholderName(name) {
 
 function buildCallbackValidationError(language, missingFields) {
   const askFor = missingFields.length > 0 ? missingFields : ['customer_name', 'phone'];
+  const isEnglish = String(language || 'TR').toUpperCase() === 'EN';
+  let message;
+
+  if (askFor.length === 1 && askFor[0] === 'customer_name') {
+    message = isEnglish
+      ? 'To create your callback, could you share your name?'
+      : 'Geri arama talebinizi oluşturmak için adınızı paylaşır mısınız?';
+  } else if (askFor.length === 1 && askFor[0] === 'phone') {
+    message = isEnglish
+      ? 'To create your callback, could you share your phone number?'
+      : 'Geri arama talebinizi oluşturmak için telefon numaranızı paylaşır mısınız?';
+  } else {
+    message = isEnglish
+      ? 'To create your callback, could you share your name and phone number?'
+      : 'Geri arama talebinizi oluşturmak için adınızı ve telefon numaranızı paylaşır mısınız?';
+  }
+
   return {
     outcome: ToolOutcome.VALIDATION_ERROR,
     success: true,
     validationError: true,
     askFor,
     data: { askFor },
-    message: language === 'TR'
-      ? 'Sizi arayabilmemiz için ad-soyad ve telefon numaranızı paylaşır mısınız?'
-      : 'To create your callback, could you share your full name and phone number?'
+    message
   };
 }
 

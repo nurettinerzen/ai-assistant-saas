@@ -40,7 +40,8 @@ const CALLBACK_NAME_STOPWORDS = new Set([
   'beni', 'bana', 'ara', 'arayin', 'arayabilir', 'arayabilirsiniz', 'lutfen', 'lütfen',
   'telefon', 'numara', 'numarasi', 'numarami', 'geri', 'donus', 'donusum', 'cagri', 'talep',
   'please', 'call', 'me', 'back', 'callback', 'agent', 'representative', 'human', 'support',
-  'my', 'name', 'is', 'i', 'am'
+  'my', 'name', 'is', 'i', 'am', 'evet', 'evt', 'tamam', 'ok', 'okay', 'olur', 'tabi', 'tabii',
+  'merhaba', 'selam', 'bagla', 'bağla'
 ]);
 
 const RESPONSE_ORIGIN = Object.freeze({
@@ -136,18 +137,19 @@ export function extractCallbackPhone(message = '') {
   return normalizeCallbackPhone(match?.[1] || null);
 }
 
-function looksLikeRealCallbackName(name) {
+function looksLikeRealCallbackName(name, { allowSingleToken = false } = {}) {
   if (!name) return false;
   const normalized = String(name).trim().toLowerCase();
   if (!normalized || CALLBACK_PLACEHOLDER_NAMES.has(normalized)) return false;
 
   const tokens = normalized.split(/\s+/).filter(Boolean);
-  if (tokens.length < 2 || tokens.length > 4) return false;
+  if (tokens.length < 1 || tokens.length > 4) return false;
+  if (!allowSingleToken && tokens.length < 2) return false;
   if (tokens.some(token => CALLBACK_NAME_STOPWORDS.has(token))) return false;
   return true;
 }
 
-export function extractCallbackName(message = '') {
+export function extractCallbackName(message = '', { allowSingleToken = false } = {}) {
   const text = String(message || '').replace(CALLBACK_PHONE_PATTERN, ' ').trim();
   if (!text) return null;
 
@@ -157,7 +159,13 @@ export function extractCallbackName(message = '') {
   }
 
   const tokens = text.match(CALLBACK_NAME_PATTERN) || [];
-  if (tokens.length < 2) return null;
+  if (tokens.length < 2) {
+    if (!allowSingleToken || tokens.length !== 1) return null;
+    const singleToken = String(tokens[0] || '').trim();
+    return looksLikeRealCallbackName(singleToken, { allowSingleToken: true })
+      ? singleToken
+      : null;
+  }
 
   const candidate = tokens.slice(0, 3).join(' ').trim();
   return looksLikeRealCallbackName(candidate) ? candidate : null;
@@ -168,13 +176,23 @@ export function hydrateCreateCallbackArgs({ userMessage, state, args = {}, chann
   const callbackFlow = state.callbackFlow || {};
 
   const whatsappPhoneFallback = channel === 'WHATSAPP' ? channelUserId : null;
+  const allowSingleTokenName =
+    callbackFlow.pending === true &&
+    !args.customerName &&
+    !callbackFlow.customerName &&
+    !extractedSlots.customer_name &&
+    Boolean(args.customerPhone || callbackFlow.customerPhone || extractedSlots.phone || whatsappPhoneFallback);
   const existingNameCandidate = args.customerName || callbackFlow.customerName || extractedSlots.customer_name || null;
   const existingPhoneCandidate = args.customerPhone || callbackFlow.customerPhone || extractedSlots.phone || whatsappPhoneFallback || null;
-  const existingName = looksLikeRealCallbackName(existingNameCandidate) ? existingNameCandidate : null;
+  const existingName = looksLikeRealCallbackName(existingNameCandidate, {
+    allowSingleToken: allowSingleTokenName
+  }) ? existingNameCandidate : null;
   const existingPhone = normalizeCallbackPhone(existingPhoneCandidate);
 
   const parsedPhone = extractCallbackPhone(userMessage);
-  const parsedName = extractCallbackName(userMessage);
+  const parsedName = extractCallbackName(userMessage, {
+    allowSingleToken: allowSingleTokenName
+  });
 
   const customerName = existingName || parsedName || null;
   const customerPhone = existingPhone || parsedPhone || null;

@@ -41,4 +41,27 @@ describe('P0 create_callback deterministic parser', () => {
     expect(askName).toContain('ad-soyad');
     expect(askName).not.toContain('telefon numaranizi');
   });
+
+  it('accepts a single first name when callback phone is already known', () => {
+    const state = {
+      extractedSlots: {},
+      callbackFlow: {
+        pending: true,
+        customerPhone: '14245275089'
+      }
+    };
+
+    const hydrated = hydrateCreateCallbackArgs({
+      userMessage: 'nurettin',
+      state,
+      args: {},
+      channel: 'WHATSAPP',
+      channelUserId: '14245275089'
+    });
+
+    expect(hydrated.hydratedArgs.customerName).toBe('nurettin');
+    expect(hydrated.hydratedArgs.customerPhone).toBe('14245275089');
+    expect(hydrated.extracted.customer_name).toBe('nurettin');
+    expect(hydrated.extracted.phone).toBe('14245275089');
+  });
 });
