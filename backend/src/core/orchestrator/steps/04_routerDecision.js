@@ -169,9 +169,15 @@ export async function makeRoutingDecision(params) {
   });
 
   const callbackPending = state.callbackFlow?.pending === true;
+  const supportSuggestedFlow = String(
+    classification?.suggestedFlow ||
+    routing?.suggestedFlow ||
+    ''
+  ).toUpperCase();
   const callbackRequestedByClassifier =
-    String(classification?.suggestedFlow || '').toUpperCase() === 'CALLBACK_REQUEST' ||
-    String(routing?.suggestedFlow || '').toUpperCase() === 'CALLBACK_REQUEST';
+    supportSuggestedFlow === 'CALLBACK_REQUEST';
+  const liveHandoffRequestedByClassifier = supportSuggestedFlow === 'LIVE_HANDOFF_REQUEST';
+  const supportPreferenceClarifyRequestedByClassifier = supportSuggestedFlow === 'SUPPORT_PREFERENCE_CLARIFY';
 
   if (callbackPending || callbackRequestedByClassifier) {
     const { customerName, customerPhone } = upsertCallbackContext({
@@ -209,6 +215,33 @@ export async function makeRoutingDecision(params) {
       metadata: {
         mode: callbackPending ? 'callback_pending_flow' : 'callback_classifier_flow',
         missingFields
+      }
+    };
+  }
+
+  if (liveHandoffRequestedByClassifier || supportPreferenceClarifyRequestedByClassifier) {
+    const intent = liveHandoffRequestedByClassifier
+      ? 'live_handoff_request'
+      : 'support_preference_clarify';
+
+    return {
+      directResponse: false,
+      routing: {
+        ...messageRouting,
+        routing: {
+          ...messageRouting.routing,
+          action: 'RUN_INTENT_ROUTER',
+          reason: liveHandoffRequestedByClassifier
+            ? 'Classifier routed turn to live handoff handling'
+            : 'Classifier detected ambiguous human-help preference',
+          suggestedFlow: supportSuggestedFlow,
+          intent,
+        }
+      },
+      supportIntent: true,
+      metadata: {
+        mode: intent,
+        suggestedFlow: supportSuggestedFlow,
       }
     };
   }

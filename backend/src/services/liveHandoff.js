@@ -8,6 +8,13 @@ export const HANDOFF_MODE = Object.freeze({
   ACTIVE: 'ACTIVE',
 });
 
+export const SUPPORT_OFFER_MODE = Object.freeze({
+  CHOICE: 'choice',
+  CALLBACK_ONLY: 'callback_only',
+});
+
+const BUSINESS_HOUR_DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
 const HUMAN_HANDOFF_PATTERNS = [
   /\byetkili\s+biri(?:yle)?\s+g[öo]r[üu](?:ş|s|se|şe|use|üşe)(?:mek|mek\s+istiyorum|ebil(?:ir)?(?:\s+m[ıi]y[ıi]m)?|elim)?\b/i,
   /\bm[üu]şteri\s+temsilcisi(?:yle)?\s+g[öo]r[üu](?:ş|s|se|şe|use|üşe)(?:mek|mek\s+istiyorum|ebil(?:ir)?(?:\s+m[ıi]y[ıi]m)?|elim)?\b/i,
@@ -48,6 +55,60 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function normalizeSupportOfferMode(value) {
+  return value === SUPPORT_OFFER_MODE.CALLBACK_ONLY
+    ? SUPPORT_OFFER_MODE.CALLBACK_ONLY
+    : SUPPORT_OFFER_MODE.CHOICE;
+}
+
+function parseTimeToMinutes(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return (hours * 60) + minutes;
+}
+
+function getLocalDateParts(timezone = 'Europe/Istanbul', now = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(now);
+  const weekday = parts.find((part) => part.type === 'weekday')?.value?.toLowerCase() || 'monday';
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0);
+
+  const dayKey = BUSINESS_HOUR_DAY_KEYS.includes(weekday) ? weekday : 'monday';
+  return {
+    dayKey,
+    currentMinutes: (hour * 60) + minute,
+    localTimeLabel: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+  };
+}
+
+function normalizeDaySchedule(rawValue) {
+  if (!isPlainObject(rawValue)) {
+    return {
+      open: '09:00',
+      close: '17:00',
+      closed: false,
+    };
+  }
+
+  return {
+    open: typeof rawValue.open === 'string' ? rawValue.open : '09:00',
+    close: typeof rawValue.close === 'string' ? rawValue.close : '17:00',
+    closed: rawValue.closed === true,
+  };
+}
+
 export function getNormalizedHandoffState(state = {}) {
   const handoff = isPlainObject(state?.humanHandoff) ? state.humanHandoff : {};
   const mode = Object.values(HANDOFF_MODE).includes(handoff.mode) ? handoff.mode : HANDOFF_MODE.AI;
@@ -80,6 +141,18 @@ export function buildHandoffView(state = {}, viewerUserId = null) {
   };
 }
 
+export function getSupportRoutingState(state = {}) {
+  const supportRouting = isPlainObject(state?.supportRouting) ? state.supportRouting : {};
+
+  return {
+    pendingChoice: supportRouting.pendingChoice === true,
+    offerMode: normalizeSupportOfferMode(supportRouting.offerMode),
+    liveSupportAvailable: supportRouting.liveSupportAvailable === false ? false : true,
+    askedAt: supportRouting.askedAt || null,
+    reason: supportRouting.reason || null,
+  };
+}
+
 export function shouldTriggerHumanHandoff(message = '') {
   const text = String(message || '').trim();
   if (!text) return false;
@@ -102,6 +175,24 @@ export function getLiveHandoffReturnedToAiMessage(language = 'TR') {
   return String(language || 'TR').toUpperCase() === 'EN'
     ? 'This conversation has been handed back to our AI assistant. You can keep replying in this thread.'
     : 'Bu konuşma tekrar yapay zeka asistanımıza devredildi. Aynı yazışma üzerinden devam edebilirsiniz.';
+}
+
+export function getLiveSupportClarifyMessage(language = 'TR') {
+  return String(language || 'TR').toUpperCase() === 'EN'
+    ? 'I can connect you to a live teammate now, or I can create a callback request for later. Which would you prefer?'
+    : 'Sizi isterseniz şimdi canlı bir temsilciye bağlayabilirim, isterseniz geri arama talebi oluşturabilirim. Hangisini tercih edersiniz?';
+}
+
+export function getLiveSupportUnavailableMessage(language = 'TR') {
+  return String(language || 'TR').toUpperCase() === 'EN'
+    ? 'Our live support team does not appear to be available right now. If you want, I can create a callback request for you.'
+    : 'Canlı destek ekibimiz şu an müsait görünmüyor. İsterseniz sizin için geri arama talebi oluşturabilirim.';
+}
+
+export function getWhatsappCallbackCollectionMessage(language = 'TR') {
+  return String(language || 'TR').toUpperCase() === 'EN'
+    ? 'Sure. To create a callback request, may I have your name? I already have your phone number from this WhatsApp conversation.'
+    : 'Tabii. Geri arama talebi oluşturmam için adınızı paylaşır mısınız? Telefon numaranızı bu WhatsApp konuşmasından alıyorum.';
 }
 
 function buildUpdatedState(baseState = {}, handoffUpdate = {}) {
@@ -150,6 +241,71 @@ export async function requestHumanHandoff({
   });
 
   return getNormalizedHandoffState(nextState);
+}
+
+export async function setSupportRoutingPending({
+  sessionId,
+  businessId,
+  offerMode = SUPPORT_OFFER_MODE.CHOICE,
+  liveSupportAvailable = true,
+  reason = 'support_preference_requested',
+  currentState = null,
+}) {
+  const state = currentState || await getState(sessionId);
+
+  await updateState(sessionId, {
+    businessId,
+    messageCount: state.messageCount || 0,
+    supportRouting: {
+      pendingChoice: true,
+      offerMode: normalizeSupportOfferMode(offerMode),
+      liveSupportAvailable: liveSupportAvailable !== false,
+      askedAt: buildNowIso(),
+      reason,
+    },
+  });
+
+  return getSupportRoutingState({
+    ...state,
+    supportRouting: {
+      pendingChoice: true,
+      offerMode: normalizeSupportOfferMode(offerMode),
+      liveSupportAvailable: liveSupportAvailable !== false,
+      askedAt: buildNowIso(),
+      reason,
+    },
+  });
+}
+
+export async function clearSupportRoutingState({
+  sessionId,
+  businessId,
+  currentState = null,
+}) {
+  const state = currentState || await getState(sessionId);
+
+  await updateState(sessionId, {
+    businessId,
+    messageCount: state.messageCount || 0,
+    supportRouting: {
+      pendingChoice: false,
+      offerMode: SUPPORT_OFFER_MODE.CHOICE,
+      liveSupportAvailable: true,
+      askedAt: null,
+      reason: null,
+    },
+  });
+
+  return getSupportRoutingState({
+    ...state,
+    supportRouting: {
+      pendingChoice: false,
+      offerMode: SUPPORT_OFFER_MODE.CHOICE,
+      liveSupportAvailable: true,
+      askedAt: null,
+      reason: null,
+    },
+  });
 }
 
 export async function claimHumanHandoff({
@@ -257,6 +413,84 @@ export async function noteHumanReply({
   });
 
   return getNormalizedHandoffState(nextState);
+}
+
+export async function getLiveSupportAvailability({
+  businessId,
+  timezone = 'Europe/Istanbul',
+  now = new Date(),
+}) {
+  if (!businessId) {
+    return {
+      available: true,
+      source: 'default',
+      reason: 'missing_business',
+      dayKey: null,
+      localTimeLabel: null,
+    };
+  }
+
+  const hours = await prisma.businessHours.findUnique({
+    where: { businessId },
+    select: {
+      monday: true,
+      tuesday: true,
+      wednesday: true,
+      thursday: true,
+      friday: true,
+      saturday: true,
+      sunday: true,
+    }
+  });
+
+  if (!hours) {
+    return {
+      available: true,
+      source: 'default',
+      reason: 'hours_missing',
+      dayKey: null,
+      localTimeLabel: null,
+    };
+  }
+
+  const { dayKey, currentMinutes, localTimeLabel } = getLocalDateParts(timezone, now);
+  const schedule = normalizeDaySchedule(hours?.[dayKey]);
+  if (schedule.closed) {
+    return {
+      available: false,
+      source: 'business_hours',
+      reason: 'closed_day',
+      dayKey,
+      localTimeLabel,
+      open: schedule.open,
+      close: schedule.close,
+    };
+  }
+
+  const openMinutes = parseTimeToMinutes(schedule.open);
+  const closeMinutes = parseTimeToMinutes(schedule.close);
+  if (!Number.isInteger(openMinutes) || !Number.isInteger(closeMinutes) || closeMinutes <= openMinutes) {
+    return {
+      available: true,
+      source: 'fallback_invalid_hours',
+      reason: 'invalid_schedule',
+      dayKey,
+      localTimeLabel,
+      open: schedule.open,
+      close: schedule.close,
+    };
+  }
+
+  const available = currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+  return {
+    available,
+    source: 'business_hours',
+    reason: available ? 'open_now' : 'outside_hours',
+    dayKey,
+    localTimeLabel,
+    open: schedule.open,
+    close: schedule.close,
+  };
 }
 
 export async function appendChatLogMessages({

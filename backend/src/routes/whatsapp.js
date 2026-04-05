@@ -54,6 +54,7 @@ import { resolveChatAssistantForBusiness } from '../services/assistantChannels.j
 import { syncPersistedAssistantReply } from '../services/reply-parity.js';
 import { safeCompareHex } from '../security/constantTime.js';
 import { queueUnifiedResponseTrace } from '../services/trace/responseTraceLogger.js';
+import { classifySemanticSupportIntent } from '../services/semantic-guard-classifier.js';
 import {
   buildWhatsappWrittenIdempotencyKey,
   commitWrittenInteraction,
@@ -64,10 +65,18 @@ import {
 import {
   appendChatLogMessages,
   buildSystemEventMessage,
+  clearSupportRoutingState,
+  getLiveSupportAvailability,
+  getLiveSupportClarifyMessage,
   getNormalizedHandoffState,
+  getSupportRoutingState,
+  getLiveSupportUnavailableMessage,
+  getWhatsappCallbackCollectionMessage,
   HANDOFF_MODE,
   isWhatsAppLiveHandoffEnabled,
   requestHumanHandoff,
+  setSupportRoutingPending,
+  SUPPORT_OFFER_MODE,
   shouldTriggerHumanHandoff,
 } from '../services/liveHandoff.js';
 
@@ -100,6 +109,45 @@ function getLiveHandoffAcknowledgement(language = 'TR') {
   return String(language || 'TR').toUpperCase() === 'EN'
     ? 'A teammate will take over this WhatsApp conversation shortly. Please stay in this thread.'
     : 'Bir temsilcimiz bu WhatsApp yazışmasını birazdan devralacak. Lütfen bu konuşmada kalın.';
+}
+
+async function startWhatsappCallbackFlow({
+  sessionId,
+  business,
+  currentState,
+  customerPhone,
+}) {
+  const customerName =
+    currentState?.callbackFlow?.customerName ||
+    currentState?.extractedSlots?.customer_name ||
+    null;
+
+  const missingFields = [];
+  if (!customerName) {
+    missingFields.push('customer_name');
+  }
+
+  await updateState(sessionId, {
+    businessId: business.id,
+    messageCount: currentState?.messageCount || 0,
+    callbackFlow: {
+      pending: true,
+      customerName,
+      customerPhone,
+      missingFields,
+      updatedAt: new Date().toISOString(),
+    },
+    extractedSlots: {
+      ...(currentState?.extractedSlots || {}),
+      ...(customerPhone ? { phone: customerPhone } : {}),
+      ...(customerName ? { customer_name: customerName } : {}),
+    },
+  });
+
+  return {
+    customerName,
+    missingFields,
+  };
 }
 
 function getIntegrationCredentials(integration) {
@@ -622,47 +670,212 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
 
     const state = await getState(sessionId);
     const handoff = getNormalizedHandoffState(state);
+    const supportRouting = getSupportRoutingState(state);
     const userTranscriptMessage = {
       role: 'user',
       content: messageBody,
       timestamp: new Date().toISOString(),
     };
 
-    if (isWhatsAppLiveHandoffEnabled() && shouldTriggerHumanHandoff(messageBody) && handoff.mode === HANDOFF_MODE.AI) {
-      await requestHumanHandoff({
-        sessionId,
-        businessId: business.id,
-        requestedBy: 'customer',
-        requestedReason: 'customer_requested_live_support',
-        currentState: state,
-      });
+    const liveSupportAvailability = isWhatsAppLiveHandoffEnabled()
+      ? await getLiveSupportAvailability({
+          businessId: business.id,
+          timezone: business.timezone || 'Europe/Istanbul',
+        })
+      : { available: true, source: 'feature_disabled', reason: 'feature_disabled' };
 
-      await appendChatLogMessages({
-        sessionId,
-        businessId: business.id,
-        channel: 'WHATSAPP',
-        assistantId: business.assistants?.[0]?.id || null,
-        customerPhone: from,
-        messages: [
-          userTranscriptMessage,
-          buildSystemEventMessage(
-            'Customer requested live support.',
-            {
-              type: 'handoff_requested',
-              requestedBy: 'customer',
-              inboundMessageId: messageId,
-            }
-          )
-        ]
-      });
+    let semanticSupportIntent = null;
+    if (isWhatsAppLiveHandoffEnabled() && handoff.mode === HANDOFF_MODE.AI) {
+      try {
+        semanticSupportIntent = await classifySemanticSupportIntent(messageBody, language, {
+          supportChoicePending: supportRouting.pendingChoice,
+          supportOfferMode: supportRouting.offerMode,
+          liveSupportAvailable: liveSupportAvailability.available,
+        });
+      } catch (supportIntentError) {
+        console.error('⚠️ [WhatsApp] Semantic support intent classifier failed:', supportIntentError.message);
+      }
+    }
 
-      await sendWhatsAppMessage(business, from, getLiveHandoffAcknowledgement(language), {
-        inboundMessageId: `${messageId}:handoff`,
-        skipUsageMetering: true,
-      });
+    if (isWhatsAppLiveHandoffEnabled() && handoff.mode === HANDOFF_MODE.AI) {
+      const fallbackLiveHandoff = shouldTriggerHumanHandoff(messageBody);
+      const shouldStartLiveHandoff =
+        semanticSupportIntent?.isLiveHandoff === true ||
+        (!semanticSupportIntent && fallbackLiveHandoff);
+      const shouldClarifySupport = semanticSupportIntent?.needsClarification === true;
+      const shouldStartCallback = semanticSupportIntent?.isCallback === true;
 
-      console.log(`🤝 [WhatsApp] Live handoff requested for session ${sessionId}`);
-      return;
+      if (shouldStartLiveHandoff) {
+        if (liveSupportAvailability.available) {
+          await clearSupportRoutingState({
+            sessionId,
+            businessId: business.id,
+            currentState: state,
+          });
+
+          await requestHumanHandoff({
+            sessionId,
+            businessId: business.id,
+            requestedBy: 'customer',
+            requestedReason: 'customer_requested_live_support',
+            currentState: state,
+          });
+
+          await appendChatLogMessages({
+            sessionId,
+            businessId: business.id,
+            channel: 'WHATSAPP',
+            assistantId: business.assistants?.[0]?.id || null,
+            customerPhone: from,
+            messages: [
+              userTranscriptMessage,
+              buildSystemEventMessage(
+                'Customer requested live support.',
+                {
+                  type: 'handoff_requested',
+                  requestedBy: 'customer',
+                  inboundMessageId: messageId,
+                  supportIntent: semanticSupportIntent?.intent || 'LIVE_HANDOFF_REQUEST',
+                }
+              )
+            ]
+          });
+
+          await sendWhatsAppMessage(business, from, getLiveHandoffAcknowledgement(language), {
+            inboundMessageId: `${messageId}:handoff`,
+            skipUsageMetering: true,
+          });
+
+          console.log(`🤝 [WhatsApp] Live handoff requested for session ${sessionId}`);
+          return;
+        }
+
+        await setSupportRoutingPending({
+          sessionId,
+          businessId: business.id,
+          offerMode: SUPPORT_OFFER_MODE.CALLBACK_ONLY,
+          liveSupportAvailable: false,
+          reason: 'live_support_unavailable',
+          currentState: state,
+        });
+
+        await appendChatLogMessages({
+          sessionId,
+          businessId: business.id,
+          channel: 'WHATSAPP',
+          assistantId: business.assistants?.[0]?.id || null,
+          customerPhone: from,
+          messages: [
+            userTranscriptMessage,
+            buildSystemEventMessage(
+              'Live support unavailable; callback offered instead.',
+              {
+                type: 'handoff_unavailable',
+                inboundMessageId: messageId,
+                supportIntent: semanticSupportIntent?.intent || 'LIVE_HANDOFF_REQUEST',
+              }
+            )
+          ]
+        });
+
+        await sendWhatsAppMessage(business, from, getLiveSupportUnavailableMessage(language), {
+          inboundMessageId: `${messageId}:handoff-unavailable`,
+          skipUsageMetering: true,
+        });
+
+        console.log(`🤝 [WhatsApp] Live handoff unavailable for session ${sessionId}, offered callback`);
+        return;
+      }
+
+      if (shouldStartCallback) {
+        await clearSupportRoutingState({
+          sessionId,
+          businessId: business.id,
+          currentState: state,
+        });
+
+        const callbackFlow = await startWhatsappCallbackFlow({
+          sessionId,
+          business,
+          currentState: state,
+          customerPhone: from,
+        });
+
+        await appendChatLogMessages({
+          sessionId,
+          businessId: business.id,
+          channel: 'WHATSAPP',
+          assistantId: business.assistants?.[0]?.id || null,
+          customerPhone: from,
+          messages: [
+            userTranscriptMessage,
+            buildSystemEventMessage(
+              'Customer chose callback flow.',
+              {
+                type: 'callback_requested',
+                inboundMessageId: messageId,
+                supportIntent: semanticSupportIntent?.intent || 'CALLBACK_REQUEST',
+                missingFields: callbackFlow.missingFields,
+              }
+            )
+          ]
+        });
+
+        await sendWhatsAppMessage(business, from, getWhatsappCallbackCollectionMessage(language), {
+          inboundMessageId: `${messageId}:callback`,
+          skipUsageMetering: true,
+        });
+
+        console.log(`📞 [WhatsApp] Callback collection started for session ${sessionId}`);
+        return;
+      }
+
+      if (shouldClarifySupport) {
+        const offerMode = liveSupportAvailability.available
+          ? SUPPORT_OFFER_MODE.CHOICE
+          : SUPPORT_OFFER_MODE.CALLBACK_ONLY;
+        const clarifyMessage = liveSupportAvailability.available
+          ? getLiveSupportClarifyMessage(language)
+          : getLiveSupportUnavailableMessage(language);
+
+        await setSupportRoutingPending({
+          sessionId,
+          businessId: business.id,
+          offerMode,
+          liveSupportAvailable: liveSupportAvailability.available,
+          reason: 'support_preference_requested',
+          currentState: state,
+        });
+
+        await appendChatLogMessages({
+          sessionId,
+          businessId: business.id,
+          channel: 'WHATSAPP',
+          assistantId: business.assistants?.[0]?.id || null,
+          customerPhone: from,
+          messages: [
+            userTranscriptMessage,
+            buildSystemEventMessage(
+              liveSupportAvailability.available
+                ? 'Asked customer to choose between live handoff and callback.'
+                : 'Asked customer whether they want a callback because live support is unavailable.',
+              {
+                type: 'support_preference_requested',
+                inboundMessageId: messageId,
+                offerMode,
+              }
+            )
+          ]
+        });
+
+        await sendWhatsAppMessage(business, from, clarifyMessage, {
+          inboundMessageId: `${messageId}:support-choice`,
+          skipUsageMetering: true,
+        });
+
+        console.log(`🤝 [WhatsApp] Support preference clarification sent for session ${sessionId}`);
+        return;
+      }
     }
 
     if (handoff.mode === HANDOFF_MODE.REQUESTED || handoff.mode === HANDOFF_MODE.ACTIVE) {
@@ -715,7 +928,8 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
         inboundMessageId: messageId,
         requestId: traceMeta.requestId || null,
         phoneNumberId: traceMeta.phoneNumberId || null,
-        sessionId
+        sessionId,
+        liveSupportAvailable: liveSupportAvailability.available,
       }
     });
 

@@ -157,7 +157,14 @@ User message:
   };
 }
 
-export async function classifySemanticCallbackIntent(message = '', language = 'TR') {
+const SUPPORT_INTENTS = new Set([
+  'LIVE_HANDOFF_REQUEST',
+  'CALLBACK_REQUEST',
+  'SUPPORT_PREFERENCE_CLARIFY',
+  'NONE'
+]);
+
+export async function classifySemanticSupportIntent(message = '', language = 'TR', context = {}) {
   if (!isFeatureEnabled('SEMANTIC_CALLBACK_CLASSIFIER')) {
     return null;
   }
@@ -166,17 +173,36 @@ export async function classifySemanticCallbackIntent(message = '', language = 'T
     return null;
   }
 
-  const prompt = `You are a classifier for callback / live support intent.
+  const prompt = `You are a classifier for customer requests about human help.
 
 Classify ONLY the latest user message. Understand Turkish, English, no-diacritic Turkish, slang, and misspellings.
 
-Positive callback intent examples:
+Intent definitions:
+- LIVE_HANDOFF_REQUEST = user wants a real person to take over NOW in the same conversation
+- CALLBACK_REQUEST = user explicitly wants a later return call / callback
+- SUPPORT_PREFERENCE_CLARIFY = user clearly wants human help, but it is ambiguous whether they want immediate live takeover or a later callback
+- NONE = no human-help intent
+
+Positive LIVE_HANDOFF_REQUEST examples:
 - "yetkili biriyle görüşmek istiyorum"
-- "beni arayın"
 - "canlı desteğe bağla"
 - "temsilci istiyorum"
 - "real person please"
+- "connect me to a human"
+- "şimdi bir temsilciye bağlanabilir miyim"
+
+Positive CALLBACK_REQUEST examples:
+- "beni arayın"
+- "beni sonra arayın"
+- "geri arama talebi oluştur"
 - "call me back"
+- "can you call me later"
+
+Positive SUPPORT_PREFERENCE_CLARIFY examples:
+- "ilgili biriyle konuşabilir miyim"
+- "birisi bana yardımcı olsun"
+- "biri dönüş yapabilir mi yoksa şimdi bağlanabilir miyim"
+- "insan desteği istiyorum" when timing is unclear
 
 Negative examples:
 - ordinary complaints without asking for a human
@@ -184,14 +210,24 @@ Negative examples:
 - just sharing a phone number or a name
 - "ne zaman dönüş yapılır" by itself unless it clearly asks to be called back / transferred
 
+Context:
+- language=${String(language || 'TR').toUpperCase()}
+- support_choice_pending=${context?.supportChoicePending ? 'yes' : 'no'}
+- live_support_available=${context?.liveSupportAvailable === false ? 'no' : 'yes_or_unknown'}
+- support_offer_mode=${context?.supportOfferMode === 'callback_only' ? 'callback_only' : 'choice_or_none'}
+
+Special rule when support_choice_pending=yes:
+- If the latest user message chooses "now / şimdi / bağla / live / temsilci / human", classify LIVE_HANDOFF_REQUEST
+- If the latest user message chooses "later / sonra / ara / callback / geri dönüş", classify CALLBACK_REQUEST
+- If support_offer_mode=callback_only and the latest user message clearly accepts the callback offer ("evet", "olur", "tamam", "yes", "ok"), classify CALLBACK_REQUEST
+- If support_offer_mode=choice_or_none and the latest user message only says "evet/ok/tamam" without choosing now vs later, classify SUPPORT_PREFERENCE_CLARIFY
+
 Return ONLY JSON:
 {
-  "isCallback": true,
+  "intent": "LIVE_HANDOFF_REQUEST" | "CALLBACK_REQUEST" | "SUPPORT_PREFERENCE_CLARIFY" | "NONE",
   "confidence": 0.0,
   "reason": "short explanation"
 }
-
-language=${String(language || 'TR').toUpperCase()}
 message="""${String(message || '').slice(0, 2000)}"""`;
 
   const parsed = await generateJsonClassification({
@@ -201,11 +237,32 @@ message="""${String(message || '').slice(0, 2000)}"""`;
     timeoutMs: 2500
   });
 
+  const intent = String(parsed.intent || 'NONE').toUpperCase();
+  if (!SUPPORT_INTENTS.has(intent)) {
+    throw new Error(`SEMANTIC_SUPPORT_INTENT_INVALID_SCHEMA:${JSON.stringify(parsed)}`);
+  }
+
   return {
-    isCallback: parsed.isCallback === true,
-    confidence: sanitizeConfidence(parsed.confidence, parsed.isCallback === true ? 0.9 : 0.1),
+    intent,
+    isSupportIntent: intent !== 'NONE',
+    isCallback: intent === 'CALLBACK_REQUEST',
+    isLiveHandoff: intent === 'LIVE_HANDOFF_REQUEST',
+    needsClarification: intent === 'SUPPORT_PREFERENCE_CLARIFY',
+    confidence: sanitizeConfidence(parsed.confidence, intent === 'NONE' ? 0.1 : 0.9),
     reason: String(parsed.reason || '').trim(),
     source: 'semantic'
+  };
+}
+
+export async function classifySemanticCallbackIntent(message = '', language = 'TR', context = {}) {
+  const result = await classifySemanticSupportIntent(message, language, context);
+  if (!result) return null;
+
+  return {
+    isCallback: result.intent === 'CALLBACK_REQUEST',
+    confidence: result.confidence,
+    reason: result.reason,
+    source: result.source
   };
 }
 
@@ -265,6 +322,7 @@ message="""${String(message || '').slice(0, 3000)}"""`;
 
 export default {
   classifySemanticRisk,
+  classifySemanticSupportIntent,
   classifySemanticCallbackIntent,
   classifySemanticPromptInjection
 };

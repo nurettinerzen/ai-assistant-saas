@@ -151,8 +151,9 @@ ${context.anchor?.type === 'STOCK' ? `- Stock Context: product="${context.anchor
 3. **NEW_INTENT**: User asks about a different topic or starts new conversation
    - Example: User: "Siparişim nerede?" (new topic: order tracking)
    - Example: User: "Borcum var mı?" (new topic: debt inquiry)
-   - Example: User: "Yetkili biriyle görüşmek istiyorum" → suggested_flow: CALLBACK_REQUEST
+   - Example: User: "Yetkili biriyle görüşmek istiyorum" → suggested_flow: LIVE_HANDOFF_REQUEST
    - Example: User: "Beni arayın" → suggested_flow: CALLBACK_REQUEST
+   - Example: User: "İlgili biriyle konuşabilir miyim?" → suggested_flow: SUPPORT_PREFERENCE_CLARIFY
    - Example: User: "Artemis var mı stokta?" → suggested_flow: STOCK_CHECK
    - Example: User: "RRCAPL0126 stokta var mı?" → suggested_flow: STOCK_CHECK, extracted_slots.sku = "RRCAPL0126"
    - Example: User: "Ses geçidi var mı stokta?" → suggested_flow: STOCK_CHECK
@@ -182,7 +183,7 @@ If message contains slot data, extract it:
   "message_type": "SLOT_ANSWER" | "FOLLOWUP_DISPUTE" | "NEW_INTENT" | "CHATTER",
   "confidence": 0.0-1.0,
   "reason": "Brief explanation in ${languageName}",
-  "suggested_flow": "ORDER_STATUS" | "TRACKING_INFO" | "DEBT_INQUIRY" | "TICKET_STATUS" | "COMPLAINT" | "CALLBACK_REQUEST" | "STOCK_CHECK" | "PRODUCT_INFO" | null,
+  "suggested_flow": "ORDER_STATUS" | "TRACKING_INFO" | "DEBT_INQUIRY" | "TICKET_STATUS" | "COMPLAINT" | "CALLBACK_REQUEST" | "LIVE_HANDOFF_REQUEST" | "SUPPORT_PREFERENCE_CLARIFY" | "STOCK_CHECK" | "PRODUCT_INFO" | null,
   "extracted_slots": {
     "slot_name": "value"
   },
@@ -196,7 +197,9 @@ If message contains slot data, extract it:
 - Always prioritize context over keywords
 - Stock / availability / in-stock / inventory questions should use suggested_flow="STOCK_CHECK"
 - Product detail / model / specification / price questions should use suggested_flow="PRODUCT_INFO"
-- Asking for a human, manager, representative, callback, or "call me back" should use suggested_flow="CALLBACK_REQUEST"
+- Asking for a live human/representative right now should use suggested_flow="LIVE_HANDOFF_REQUEST"
+- Asking explicitly for a later return call should use suggested_flow="CALLBACK_REQUEST"
+- If the user clearly wants human help but it is ambiguous whether they want immediate live takeover or a later callback, use suggested_flow="SUPPORT_PREFERENCE_CLARIFY"
 - If callbackPending=yes and user shares only a name or phone number, classify as SLOT_ANSWER
 - If pendingVerificationField="phone_last4" and user shares a 4-digit number, classify as SLOT_ANSWER
 - If user provides only a SKU/code, extract it into "sku"

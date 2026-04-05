@@ -17,13 +17,13 @@ function hashArgs(args) {
 }
 
 describe('P0 Callback deterministic flow', () => {
-  it('A1: callback intent should activate callback flow with only name/phone missing fields', async () => {
+  it('A1: explicit callback intent should activate callback flow with only name/phone missing fields', async () => {
     const state = {};
 
     const result = await makeRoutingDecision({
       classification: { type: 'NEW_INTENT', confidence: 0.9, triggerRule: null, suggestedFlow: 'CALLBACK_REQUEST' },
       state,
-      userMessage: 'yetkili biriyle görüşmek istiyorum',
+      userMessage: 'beni sonra arayın',
       conversationHistory: [],
       language: 'TR',
       business: { id: 1, language: 'TR' },
@@ -37,6 +37,28 @@ describe('P0 Callback deterministic flow', () => {
     expect(result.metadata?.missingFields).toEqual(['customer_name', 'phone']);
     expect(state.callbackFlow?.pending).toBe(true);
     expect(state.activeFlow).toBe('CALLBACK_REQUEST');
+  });
+
+  it('A1b: live handoff intent should not activate callback flow', async () => {
+    const state = {};
+
+    const result = await makeRoutingDecision({
+      classification: { type: 'NEW_INTENT', confidence: 0.9, triggerRule: null, suggestedFlow: 'LIVE_HANDOFF_REQUEST' },
+      state,
+      userMessage: 'yetkili biriyle görüşmek istiyorum',
+      conversationHistory: [],
+      language: 'TR',
+      business: { id: 1, language: 'TR' },
+      sessionId: 'test-a1b',
+      channel: 'CHAT',
+      hasKBMatch: false
+    });
+
+    expect(result.directResponse).toBe(false);
+    expect(result.callbackRequest).not.toBe(true);
+    expect(result.supportIntent).toBe(true);
+    expect(result.metadata?.suggestedFlow).toBe('LIVE_HANDOFF_REQUEST');
+    expect(state.callbackFlow).toBeUndefined();
   });
 
   it('A2: create_callback should reject missing/placeholder identity data deterministically', async () => {

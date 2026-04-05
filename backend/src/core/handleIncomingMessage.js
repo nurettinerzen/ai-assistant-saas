@@ -1508,7 +1508,9 @@ export async function handleIncomingMessage({
       metrics,
       assistant, // CHATTER minimal prompt için
       business,  // CHATTER minimal prompt için
-      entityResolution
+      entityResolution,
+      channel,
+      liveSupportAvailable: metadata.liveSupportAvailable ?? null,
     });
 
     console.log(`🔧 Gated tools: ${gatedTools.length}`);
