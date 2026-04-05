@@ -492,6 +492,20 @@ export default function WhatsAppInboxPage() {
     }
   };
 
+  const handleReplyKeyDown = (event) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent?.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!replyDraft.trim() || handoffAction === 'reply') {
+      return;
+    }
+
+    handleSendReply();
+  };
+
   const renderConversationItem = (chat) => {
     const isSelected = selectedChatId === chat.id;
     const preview = buildInboxPreview(chat.messages);
@@ -757,6 +771,7 @@ export default function WhatsAppInboxPage() {
                       <Textarea
                         value={replyDraft}
                         onChange={(event) => setReplyDraft(event.target.value)}
+                        onKeyDown={handleReplyKeyDown}
                         rows={4}
                         placeholder={t.replyPlaceholder}
                       />
