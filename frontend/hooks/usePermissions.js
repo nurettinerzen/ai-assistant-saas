@@ -2,10 +2,15 @@
  * usePermissions Hook
  * Provides role-based permission checking for the frontend
  * Includes subscription status checks (INCOMPLETE = limited access)
+ *
+ * Uses DashboardContext when available (inside dashboard layout) to avoid
+ * duplicate API calls and prevent "Access Denied" flash during auth loading.
+ * Falls back to independent API call when used outside dashboard.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
+import { useDashboardContext } from '@/contexts/DashboardContext';
 
 // Permission definitions - must match backend
 const ROLE_PERMISSIONS = {
@@ -62,28 +67,43 @@ const ROLE_PERMISSIONS = {
  * @returns {Object} Permission utilities
  */
 export function usePermissions() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Try to get user from DashboardContext first (provided by dashboard layout)
+  const dashboardCtx = useDashboardContext();
+  const contextUser = dashboardCtx?.user || null;
+
+  // Fallback: independent API call only when outside dashboard layout
+  const [fetchedUser, setFetchedUser] = useState(null);
+  const [fetchLoading, setFetchLoading] = useState(!contextUser);
 
   useEffect(() => {
+    // Skip API call if we have user from context
+    if (contextUser) {
+      setFetchLoading(false);
+      return;
+    }
+
     let mounted = true;
     apiClient.auth.me()
       .then((response) => {
         if (!mounted) return;
-        setUser(response.data || null);
+        setFetchedUser(response.data || null);
       })
       .catch(() => {
         if (!mounted) return;
-        setUser(null);
+        setFetchedUser(null);
       })
       .finally(() => {
-        if (mounted) setLoading(false);
+        if (mounted) setFetchLoading(false);
       });
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [contextUser]);
+
+  // Use context user if available, otherwise use fetched user
+  const user = contextUser || fetchedUser;
+  const loading = contextUser ? false : fetchLoading;
 
   /**
    * Check if current user has a specific permission
@@ -146,7 +166,7 @@ export function usePermissions() {
    * @param {Object} newUser - Updated user object
    */
   const updateUser = useCallback((newUser) => {
-    setUser(newUser);
+    setFetchedUser(newUser);
   }, []);
 
   return {

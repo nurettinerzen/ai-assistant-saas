@@ -844,7 +844,7 @@ async function processWhatsAppMessage(business, from, messageBody, messageId, tr
             messages: [
               userTranscriptMessage,
               buildSystemEventMessage(
-                'Customer requested live support.',
+                'Live support requested.',
                 {
                   type: 'handoff_requested',
                   requestedBy: 'customer',

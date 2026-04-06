@@ -7,8 +7,10 @@ import { apiClient } from '@/lib/api';
 import { Toaster } from 'sonner';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatSessionHandle } from '@/lib/utils';
 import { getPlanDisplayName } from '@/lib/planConfig';
+import { subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
+import { DashboardProvider } from '@/contexts/DashboardContext';
 
 // Avoid storing user/session data in browser storage.
 const USER_CACHE_KEY = 'dashboard_user_cache_disabled';
@@ -35,14 +37,16 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const { t, locale } = useLanguage();
   const whatsappLiveHandoffEnabled = process.env.NEXT_PUBLIC_WHATSAPP_LIVE_HANDOFF_V2 === 'true';
+  const chatLiveHandoffEnabled = process.env.NEXT_PUBLIC_CHAT_LIVE_HANDOFF_V1 === 'true';
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [whatsappPendingCount, setWhatsappPendingCount] = useState(0);
+  const [chatPendingCount, setChatPendingCount] = useState(0);
   const [liveSupportAlert, setLiveSupportAlert] = useState(null);
   const initialLoadDone = useRef(false);
-  const knownPendingIdsRef = useRef(new Set());
+  const knownPendingRequestsRef = useRef(new Map());
 
   const shouldBypassEmailVerification = () => {
     if (typeof window === 'undefined') return false;
@@ -182,10 +186,11 @@ export default function DashboardLayout({ children }) {
   };
 
   useEffect(() => {
-    if (!whatsappLiveHandoffEnabled || !user?.businessId) {
+    if ((!whatsappLiveHandoffEnabled && !chatLiveHandoffEnabled) || !user?.businessId) {
       setWhatsappPendingCount(0);
+      setChatPendingCount(0);
       setLiveSupportAlert(null);
-      knownPendingIdsRef.current = new Set();
+      knownPendingRequestsRef.current = new Map();
       return;
     }
 
@@ -197,27 +202,60 @@ export default function DashboardLayout({ children }) {
           params: {
             page: 1,
             limit: 50,
-            channel: 'WHATSAPP',
           }
         });
 
         if (cancelled) return;
 
         const pendingThreads = (response.data?.chatLogs || [])
-          .filter((chat) => chat?.status === 'active' && chat?.handoff?.mode === 'REQUESTED')
+          .filter((chat) => (
+            chat?.status === 'active' &&
+            chat?.handoff?.mode === 'REQUESTED' &&
+            (
+              (chat?.channel === 'WHATSAPP' && whatsappLiveHandoffEnabled) ||
+              (chat?.channel === 'CHAT' && chatLiveHandoffEnabled)
+            )
+          ))
           .sort((left, right) => new Date(right.updatedAt || right.createdAt || 0) - new Date(left.updatedAt || left.createdAt || 0));
 
-        setWhatsappPendingCount(pendingThreads.length);
+        setWhatsappPendingCount(pendingThreads.filter((chat) => chat?.channel === 'WHATSAPP').length);
+        setChatPendingCount(pendingThreads.filter((chat) => chat?.channel === 'CHAT').length);
 
-        const nextIds = new Set(pendingThreads.map((chat) => chat.id));
-        const newThreads = pendingThreads.filter((chat) => !knownPendingIdsRef.current.has(chat.id));
-        knownPendingIdsRef.current = nextIds;
+        const requestMarkerFor = (chat) => (
+          chat?.handoff?.requestedAt ||
+          chat?.updatedAt ||
+          chat?.createdAt ||
+          ''
+        );
 
-        if (pathname !== '/dashboard/whatsapp' && newThreads.length > 0) {
+        const previousMarkers = knownPendingRequestsRef.current;
+        const nextMarkers = new Map();
+
+        for (const chat of pendingThreads) {
+          nextMarkers.set(chat.id, requestMarkerFor(chat));
+        }
+
+        const newThreads = pendingThreads.filter((chat) => {
+          const nextMarker = requestMarkerFor(chat);
+          const previousMarker = previousMarkers.get(chat.id);
+          return previousMarker !== nextMarker;
+        });
+
+        knownPendingRequestsRef.current = nextMarkers;
+
+        if (newThreads.length > 0) {
           const newestThread = newThreads[0];
+          const destination = '/dashboard/conversations';
+
+          if (pathname === destination) {
+            return;
+          }
+
           setLiveSupportAlert({
             id: newestThread.id,
+            channel: newestThread.channel,
             customerPhone: newestThread.customerPhone || null,
+            sessionId: newestThread.sessionId || null,
           });
         }
       } catch (error) {
@@ -229,6 +267,18 @@ export default function DashboardLayout({ children }) {
 
     loadPendingHandoffs();
 
+    const unsubscribeSync = subscribeLiveHandoffSync((event) => {
+      if (!event?.type) return;
+
+      if (event.chatId && (event.type === 'handoff_claimed' || event.type === 'handoff_released')) {
+        setLiveSupportAlert((current) => (
+          current?.id === event.chatId ? null : current
+        ));
+      }
+
+      loadPendingHandoffs({ silent: true });
+    });
+
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         loadPendingHandoffs({ silent: true });
@@ -237,9 +287,10 @@ export default function DashboardLayout({ children }) {
 
     return () => {
       cancelled = true;
+      unsubscribeSync();
       clearInterval(interval);
     };
-  }, [whatsappLiveHandoffEnabled, user?.businessId, pathname]);
+  }, [chatLiveHandoffEnabled, whatsappLiveHandoffEnabled, user?.businessId, pathname]);
 
   if (loading) {
     return (
@@ -267,7 +318,13 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
-      <Sidebar user={user} credits={credits} business={user?.business} whatsappPendingCount={whatsappPendingCount} />
+      <Sidebar
+        user={user}
+        credits={credits}
+        business={user?.business}
+        whatsappPendingCount={whatsappPendingCount}
+        chatPendingCount={chatPendingCount}
+      />
 
       {/* Main content - adjusted for 240px sidebar (w-60) */}
       <div className="flex-1 lg:ml-60 overflow-auto h-screen">
@@ -304,7 +361,9 @@ export default function DashboardLayout({ children }) {
           </div>
         )}
         <main className="p-6 lg:p-8">
-          {children}
+          <DashboardProvider user={user}>
+            {children}
+          </DashboardProvider>
         </main>
       </div>
 
@@ -322,10 +381,12 @@ export default function DashboardLayout({ children }) {
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                  {t('dashboard.whatsappInboxPage.globalAlertTitle')}
+                  {t('dashboard.conversationsPage.globalAlertTitle')}
                 </h3>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
-                  {t('dashboard.whatsappInboxPage.globalAlertDescription').replace('{phone}', liveSupportAlert.customerPhone || 'WhatsApp')}
+                  {liveSupportAlert.channel === 'CHAT'
+                    ? t('dashboard.conversationsPage.globalAlertDescriptionChat').replace('{session}', formatSessionHandle(liveSupportAlert.sessionId, 'chat'))
+                    : t('dashboard.conversationsPage.globalAlertDescriptionWhatsapp').replace('{phone}', liveSupportAlert.customerPhone || 'WhatsApp')}
                 </p>
                 <div className="mt-4 flex items-center justify-end gap-2">
                   <button
@@ -338,12 +399,12 @@ export default function DashboardLayout({ children }) {
                   <button
                     type="button"
                     onClick={() => {
-                      router.push(`/dashboard/whatsapp?chatId=${liveSupportAlert.id}`);
+                      router.push(`/dashboard/conversations?chatId=${liveSupportAlert.id}`);
                       setLiveSupportAlert(null);
                     }}
                     className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-amber-600"
                   >
-                    {t('dashboard.whatsappInboxPage.openInbox')}
+                    {t('dashboard.conversationsPage.openInbox')}
                   </button>
                 </div>
               </div>

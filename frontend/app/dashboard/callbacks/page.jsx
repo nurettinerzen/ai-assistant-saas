@@ -420,11 +420,7 @@ export default function CallbacksPage() {
                 <Button
                   variant="outline"
                   className="mt-2 w-full justify-between"
-                  onClick={() => router.push(
-                    detailData.chatTranscript.channel === 'WHATSAPP'
-                      ? `/dashboard/whatsapp?chatId=${detailData.chatTranscript.id}`
-                      : `/dashboard/chats?chatId=${detailData.chatTranscript.id}`
-                  )}
+                  onClick={() => router.push(`/dashboard/chats?chatId=${detailData.chatTranscript.id}`)}
                 >
                   <span className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />

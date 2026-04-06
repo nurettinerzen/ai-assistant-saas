@@ -80,7 +80,7 @@ import { getPageHelp } from '@/content/pageHelp';
 export default function TeamPage() {
   const { t, locale } = useLanguage();
   const pageHelp = getPageHelp('team', locale);
-  const { can, isOwner, user } = usePermissions();
+  const { can, isOwner, user, loading: permissionsLoading } = usePermissions();
 
   // React Query hooks
   const { data: members = [], isLoading: membersLoading } = useTeamMembers();
@@ -200,6 +200,14 @@ export default function TeamPage() {
       year: 'numeric',
     });
   };
+
+  if (permissionsLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-primary-600" />
+      </div>
+    );
+  }
 
   if (!can('team:view')) {
     return (

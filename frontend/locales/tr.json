@@ -1155,6 +1155,7 @@
       "inbox": "Özel Veriler",
       "campaigns": "Kampanyalar",
       "email": "E-posta",
+      "conversations": "Sohbetler",
       "callbacks": "Geri Arama Talepleri",
       "chatHistory": "Sohbet Geçmişi",
       "account": "Hesap",
@@ -2190,17 +2191,17 @@
       "chatDetails": "Sohbet Detayı",
       "assistant": "Asistan",
       "liveMode": "Canlı Mod",
-      "pendingLiveHandoffsTitle": "{count} WhatsApp konuşması temsilci bekliyor",
-      "pendingLiveHandoffsDescription": "Bu konuşmalarda müşteri gerçek bir kişi istedi. Açıp sahiplenirsen aynı yazışmanın içinden devam edersin.",
+      "pendingLiveHandoffsTitle": "{count} konuşma temsilci bekliyor",
+      "pendingLiveHandoffsDescription": "Bu konuşmalarda müşteri gerçek bir kişi istedi. Açıp sahiplenirsen aynı oturumun içinden devam edersin.",
       "liveHandoffRequested": "Canlı destek istendi",
       "liveHandoffActive": "Temsilci aktif",
       "liveHandoffActiveWithName": "{name} canlı yanıt veriyor",
       "aiHandlingConversation": "Konuşmayı AI yönetiyor",
       "liveHandoffPanelTitle": "Canlı devralma",
-      "liveHandoffWaitingDescription": "Müşteri gerçek bir temsilci istedi. Aynı WhatsApp konuşmasından devam etmek için bu görüşmeyi sahiplen.",
+      "liveHandoffWaitingDescription": "Müşteri gerçek bir temsilci istedi. Aynı konuşmadan devam etmek için bu görüşmeyi sahiplen.",
       "liveHandoffClaimedByYou": "Bu konuşmayı sen devraldın. AI yanıtları, tekrar AI'a verene kadar duraklatıldı.",
       "liveHandoffClaimedByOther": "Bu konuşma zaten {name} tarafından devralındı.",
-      "liveHandoffAiDescription": "Konuşma şu an AI'da. Gerekirse bu WhatsApp yazışmasını manuel olarak devralabilirsin.",
+      "liveHandoffAiDescription": "Konuşma şu an AI'da. Gerekirse bu yazışmayı manuel olarak devralabilirsin.",
       "takeOverConversation": "Konuşmayı devral",
       "claimConversation": "Sahiplen",
       "claiming": "Sahipleniliyor...",
@@ -2561,6 +2562,7 @@
     },
     "emailPage": {
       "title": "E-posta Gelen Kutusu",
+      "shortTitle": "E-posta",
       "description": "AI destekli e-posta yönetimi",
       "connectYourEmail": "E-postanızı Bağlayın",
       "connectEmailDesc": "AI destekli e-posta yanıtları almaya başlamak için Gmail veya Microsoft 365 hesabınızı bağlayın.",
@@ -2621,7 +2623,13 @@
       "noReplyNeededDesc": "Bu e-posta yanıt gerektirmiyor olarak işaretlendi. Yine de yanıt vermek isterseniz AI taslak oluşturabilirsiniz.",
       "draftGenerated": "Taslak oluşturuldu",
       "failedToGenerateDraft": "Taslak oluşturulamadı",
-      "authRequired": "Kimlik doğrulama gerekli"
+      "authRequired": "Kimlik doğrulama gerekli",
+      "reconnectRequired": "Gmail bağlantısı eksik izinlerle kurulu. Lütfen Gmail hesabınızı yeniden bağlayın.",
+      "quickReply": "Hızlı Yanıt",
+      "noQuickRepliesYet": "Henüz hazır yanıt yok",
+      "createQuickReply": "Oluştur",
+      "manageQuickReplies": "Hazır yanıtları yönet",
+      "aiSuggest": "AI Öneri"
     },
     "chatWidgetPage": {
       "title": "Sohbet Aracı",
@@ -2668,6 +2676,8 @@
       "defaultButtonText": "Bize Yazın",
       "defaultWelcomeMessage": "Merhaba! Size nasıl yardımcı olabilirim?",
       "defaultPlaceholder": "Mesajınızı yazın...",
+      "liveAgentLabel": "Canlı destek",
+      "systemLabel": "Sistem",
       "pageDescription": "Web sitenize yerleştirilebilir sohbet aracını yapılandırın.",
       "collapse": "Daralt",
       "showAll": "Tümünü Göster"
@@ -3061,7 +3071,18 @@
       "completedDescription": "Bu konuşma tamamlandı. Canlı devralma aksiyonları artık kapalı.",
       "globalAlertTitle": "Yeni canlı destek talebi",
       "globalAlertDescription": "{phone} numaralı müşteri canlı destek bekliyor.",
-      "openInbox": "Inbox'ı aç"
+      "openInbox": "Inbox'ı aç",
+      "showDetails": "Detayları göster",
+      "hideDetails": "Detayları gizle",
+      "systemMessages": {
+        "handoffRequestedByCustomer": "Müşteri canlı destek istedi.",
+        "handoffRequestedByOperator": "Canlı devralma talebi oluşturuldu.",
+        "handoffClaimed": "Konuşma canlı destek ekibi tarafından devralındı.",
+        "handoffReleased": "Konuşma tekrar AI'a verildi.",
+        "handoffClaimedCustomerNotice": "Canlı destek ekibimiz bu konuşmayı devraldı ve buradan size yardımcı olacak.",
+        "handoffReleasedCustomerNotice": "Bu konuşma tekrar yapay zeka asistanımıza devredildi. Aynı yazışma üzerinden devam edebilirsiniz.",
+        "handoffUnavailable": "Canlı destek ekibimiz şu an müsait görünmüyor."
+      }
     },
     "chatHistoryPage": {
       "title": "Sohbet Geçmişi",
@@ -3072,6 +3093,8 @@
       "exportCsv": "CSV İndir",
       "exportedSuccess": "Sohbetler dışa aktarıldı",
       "exportFailed": "Dışa aktarma başarısız",
+      "globalAlertDescription": "{session} oturumu canlı destek bekliyor.",
+      "openConversation": "Konuşmayı aç",
       "searchPlaceholder": "Session ID veya telefon ile ara...",
       "allChannels": "Tüm Kanallar",
       "allStatus": "Tüm Durumlar",
@@ -3102,6 +3125,26 @@
       "csvChat": "Sohbet",
       "csvActive": "Aktif",
       "csvCompleted": "Tamamlandı"
+    },
+    "conversationsPage": {
+      "title": "Sohbetler",
+      "subtitle": "Chat ve WhatsApp konuşmalarını tek ekranda yönetin.",
+      "searchPlaceholder": "Telefon, oturum veya kanal ile ara...",
+      "allChannels": "Tümü",
+      "whatsapp": "WhatsApp",
+      "chat": "Sohbet",
+      "noConversationsDesc": "Aktif chat ve WhatsApp konuşmaları burada görünecek.",
+      "pendingShort": "Canlı destek bekleyenler",
+      "activeWorkspaceHint": "Bu alan canlı destek ve AI konuşmalarını tek operasyonda toplar.",
+      "threadEmpty": "Soldan bir konuşma seçin.",
+      "loadFailed": "Sohbetler yüklenemedi",
+      "detailFailed": "Konuşma detayları yüklenemedi",
+      "featureDisabledTitle": "Canlı sohbet operasyonu bu ortamda kapalı",
+      "featureDisabledDescription": "Bu çalışma alanı feature flag arkasında açılır.",
+      "globalAlertTitle": "Yeni canlı destek talebi",
+      "globalAlertDescriptionWhatsapp": "{phone} numaralı müşteri canlı destek bekliyor.",
+      "globalAlertDescriptionChat": "{session} oturumu canlı destek bekliyor.",
+      "openInbox": "Sohbetleri aç"
     }
   },
   "onboarding": {
