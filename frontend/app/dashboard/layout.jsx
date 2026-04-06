@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDate, formatSessionHandle } from '@/lib/utils';
 import { getPlanDisplayName } from '@/lib/planConfig';
 import { subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
+import { DashboardProvider } from '@/contexts/DashboardContext';
 
 // Avoid storing user/session data in browser storage.
 const USER_CACHE_KEY = 'dashboard_user_cache_disabled';
@@ -360,7 +361,9 @@ export default function DashboardLayout({ children }) {
           </div>
         )}
         <main className="p-6 lg:p-8">
-          {children}
+          <DashboardProvider user={user}>
+            {children}
+          </DashboardProvider>
         </main>
       </div>
 
