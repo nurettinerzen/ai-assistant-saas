@@ -297,7 +297,11 @@ export default function EmailDashboardPage() {
               queryClient.invalidateQueries({ queryKey: ['email'] });
               setSyncing(false);
             } else if (eventType === 'error') {
-              toast.error(locale === 'tr' ? 'Senkronizasyon hatası' : 'Sync error');
+              toast.error(
+                data?.message
+                  || data?.error
+                  || (locale === 'tr' ? 'Senkronizasyon hatası' : 'Sync error')
+              );
               setSyncing(false);
             }
           }

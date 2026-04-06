@@ -1688,6 +1688,12 @@ router.post('/sync', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Sync error:', error);
+    if (error?.code === 'EMAIL_RECONNECT_REQUIRED') {
+      return res.status(409).json({
+        error: error.message,
+        code: error.code
+      });
+    }
     res.status(500).json({ error: 'Failed to sync messages' });
   }
 });
@@ -1817,7 +1823,11 @@ router.get('/sync/stream', authenticateToken, async (req, res) => {
     res.end();
   } catch (error) {
     console.error('Sync stream error:', error);
-    sendEvent('error', { error: 'Failed to sync messages', message: error.message });
+    sendEvent('error', {
+      error: error?.code === 'EMAIL_RECONNECT_REQUIRED' ? error.message : 'Failed to sync messages',
+      message: error?.message || 'Failed to sync messages',
+      code: error?.code || 'EMAIL_SYNC_FAILED'
+    });
     res.end();
   }
 });

@@ -60,6 +60,29 @@ const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email'
 ];
 
+function isInsufficientScopeError(error) {
+  const status = Number(error?.response?.status || error?.status || 0);
+  const reasons = [
+    ...(Array.isArray(error?.errors) ? error.errors : []),
+    ...(Array.isArray(error?.response?.data?.error?.errors) ? error.response.data.error.errors : []),
+  ];
+  const message = String(error?.message || '').toLowerCase();
+  const wwwAuthenticate = String(error?.response?.headers?.['www-authenticate'] || '').toLowerCase();
+
+  return status === 403 && (
+    reasons.some((item) => item?.reason === 'insufficientPermissions')
+    || message.includes('insufficient permission')
+    || message.includes('insufficientpermissions')
+    || wwwAuthenticate.includes('insufficient_scope')
+  );
+}
+
+function createReconnectRequiredError() {
+  const error = new Error('Gmail bağlantısı eksik izinlerle kurulu. Lütfen Gmail hesabınızı yeniden bağlayın.');
+  error.code = 'EMAIL_RECONNECT_REQUIRED';
+  return error;
+}
+
 class GmailService {
   /**
    * Create OAuth2 client
@@ -292,6 +315,9 @@ class GmailService {
       };
     } catch (error) {
       console.error('Get messages error:', error);
+      if (isInsufficientScopeError(error)) {
+        throw createReconnectRequiredError();
+      }
       throw error;
     }
   }
@@ -313,6 +339,9 @@ class GmailService {
       return this.parseMessage(response.data);
     } catch (error) {
       console.error('Get message error:', error);
+      if (isInsufficientScopeError(error)) {
+        throw createReconnectRequiredError();
+      }
       throw error;
     }
   }
@@ -341,6 +370,9 @@ class GmailService {
       };
     } catch (error) {
       console.error('Get thread error:', error);
+      if (isInsufficientScopeError(error)) {
+        throw createReconnectRequiredError();
+      }
       throw error;
     }
   }
@@ -396,6 +428,9 @@ class GmailService {
       };
     } catch (error) {
       console.error('Send message error:', error);
+      if (isInsufficientScopeError(error)) {
+        throw createReconnectRequiredError();
+      }
       throw error;
     }
   }
@@ -452,6 +487,9 @@ async syncNewMessages(businessId) {
     return allMessages;
   } catch (error) {
     console.error('Sync messages error:', error);
+    if (isInsufficientScopeError(error)) {
+      throw createReconnectRequiredError();
+    }
     throw error;
   }
 }
