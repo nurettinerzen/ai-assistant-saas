@@ -11,6 +11,7 @@ import { apiClient } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import { formatSessionHandle } from '@/lib/utils';
+import { publishLiveHandoffSync, subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
 import {
   AlertCircle,
   Bot,
@@ -410,6 +411,18 @@ export default function WhatsAppInboxPage() {
   }, [selectedChatId]);
 
   useEffect(() => {
+    return subscribeLiveHandoffSync((event) => {
+      if (!event?.type) return;
+
+      loadConversations({ silent: true });
+
+      if (selectedChatId && (!event.chatId || event.chatId === selectedChatId)) {
+        loadChatDetails(selectedChatId, { silent: true });
+      }
+    });
+  }, [selectedChatId]);
+
+  useEffect(() => {
     if (!hasMeaningfulPhone(selectedChat?.customerPhone)) {
       setCustomerData(null);
       return;
@@ -523,6 +536,11 @@ export default function WhatsAppInboxPage() {
       await apiClient.post(`/api/chat-logs/${selectedChat.id}/handoff/claim`, {});
       toast.success(t.claimed);
       await refreshAfterAction();
+      publishLiveHandoffSync({
+        type: 'handoff_claimed',
+        chatId: selectedChat.id,
+        channel: selectedChat.channel,
+      });
     } catch (error) {
       toast.error(error.response?.data?.error || t.claimFailed);
     } finally {
@@ -538,6 +556,11 @@ export default function WhatsAppInboxPage() {
       await apiClient.post(`/api/chat-logs/${selectedChat.id}/handoff/release`, {});
       toast.success(t.returned);
       await refreshAfterAction();
+      publishLiveHandoffSync({
+        type: 'handoff_released',
+        chatId: selectedChat.id,
+        channel: selectedChat.channel,
+      });
     } catch (error) {
       toast.error(error.response?.data?.error || t.returnFailed);
     } finally {

@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getChatWidgetFeedbackCopy } from '@/lib/chatWidgetFeedbackCopy';
 import runtimeConfig from '@/lib/runtime-config';
+import { publishLiveHandoffSync } from '@/lib/liveHandoffSync';
 
 const API_URL = runtimeConfig.apiUrl;
 const FEEDBACK_MIN_ASSISTANT_TURNS = 2;
@@ -340,6 +341,13 @@ useEffect(() => {
 
       if (data?.handoff) {
         setWidgetHandoff(data.handoff);
+        if (preview && data.handoff.mode === 'REQUESTED') {
+          publishLiveHandoffSync({
+            type: 'handoff_requested',
+            channel: 'CHAT',
+            sessionId,
+          });
+        }
       }
 
       const historyMessages = attachTraceToLatestAssistant(

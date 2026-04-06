@@ -9,6 +9,7 @@ import { OnboardingModal } from '@/components/OnboardingModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDate, formatSessionHandle } from '@/lib/utils';
 import { getPlanDisplayName } from '@/lib/planConfig';
+import { subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
 
 // Avoid storing user/session data in browser storage.
 const USER_CACHE_KEY = 'dashboard_user_cache_disabled';
@@ -267,6 +268,18 @@ export default function DashboardLayout({ children }) {
 
     loadPendingHandoffs();
 
+    const unsubscribeSync = subscribeLiveHandoffSync((event) => {
+      if (!event?.type) return;
+
+      if (event.chatId && (event.type === 'handoff_claimed' || event.type === 'handoff_released')) {
+        setLiveSupportAlert((current) => (
+          current?.id === event.chatId ? null : current
+        ));
+      }
+
+      loadPendingHandoffs({ silent: true });
+    });
+
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         loadPendingHandoffs({ silent: true });
@@ -275,6 +288,7 @@ export default function DashboardLayout({ children }) {
 
     return () => {
       cancelled = true;
+      unsubscribeSync();
       clearInterval(interval);
     };
   }, [chatLiveHandoffEnabled, whatsappLiveHandoffEnabled, user?.businessId, pathname]);

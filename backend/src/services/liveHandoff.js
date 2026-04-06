@@ -135,7 +135,7 @@ export function buildHandoffView(state = {}, viewerUserId = null) {
     ...handoff,
     active: handoff.mode !== HANDOFF_MODE.AI,
     currentUserIsAssignee,
-    canClaim: handoff.mode !== HANDOFF_MODE.ACTIVE || currentUserIsAssignee,
+    canClaim: handoff.mode !== HANDOFF_MODE.ACTIVE,
     canReply: handoff.mode === HANDOFF_MODE.ACTIVE && currentUserIsAssignee,
     canReturnToAi: handoff.mode === HANDOFF_MODE.ACTIVE && currentUserIsAssignee,
   };

@@ -54,6 +54,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { formatSessionHandle } from '@/lib/utils';
+import { publishLiveHandoffSync, subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
 
 // Simple cache for chats data
 const chatsCache = {
@@ -267,6 +268,18 @@ export default function ChatsPage() {
   }, [chatLiveHandoffEnabled, selectedChat?.channel, selectedChat?.id, selectedChat?.status, showChatModal, whatsappLiveHandoffEnabled]);
 
   useEffect(() => {
+    return subscribeLiveHandoffSync((event) => {
+      if (!event?.type) return;
+
+      refreshChats(true);
+
+      if (selectedChat?.id && (!event.chatId || event.chatId === selectedChat.id)) {
+        loadChatDetails(selectedChat.id, { silent: true });
+      }
+    });
+  }, [selectedChat?.id]);
+
+  useEffect(() => {
     if (!requestedChatId) {
       requestedChatIdHandledRef.current = null;
       return;
@@ -353,6 +366,11 @@ export default function ChatsPage() {
       await apiClient.post(`/api/chat-logs/${selectedChat.id}/handoff/claim`, {});
       toast.success(t('dashboard.chatsPage.liveHandoffClaimed'));
       await refreshConversationViews(selectedChat.id);
+      publishLiveHandoffSync({
+        type: 'handoff_claimed',
+        chatId: selectedChat.id,
+        channel: selectedChat.channel,
+      });
     } catch (error) {
       toast.error(error.response?.data?.error || t('dashboard.chatsPage.failedToClaimLiveHandoff'));
     } finally {
@@ -368,6 +386,11 @@ export default function ChatsPage() {
       await apiClient.post(`/api/chat-logs/${selectedChat.id}/handoff/release`, {});
       toast.success(t('dashboard.chatsPage.liveHandoffReturnedToAi'));
       await refreshConversationViews(selectedChat.id);
+      publishLiveHandoffSync({
+        type: 'handoff_released',
+        chatId: selectedChat.id,
+        channel: selectedChat.channel,
+      });
     } catch (error) {
       toast.error(error.response?.data?.error || t('dashboard.chatsPage.failedToReturnToAi'));
     } finally {

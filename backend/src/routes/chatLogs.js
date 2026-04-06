@@ -557,6 +557,20 @@ router.post('/:id/handoff/claim', authenticateToken, async (req, res) => {
       return res.status(409).json({ error: 'This conversation is no longer active' });
     }
 
+    const existingConversationState = await prisma.conversationState.findUnique({
+      where: { sessionId: chatLog.sessionId },
+      select: { state: true },
+    });
+
+    const existingHandoff = buildHandoffView(existingConversationState?.state, req.userId);
+    if (existingHandoff.mode === 'ACTIVE' && existingHandoff.currentUserIsAssignee) {
+      return res.json({
+        success: true,
+        skipped: true,
+        handoff: existingHandoff,
+      });
+    }
+
     const state = await claimHumanHandoff({
       sessionId: chatLog.sessionId,
       businessId: req.businessId,
