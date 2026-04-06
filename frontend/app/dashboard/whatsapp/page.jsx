@@ -331,6 +331,16 @@ export default function WhatsAppInboxPage() {
     ? 'telyx:conversations:sidebar-open'
     : 'telyx:whatsapp-inbox:sidebar-open';
 
+  // Prevent background scroll — this page uses fixed positioning,
+  // but the parent layout's overflow-auto container still scrolls behind it.
+  useEffect(() => {
+    const mainContent = document.querySelector('.flex-1.lg\\:ml-60');
+    if (mainContent) mainContent.style.overflow = 'hidden';
+    return () => {
+      if (mainContent) mainContent.style.overflow = '';
+    };
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
     return () => clearTimeout(timer);
