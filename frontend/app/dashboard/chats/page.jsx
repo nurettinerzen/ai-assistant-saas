@@ -53,6 +53,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { formatSessionHandle } from '@/lib/utils';
 import { subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
+import { resolveConversationSystemMessage } from '@/lib/conversationSystemMessages';
 
 // Simple cache for chats data
 const chatsCache = {
@@ -465,6 +466,12 @@ export default function ChatsPage() {
     };
   };
 
+  const getRenderedMessageContent = (message = {}) => (
+    message.role === 'system'
+      ? resolveConversationSystemMessage(message, t)
+      : (message?.content || '—')
+  );
+
   if (loading && isInitialLoad) {
     return (
       <div className="space-y-6">
@@ -739,7 +746,7 @@ export default function ChatsPage() {
                                 {presentation.label}
                               </div>
                               <p className="whitespace-pre-wrap text-sm text-gray-900 dark:text-white">
-                                {msg.content}
+                                {getRenderedMessageContent(msg)}
                               </p>
                               {msg.timestamp && (
                                 <span className="mt-1 block text-xs text-gray-400">

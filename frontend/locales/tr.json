@@ -3071,7 +3071,18 @@
       "completedDescription": "Bu konuşma tamamlandı. Canlı devralma aksiyonları artık kapalı.",
       "globalAlertTitle": "Yeni canlı destek talebi",
       "globalAlertDescription": "{phone} numaralı müşteri canlı destek bekliyor.",
-      "openInbox": "Inbox'ı aç"
+      "openInbox": "Inbox'ı aç",
+      "showDetails": "Detayları göster",
+      "hideDetails": "Detayları gizle",
+      "systemMessages": {
+        "handoffRequestedByCustomer": "Müşteri canlı destek istedi.",
+        "handoffRequestedByOperator": "Canlı devralma talebi oluşturuldu.",
+        "handoffClaimed": "Konuşma canlı destek ekibi tarafından devralındı.",
+        "handoffReleased": "Konuşma tekrar AI'a verildi.",
+        "handoffClaimedCustomerNotice": "Canlı destek ekibimiz bu konuşmayı devraldı ve buradan size yardımcı olacak.",
+        "handoffReleasedCustomerNotice": "Bu konuşma tekrar yapay zeka asistanımıza devredildi. Aynı yazışma üzerinden devam edebilirsiniz.",
+        "handoffUnavailable": "Canlı destek ekibimiz şu an müsait görünmüyor."
+      }
     },
     "chatHistoryPage": {
       "title": "Sohbet Geçmişi",

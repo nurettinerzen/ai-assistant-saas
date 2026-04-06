@@ -1355,7 +1355,7 @@ router.post('/widget', async (req, res) => {
             messages: [
               userTranscriptMessage,
               buildInternalChatHandoffEvent(
-                'Customer requested live support.',
+                'Live support requested.',
                 {
                   type: 'handoff_requested',
                   requestedBy: 'customer',

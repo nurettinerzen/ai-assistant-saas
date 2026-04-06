@@ -178,7 +178,7 @@ export function getLiveHandoffClaimedMessage(language = 'TR', actorName = null) 
     return 'A live support teammate has joined this conversation and will assist you from here.';
   }
 
-  return 'Canli destek ekibimiz bu konuşmayı devraldı ve buradan size yardımcı olacak.';
+  return 'Canlı destek ekibimiz bu konuşmayı devraldı ve buradan size yardımcı olacak.';
 }
 
 export function getLiveHandoffReturnedToAiMessage(language = 'TR') {

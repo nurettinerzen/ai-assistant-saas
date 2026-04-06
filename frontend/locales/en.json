@@ -3071,7 +3071,18 @@
       "completedDescription": "This conversation is completed. Live takeover actions are no longer available.",
       "globalAlertTitle": "New live support request",
       "globalAlertDescription": "Customer {phone} is waiting for live support.",
-      "openInbox": "Open inbox"
+      "openInbox": "Open inbox",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
+      "systemMessages": {
+        "handoffRequestedByCustomer": "Customer requested live support.",
+        "handoffRequestedByOperator": "Live takeover was requested.",
+        "handoffClaimed": "This conversation was claimed by the live support team.",
+        "handoffReleased": "This conversation was returned to AI.",
+        "handoffClaimedCustomerNotice": "A live support teammate has joined this conversation and will assist from here.",
+        "handoffReleasedCustomerNotice": "This conversation has been handed back to our AI assistant. You can keep replying in this thread.",
+        "handoffUnavailable": "The live support team does not appear to be available right now."
+      }
     },
     "chatHistoryPage": {
       "title": "Chat History",

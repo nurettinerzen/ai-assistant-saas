@@ -513,7 +513,7 @@ router.post('/:id/handoff/request', authenticateToken, async (req, res) => {
       customerPhone: chatLog.customerPhone || null,
       messages: [
         buildInternalSystemMessage(
-          `${getActorName(req.user)} requested live takeover.`,
+          'Live handoff requested.',
           {
             type: 'handoff_requested',
             actorUserId: req.userId,
@@ -590,7 +590,7 @@ router.post('/:id/handoff/claim', authenticateToken, async (req, res) => {
       customerPhone: chatLog.customerPhone || null,
       messages: [
         buildInternalSystemMessage(
-          `${getActorName(req.user)} claimed this conversation.`,
+          'Conversation claimed.',
           {
             type: 'handoff_claimed',
             actorUserId: req.userId,
@@ -677,7 +677,7 @@ router.post('/:id/handoff/release', authenticateToken, async (req, res) => {
       customerPhone: chatLog.customerPhone || null,
       messages: [
         buildInternalSystemMessage(
-          `${getActorName(req.user)} returned this conversation to AI.`,
+          'Conversation returned to AI.',
           {
             type: 'handoff_released',
             actorUserId: req.userId,

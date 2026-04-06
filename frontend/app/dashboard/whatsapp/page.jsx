@@ -12,6 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import { formatSessionHandle } from '@/lib/utils';
 import { publishLiveHandoffSync, subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
+import { resolveConversationSystemMessage } from '@/lib/conversationSystemMessages';
 import {
   AlertCircle,
   Bot,
@@ -57,10 +58,14 @@ function formatMessageTime(value, locale) {
   }
 }
 
-function buildInboxPreview(messages = []) {
+function buildInboxPreview(messages = [], resolveMessageContent = null) {
   if (!Array.isArray(messages) || messages.length === 0) return '';
   const lastMessage = messages[messages.length - 1];
-  return String(lastMessage?.content || '').trim();
+  const preview = typeof resolveMessageContent === 'function'
+    ? resolveMessageContent(lastMessage)
+    : lastMessage?.content;
+
+  return String(preview || '').trim();
 }
 
 function getMessageTimestamp(message = {}) {
@@ -264,6 +269,8 @@ export default function WhatsAppInboxPage() {
     returnFailed: translate('dashboard.whatsappInboxPage.returnFailed'),
     noMessages: translate('dashboard.whatsappInboxPage.noMessages'),
     customerPanel: translate('dashboard.whatsappInboxPage.customerPanel'),
+    showDetails: translate('dashboard.whatsappInboxPage.showDetails'),
+    hideDetails: translate('dashboard.whatsappInboxPage.hideDetails'),
     customerData: translate('dashboard.whatsappInboxPage.customerData'),
     noCustomerData: translate('dashboard.whatsappInboxPage.noCustomerData'),
     tags: translate('dashboard.whatsappInboxPage.tags'),
@@ -308,6 +315,7 @@ export default function WhatsAppInboxPage() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarPreferenceReady, setSidebarPreferenceReady] = useState(false);
   const [replyDraft, setReplyDraft] = useState('');
   const [handoffAction, setHandoffAction] = useState(null);
   const [customerData, setCustomerData] = useState(null);
@@ -317,11 +325,33 @@ export default function WhatsAppInboxPage() {
   const threadScrollRef = useRef(null);
   const requestedChatIdHandledRef = useRef(null);
   const SelectedChannelIcon = selectedChat ? getChannelIcon(selectedChat.channel) : MessageSquare;
+  const sidebarPreferenceKey = isUnifiedInbox
+    ? 'telyx:conversations:sidebar-open'
+    : 'telyx:whatsapp-inbox:sidebar-open';
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const savedPreference = window.localStorage.getItem(sidebarPreferenceKey);
+    if (savedPreference === 'true' || savedPreference === 'false') {
+      setSidebarOpen(savedPreference === 'true');
+      setSidebarPreferenceReady(true);
+      return;
+    }
+
+    setSidebarOpen(window.matchMedia('(min-width: 1024px)').matches);
+    setSidebarPreferenceReady(true);
+  }, [sidebarPreferenceKey]);
+
+  useEffect(() => {
+    if (!sidebarPreferenceReady || typeof window === 'undefined') return;
+    window.localStorage.setItem(sidebarPreferenceKey, String(sidebarOpen));
+  }, [sidebarOpen, sidebarPreferenceKey, sidebarPreferenceReady]);
 
   const loadConversations = async ({ silent = false } = {}) => {
     if (!pageEnabled) {
@@ -648,7 +678,7 @@ export default function WhatsAppInboxPage() {
 
   const renderConversationItem = (chat) => {
     const isSelected = selectedChatId === chat.id;
-    const preview = buildInboxPreview(chat.messages);
+    const preview = buildInboxPreview(chat.messages, (message) => resolveConversationSystemMessage(message, translate));
     const ChannelIcon = getChannelIcon(chat.channel);
 
     return (
@@ -701,6 +731,10 @@ export default function WhatsAppInboxPage() {
     const isHuman = message?.role === 'human_agent';
     const isSystem = message?.role === 'system';
 
+    const renderedContent = isSystem
+      ? resolveConversationSystemMessage(message, translate)
+      : (message?.content || '—');
+
     const wrapperClass = isSystem
       ? 'mx-auto max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200'
       : isUser
@@ -721,7 +755,7 @@ export default function WhatsAppInboxPage() {
       <div key={`${getMessageTimestamp(message) || 'msg'}-${index}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         <div className={wrapperClass}>
           <div className="mb-1 text-[11px] font-medium opacity-80">{label}</div>
-          <div className="whitespace-pre-wrap break-words">{message?.content || '—'}</div>
+          <div className="whitespace-pre-wrap break-words">{renderedContent}</div>
           {getMessageTimestamp(message) && (
             <div className="mt-2 text-[10px] opacity-60">
               {formatMessageTime(getMessageTimestamp(message), locale)}
@@ -901,7 +935,8 @@ export default function WhatsAppInboxPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setSidebarOpen((prev) => !prev)}
-                    title={t.customerPanel}
+                    title={sidebarOpen ? t.hideDetails : t.showDetails}
+                    aria-label={sidebarOpen ? t.hideDetails : t.showDetails}
                   >
                     {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                   </Button>
