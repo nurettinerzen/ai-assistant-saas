@@ -61,7 +61,7 @@ describe('liveHandoff service', () => {
   });
 
   it('builds customer-facing handoff notifications', () => {
-    expect(getLiveHandoffClaimedMessage('TR', 'Nurettin')).toContain('Canli destek ekibimiz');
+    expect(getLiveHandoffClaimedMessage('TR', 'Nurettin')).toContain('Canlı destek ekibimiz');
     expect(getLiveHandoffClaimedMessage('EN')).toContain('live support teammate');
     expect(getLiveHandoffReturnedToAiMessage('TR')).toContain('yapay zeka');
     expect(getLiveHandoffReturnedToAiMessage('EN')).toContain('AI assistant');
