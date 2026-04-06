@@ -9,7 +9,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -46,7 +45,6 @@ import {
   Hash,
   Headphones,
   RefreshCw,
-  Send,
   Sparkles
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
@@ -54,7 +52,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { formatSessionHandle } from '@/lib/utils';
-import { publishLiveHandoffSync, subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
+import { subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
 
 // Simple cache for chats data
 const chatsCache = {
@@ -127,62 +125,12 @@ export default function ChatsPage() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
-  const [liveReply, setLiveReply] = useState('');
-  const [handoffAction, setHandoffAction] = useState(null);
   const requestedChatId = searchParams.get('chatId');
   const requestedChatIdHandledRef = useRef(null);
 
-  const handoffPriority = (chat) => {
-    const mode = chat?.handoff?.mode;
-    if (mode === 'REQUESTED') return 0;
-    if (mode === 'ACTIVE') return 1;
-    return 2;
-  };
-
   const sortedChats = useMemo(() => {
-    return [...chats].sort((left, right) => {
-      const priorityDiff = handoffPriority(left) - handoffPriority(right);
-      if (priorityDiff !== 0) return priorityDiff;
-      return new Date(right.updatedAt || right.createdAt) - new Date(left.updatedAt || left.createdAt);
-    });
+    return [...chats].sort((left, right) => new Date(right.updatedAt || right.createdAt) - new Date(left.updatedAt || left.createdAt));
   }, [chats]);
-
-  const inboxChats = useMemo(() => {
-    const latestActiveWhatsAppByPhone = new Map();
-
-    for (const chat of chats) {
-      if (chat?.channel !== 'WHATSAPP' || chat?.status !== 'active' || !chat?.customerPhone) {
-        continue;
-      }
-
-      const existing = latestActiveWhatsAppByPhone.get(chat.customerPhone);
-      const chatTimestamp = new Date(chat.updatedAt || chat.createdAt || 0).getTime();
-      const existingTimestamp = existing ? new Date(existing.updatedAt || existing.createdAt || 0).getTime() : -1;
-
-      if (!existing || chatTimestamp > existingTimestamp) {
-        latestActiveWhatsAppByPhone.set(chat.customerPhone, chat);
-      }
-    }
-
-    return sortedChats.filter((chat) => {
-      if (chat?.channel !== 'WHATSAPP' || chat?.status !== 'active' || !chat?.customerPhone) {
-        return true;
-      }
-
-      return latestActiveWhatsAppByPhone.get(chat.customerPhone)?.id === chat.id;
-    });
-  }, [chats, sortedChats]);
-
-  const pendingLiveHandoffs = useMemo(() => {
-    return inboxChats.filter((chat) => (
-      chat?.status === 'active' &&
-      chat?.handoff?.mode === 'REQUESTED' &&
-      (
-        (chat?.channel === 'WHATSAPP' && whatsappLiveHandoffEnabled) ||
-        (chat?.channel === 'CHAT' && chatLiveHandoffEnabled)
-      )
-    ));
-  }, [chatLiveHandoffEnabled, inboxChats, whatsappLiveHandoffEnabled]);
 
   const loadChatDetails = async (chatId, { openModal = false, silent = false } = {}) => {
     try {
@@ -358,80 +306,12 @@ export default function ChatsPage() {
 
     if (!open) {
       setSelectedChat(null);
-      setLiveReply('');
-
       if (requestedChatId) {
         const params = new URLSearchParams(searchParams.toString());
         params.delete('chatId');
         const nextQuery = params.toString();
         router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
       }
-    }
-  };
-
-  const refreshConversationViews = async (chatId = null) => {
-    await loadChats();
-    if (chatId) {
-      await loadChatDetails(chatId, { silent: true });
-    }
-  };
-
-  const handleClaimConversation = async () => {
-    if (!selectedChat?.id) return;
-
-    setHandoffAction('claim');
-    try {
-      await apiClient.post(`/api/chat-logs/${selectedChat.id}/handoff/claim`, {});
-      toast.success(t('dashboard.chatsPage.liveHandoffClaimed'));
-      await refreshConversationViews(selectedChat.id);
-      publishLiveHandoffSync({
-        type: 'handoff_claimed',
-        chatId: selectedChat.id,
-        channel: selectedChat.channel,
-      });
-    } catch (error) {
-      toast.error(error.response?.data?.error || t('dashboard.chatsPage.failedToClaimLiveHandoff'));
-    } finally {
-      setHandoffAction(null);
-    }
-  };
-
-  const handleReturnToAi = async () => {
-    if (!selectedChat?.id) return;
-
-    setHandoffAction('release');
-    try {
-      await apiClient.post(`/api/chat-logs/${selectedChat.id}/handoff/release`, {});
-      toast.success(t('dashboard.chatsPage.liveHandoffReturnedToAi'));
-      await refreshConversationViews(selectedChat.id);
-      publishLiveHandoffSync({
-        type: 'handoff_released',
-        chatId: selectedChat.id,
-        channel: selectedChat.channel,
-      });
-    } catch (error) {
-      toast.error(error.response?.data?.error || t('dashboard.chatsPage.failedToReturnToAi'));
-    } finally {
-      setHandoffAction(null);
-    }
-  };
-
-  const handleSendLiveReply = async () => {
-    if (!selectedChat?.id || !liveReply.trim()) return;
-
-    setHandoffAction('reply');
-    try {
-      const response = await apiClient.post(`/api/chat-logs/${selectedChat.id}/handoff/reply`, {
-        message: liveReply.trim(),
-      });
-      setSelectedChat(response.data.chatLog);
-      setLiveReply('');
-      toast.success(t('dashboard.chatsPage.liveReplySent'));
-      await loadChats();
-    } catch (error) {
-      toast.error(error.response?.data?.error || t('dashboard.chatsPage.failedToSendLiveReply'));
-    } finally {
-      setHandoffAction(null);
     }
   };
 
@@ -664,35 +544,6 @@ export default function ChatsPage() {
         />
       </div>
 
-      {pendingLiveHandoffs.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-medium text-amber-900 dark:text-amber-200">
-                <Headphones className="h-4 w-4" />
-                {t('dashboard.chatsPage.pendingLiveHandoffsTitle', { count: pendingLiveHandoffs.length })}
-              </div>
-              <p className="mt-1 text-sm text-amber-800/80 dark:text-amber-200/80">
-                {t('dashboard.chatsPage.pendingLiveHandoffsDescription')}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {pendingLiveHandoffs.slice(0, 4).map((chat) => (
-                <Button
-                  key={chat.id}
-                  variant="outline"
-                  size="sm"
-                  className="border-amber-200 bg-white/80 text-amber-800 hover:bg-white dark:border-amber-900/40 dark:bg-transparent dark:text-amber-200"
-                  onClick={() => handleViewChat(chat.id)}
-                >
-                  {formatPhone(chat.customerPhone, formatSessionHandle(chat.sessionId))}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Table */}
       {loading ? (
         <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-6">
@@ -715,7 +566,7 @@ export default function ChatsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inboxChats.map((chat) => (
+              {sortedChats.map((chat) => (
                 <TableRow key={chat.id}>
                   <TableCell>
                     <span className="text-sm text-gray-900 dark:text-white">
@@ -864,99 +715,6 @@ export default function ChatsPage() {
                   </div>
                 )}
               </div>
-
-              {((selectedChat.channel === 'WHATSAPP' && whatsappLiveHandoffEnabled) || (selectedChat.channel === 'CHAT' && chatLiveHandoffEnabled)) && (
-                <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white">
-                        {t('dashboard.chatsPage.liveHandoffPanelTitle')}
-                      </h4>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {selectedChat.status !== 'active'
-                          ? t('dashboard.chatsPage.completed')
-                          : selectedChat.handoff?.mode === 'REQUESTED'
-                          ? t('dashboard.chatsPage.liveHandoffWaitingDescription')
-                          : selectedChat.handoff?.mode === 'ACTIVE'
-                            ? (selectedChat.handoff?.currentUserIsAssignee
-                              ? t('dashboard.chatsPage.liveHandoffClaimedByYou')
-                              : t('dashboard.chatsPage.liveHandoffClaimedByOther', { name: selectedChat.handoff?.assignedUserName || t('dashboard.chatsPage.anotherTeammate') }))
-                            : t('dashboard.chatsPage.liveHandoffAiDescription')}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedChat.status === 'active' && selectedChat.handoff?.canClaim && (
-                        <Button
-                          size="sm"
-                          onClick={handleClaimConversation}
-                          disabled={handoffAction === 'claim'}
-                        >
-                          {handoffAction === 'claim' ? (
-                            <>
-                              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                              {t('dashboard.chatsPage.claiming')}
-                            </>
-                          ) : (
-                            <>
-                              <Headphones className="mr-2 h-4 w-4" />
-                              {selectedChat.handoff?.mode === 'AI'
-                                ? t('dashboard.chatsPage.takeOverConversation')
-                                : t('dashboard.chatsPage.claimConversation')}
-                            </>
-                          )}
-                        </Button>
-                      )}
-
-                      {selectedChat.status === 'active' && selectedChat.handoff?.canReturnToAi && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleReturnToAi}
-                          disabled={handoffAction === 'release'}
-                        >
-                          {handoffAction === 'release' ? (
-                            <>
-                              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                              {t('dashboard.chatsPage.returningToAi')}
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="mr-2 h-4 w-4" />
-                              {t('dashboard.chatsPage.returnToAi')}
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {selectedChat.status === 'active' && selectedChat.handoff?.canReply && (
-                    <div className="mt-4 space-y-3">
-                      <Textarea
-                        value={liveReply}
-                        onChange={(event) => setLiveReply(event.target.value)}
-                        placeholder={t('dashboard.chatsPage.liveReplyPlaceholder')}
-                        rows={4}
-                      />
-                      <div className="flex justify-end">
-                        <Button onClick={handleSendLiveReply} disabled={!liveReply.trim() || handoffAction === 'reply'}>
-                          {handoffAction === 'reply' ? (
-                            <>
-                              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                              {t('dashboard.chatsPage.sendingLiveReply')}
-                            </>
-                          ) : (
-                            <>
-                              <Send className="mr-2 h-4 w-4" />
-                              {t('dashboard.chatsPage.sendLiveReply')}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Messages */}
               <div className="space-y-3">

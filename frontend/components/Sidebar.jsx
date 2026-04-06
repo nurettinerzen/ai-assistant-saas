@@ -173,8 +173,8 @@ export default function Sidebar({ user, credits, business, whatsappPendingCount 
         { icon: Database, label: t('dashboard.sidebar.inbox'), href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
         { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
         { icon: Mail, label: t('dashboard.sidebar.email'), href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
-        ...(whatsappLiveHandoffEnabled
-          ? [{ icon: MessageSquare, label: locale === 'tr' ? NAVIGATION_ITEMS.whatsappInbox.labelTr : NAVIGATION_ITEMS.whatsappInbox.labelEn, href: NAVIGATION_ITEMS.whatsappInbox.href, permission: 'campaigns:view' }]
+        ...((whatsappLiveHandoffEnabled || chatLiveHandoffEnabled)
+          ? [{ icon: MessageSquare, label: t('dashboard.sidebar.conversations'), href: NAVIGATION_ITEMS.conversations.href, permission: 'campaigns:view' }]
           : []),
         { icon: Zap, label: t('dashboard.sidebar.quickReplies'), href: NAVIGATION_ITEMS.emailSnippets.href, permission: 'campaigns:view' },
         ...(hasMarketplaceQaAccess ? [{ icon: Package, label: locale === 'tr' ? NAVIGATION_ITEMS.marketplaceQa.labelTr : NAVIGATION_ITEMS.marketplaceQa.labelEn, href: NAVIGATION_ITEMS.marketplaceQa.href, permission: 'campaigns:view' }] : []),
@@ -343,14 +343,9 @@ export default function Sidebar({ user, credits, business, whatsappPendingCount 
                       >
                         <Icon className="h-4 w-4 flex-shrink-0" />
                         <span className="flex-1 truncate">{item.label}</span>
-                        {item.href === NAVIGATION_ITEMS.whatsappInbox.href && whatsappPendingCount > 0 && (
+                        {item.href === NAVIGATION_ITEMS.conversations.href && (whatsappPendingCount + chatPendingCount) > 0 && (
                           <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                            {whatsappPendingCount > 99 ? '99+' : whatsappPendingCount}
-                          </span>
-                        )}
-                        {item.href === NAVIGATION_ITEMS.chatHistory.href && chatLiveHandoffEnabled && chatPendingCount > 0 && (
-                          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                            {chatPendingCount > 99 ? '99+' : chatPendingCount}
+                            {(whatsappPendingCount + chatPendingCount) > 99 ? '99+' : (whatsappPendingCount + chatPendingCount)}
                           </span>
                         )}
                       </Link>

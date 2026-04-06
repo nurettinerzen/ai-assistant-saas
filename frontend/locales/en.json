@@ -1155,6 +1155,7 @@
       "inbox": "Custom Data",
       "campaigns": "Campaigns",
       "email": "Email",
+      "conversations": "Conversations",
       "callbacks": "Callback Requests",
       "chatHistory": "Chat History",
       "account": "Account",
@@ -3106,6 +3107,26 @@
       "csvChat": "Chat",
       "csvActive": "Active",
       "csvCompleted": "Completed"
+    },
+    "conversationsPage": {
+      "title": "Conversations",
+      "subtitle": "Manage chat and WhatsApp conversations in one workspace.",
+      "searchPlaceholder": "Search by phone, session, or channel...",
+      "allChannels": "All",
+      "whatsapp": "WhatsApp",
+      "chat": "Chat",
+      "noConversationsDesc": "Active chat and WhatsApp conversations will appear here.",
+      "pendingShort": "Waiting for live support",
+      "activeWorkspaceHint": "This workspace keeps live support and AI conversations in one operational view.",
+      "threadEmpty": "Select a conversation from the left.",
+      "loadFailed": "Failed to load conversations",
+      "detailFailed": "Failed to load conversation details",
+      "featureDisabledTitle": "Live conversation operations are disabled in this environment",
+      "featureDisabledDescription": "This workspace is protected behind a feature flag.",
+      "globalAlertTitle": "New live support request",
+      "globalAlertDescriptionWhatsapp": "Customer {phone} is waiting for live support.",
+      "globalAlertDescriptionChat": "Session {session} is waiting for live support.",
+      "openInbox": "Open conversations"
     }
   },
   "onboarding": {

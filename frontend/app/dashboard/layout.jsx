@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDate, formatSessionHandle } from '@/lib/utils';
 import { getPlanDisplayName } from '@/lib/planConfig';
 import { subscribeLiveHandoffSync } from '@/lib/liveHandoffSync';
+import { DashboardProvider } from '@/contexts/DashboardContext';
 
 // Avoid storing user/session data in browser storage.
 const USER_CACHE_KEY = 'dashboard_user_cache_disabled';
@@ -244,9 +245,7 @@ export default function DashboardLayout({ children }) {
 
         if (newThreads.length > 0) {
           const newestThread = newThreads[0];
-          const destination = newestThread.channel === 'CHAT'
-            ? '/dashboard/chats'
-            : '/dashboard/whatsapp';
+          const destination = '/dashboard/conversations';
 
           if (pathname === destination) {
             return;
@@ -362,7 +361,9 @@ export default function DashboardLayout({ children }) {
           </div>
         )}
         <main className="p-6 lg:p-8">
-          {children}
+          <DashboardProvider user={user}>
+            {children}
+          </DashboardProvider>
         </main>
       </div>
 
@@ -380,12 +381,12 @@ export default function DashboardLayout({ children }) {
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                  {t('dashboard.whatsappInboxPage.globalAlertTitle')}
+                  {t('dashboard.conversationsPage.globalAlertTitle')}
                 </h3>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
                   {liveSupportAlert.channel === 'CHAT'
-                    ? t('dashboard.chatHistoryPage.globalAlertDescription').replace('{session}', formatSessionHandle(liveSupportAlert.sessionId, 'chat'))
-                    : t('dashboard.whatsappInboxPage.globalAlertDescription').replace('{phone}', liveSupportAlert.customerPhone || 'WhatsApp')}
+                    ? t('dashboard.conversationsPage.globalAlertDescriptionChat').replace('{session}', formatSessionHandle(liveSupportAlert.sessionId, 'chat'))
+                    : t('dashboard.conversationsPage.globalAlertDescriptionWhatsapp').replace('{phone}', liveSupportAlert.customerPhone || 'WhatsApp')}
                 </p>
                 <div className="mt-4 flex items-center justify-end gap-2">
                   <button
@@ -398,14 +399,12 @@ export default function DashboardLayout({ children }) {
                   <button
                     type="button"
                     onClick={() => {
-                      router.push(`${liveSupportAlert.channel === 'CHAT' ? '/dashboard/chats' : '/dashboard/whatsapp'}?chatId=${liveSupportAlert.id}`);
+                      router.push(`/dashboard/conversations?chatId=${liveSupportAlert.id}`);
                       setLiveSupportAlert(null);
                     }}
                     className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-amber-600"
                   >
-                    {liveSupportAlert.channel === 'CHAT'
-                      ? t('dashboard.chatHistoryPage.openConversation')
-                      : t('dashboard.whatsappInboxPage.openInbox')}
+                    {t('dashboard.conversationsPage.openInbox')}
                   </button>
                 </div>
               </div>

@@ -1155,6 +1155,7 @@
       "inbox": "Özel Veriler",
       "campaigns": "Kampanyalar",
       "email": "E-posta",
+      "conversations": "Sohbetler",
       "callbacks": "Geri Arama Talepleri",
       "chatHistory": "Sohbet Geçmişi",
       "account": "Hesap",
@@ -3106,6 +3107,26 @@
       "csvChat": "Sohbet",
       "csvActive": "Aktif",
       "csvCompleted": "Tamamlandı"
+    },
+    "conversationsPage": {
+      "title": "Sohbetler",
+      "subtitle": "Chat ve WhatsApp konuşmalarını tek ekranda yönetin.",
+      "searchPlaceholder": "Telefon, oturum veya kanal ile ara...",
+      "allChannels": "Tümü",
+      "whatsapp": "WhatsApp",
+      "chat": "Sohbet",
+      "noConversationsDesc": "Aktif chat ve WhatsApp konuşmaları burada görünecek.",
+      "pendingShort": "Canlı destek bekleyenler",
+      "activeWorkspaceHint": "Bu alan canlı destek ve AI konuşmalarını tek operasyonda toplar.",
+      "threadEmpty": "Soldan bir konuşma seçin.",
+      "loadFailed": "Sohbetler yüklenemedi",
+      "detailFailed": "Konuşma detayları yüklenemedi",
+      "featureDisabledTitle": "Canlı sohbet operasyonu bu ortamda kapalı",
+      "featureDisabledDescription": "Bu çalışma alanı feature flag arkasında açılır.",
+      "globalAlertTitle": "Yeni canlı destek talebi",
+      "globalAlertDescriptionWhatsapp": "{phone} numaralı müşteri canlı destek bekliyor.",
+      "globalAlertDescriptionChat": "{session} oturumu canlı destek bekliyor.",
+      "openInbox": "Sohbetleri aç"
     }
   },
   "onboarding": {
