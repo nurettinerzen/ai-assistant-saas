@@ -465,10 +465,14 @@ router.patch('/users/:id', async (req, res) => {
       if (req.body[field] !== undefined) {
         const desiredValue = Boolean(req.body[field]);
 
-        if (field === 'phoneInboundEnabled' && desiredValue && isPhoneInboundForceDisabled()) {
+        if (
+          field === 'phoneInboundEnabled'
+          && desiredValue
+          && isPhoneInboundForceDisabled({ businessId: user.businessId || user.business?.id })
+        ) {
           return res.status(403).json({
             error: 'PHONE_INBOUND_LOCKED_V1',
-            message: 'Inbound FULL_V2 geçici olarak global V1 outbound-only modunda kapalı.'
+            message: 'Inbound özelliği bu işletme için allowlist dışında olduğu için açılamıyor.'
           });
         }
 

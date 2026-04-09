@@ -1,30 +1,30 @@
 import prisma from '../prismaClient.js';
+import { isPhoneInboundEnabledForBusiness as isPhoneInboundCanaryEnabled } from '../config/feature-flags.js';
 
 export const ONBOARDING_MODES = Object.freeze({
   V1_OUTBOUND_ONLY: 'V1_OUTBOUND_ONLY',
   FULL_V2: 'FULL_V2'
 });
 
-/**
- * V1 default: inbound is globally disabled unless explicitly turned off.
- * Roll-forward to V2 by setting PHONE_V1_OUTBOUND_ONLY=false.
- */
-const PHONE_V1_OUTBOUND_ONLY = process.env.PHONE_V1_OUTBOUND_ONLY !== 'false';
+function getBusinessContextBusinessId(business) {
+  if (!business) return null;
+  return business.id ?? business.businessId ?? null;
+}
 
-function getEffectiveInboundFlag(rawBusinessFlag) {
-  if (PHONE_V1_OUTBOUND_ONLY) return false;
+function getEffectiveInboundFlag(rawBusinessFlag, businessId = null) {
+  if (!isPhoneInboundCanaryEnabled({ businessId })) return false;
   return Boolean(rawBusinessFlag);
 }
 
-export function isPhoneInboundForceDisabled() {
-  return PHONE_V1_OUTBOUND_ONLY;
+export function isPhoneInboundForceDisabled(context = {}) {
+  return !isPhoneInboundCanaryEnabled(context);
 }
 
 /**
  * Derive onboarding mode from business-level inbound toggle.
  */
 export function getOnboardingModeForBusiness(business) {
-  return getEffectiveInboundFlag(business?.phoneInboundEnabled)
+  return getEffectiveInboundFlag(business?.phoneInboundEnabled, getBusinessContextBusinessId(business))
     ? ONBOARDING_MODES.FULL_V2
     : ONBOARDING_MODES.V1_OUTBOUND_ONLY;
 }
@@ -33,7 +33,7 @@ export function getOnboardingModeForBusiness(business) {
  * Fast path when business record is already loaded.
  */
 export function isPhoneInboundEnabledForBusinessRecord(business) {
-  return getEffectiveInboundFlag(business?.phoneInboundEnabled);
+  return getEffectiveInboundFlag(business?.phoneInboundEnabled, getBusinessContextBusinessId(business));
 }
 
 /**
@@ -45,10 +45,10 @@ export async function isPhoneInboundEnabledForBusinessId(businessId) {
 
   const business = await prisma.business.findUnique({
     where: { id: parseInt(businessId, 10) },
-    select: { phoneInboundEnabled: true }
+    select: { id: true, phoneInboundEnabled: true }
   });
 
-  return getEffectiveInboundFlag(business?.phoneInboundEnabled);
+  return getEffectiveInboundFlag(business?.phoneInboundEnabled, business?.id || businessId);
 }
 
 /**
@@ -56,7 +56,7 @@ export async function isPhoneInboundEnabledForBusinessId(businessId) {
  */
 export async function isPhoneInboundEnabledForBusiness({ business, businessId }) {
   if (business && typeof business.phoneInboundEnabled === 'boolean') {
-    return getEffectiveInboundFlag(business.phoneInboundEnabled);
+    return getEffectiveInboundFlag(business.phoneInboundEnabled, getBusinessContextBusinessId(business) || businessId);
   }
 
   return isPhoneInboundEnabledForBusinessId(businessId);
