@@ -647,7 +647,7 @@ router.post('/admin-mfa/verify', authenticateToken, isAdmin, async (req, res) =>
 
 // Admin MFA status
 router.get('/admin-mfa/status', authenticateToken, isAdmin, async (req, res) => {
-  const maxAgeMinutes = parseInt(process.env.ADMIN_MFA_MAX_AGE_MINUTES || '720', 10);
+  const maxAgeMinutes = parseInt(process.env.ADMIN_MFA_MAX_AGE_MINUTES || '15', 10);
   const maxAgeMs = Math.max(1, maxAgeMinutes) * 60 * 1000;
   const adminMfaAt = req.auth?.adminMfaAt ? Number(req.auth.adminMfaAt) : 0;
   const amr = Array.isArray(req.auth?.amr) ? req.auth.amr : [];

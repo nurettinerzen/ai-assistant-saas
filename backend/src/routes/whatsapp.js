@@ -2205,11 +2205,11 @@ async function sendWhatsAppInteractiveListMessage(business, to, payload, options
 // ADMIN/TEST ENDPOINTS — Protected by auth + admin check
 // ============================================================================
 import { authenticateToken } from '../middleware/auth.js';
-import { isAdmin } from '../middleware/adminAuth.js';
+import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 
-// SECURITY: All admin/test endpoints require authenticated admin session
-router.use('/send', authenticateToken, isAdmin);
-router.use('/conversations', authenticateToken, isAdmin);
+// SECURITY: All admin/test endpoints require authenticated admin session + MFA
+router.use('/send', authenticateToken, isAdmin, requireAdminMfa);
+router.use('/conversations', authenticateToken, isAdmin, requireAdminMfa);
 
 // Manual message sending endpoint (for testing)
 router.post('/send', async (req, res) => {

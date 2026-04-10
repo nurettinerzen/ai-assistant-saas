@@ -10,13 +10,14 @@
 import express from 'express';
 import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { isAdmin } from '../middleware/adminAuth.js';
+import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 
 const router = express.Router();
 
-// CRITICAL: Apply auth + admin middleware to ALL routes
+// CRITICAL: Apply auth + admin MFA middleware to ALL routes
 router.use(authenticateToken);
 router.use(isAdmin);
+router.use(requireAdminMfa);
 
 // ============================================
 // GET /api/admin/email-rag/metrics/overview

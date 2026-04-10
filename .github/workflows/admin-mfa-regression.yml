@@ -1,0 +1,37 @@
+name: Admin MFA Regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: API base URL to verify
+        required: false
+        default: https://api.telyx.ai
+
+jobs:
+  admin-mfa-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install --production
+
+      - name: Run admin MFA regression check
+        env:
+          API_URL: ${{ inputs.api_url }}
+          TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
+          TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
+        run: |
+          cd backend
+          npm run security:admin-mfa-regression

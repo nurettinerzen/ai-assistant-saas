@@ -26,6 +26,7 @@
     "regression:assistant": "npm run regression:assistant-db && npm run regression:assistant-api-smoke",
     "seed-test-data": "node scripts/seed-test-data.js",
     "security-test": "node scripts/security-smoke-test.js",
+    "security:admin-mfa-regression": "node scripts/admin-mfa-regression-check.js",
     "functional-test": "node scripts/functional-test.js",
     "assistant-test": "npm run seed-test-data && TEST_LEVEL=gate node tests/runner/assistant-test.js",
     "assistant-test:extended": "npm run seed-test-data && TEST_LEVEL=extended node tests/runner/assistant-test.js",

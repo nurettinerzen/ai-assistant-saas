@@ -10,7 +10,7 @@ const ADMIN_BOOTSTRAP_EMAILS = (process.env.ADMIN_BOOTSTRAP_EMAILS || '')
   .map((value) => value.trim().toLowerCase())
   .filter(Boolean);
 
-const ADMIN_MFA_MAX_AGE_MINUTES = parseInt(process.env.ADMIN_MFA_MAX_AGE_MINUTES || '720', 10);
+const ADMIN_MFA_MAX_AGE_MINUTES = parseInt(process.env.ADMIN_MFA_MAX_AGE_MINUTES || '15', 10);
 
 function isBootstrapAdmin(email = '') {
   return ADMIN_BOOTSTRAP_EMAILS.includes(String(email || '').toLowerCase());

@@ -15,7 +15,7 @@ import { getDashboardMetrics } from '../services/routing-metrics.js';
 import { getShadowModeStats } from '../utils/shadow-mode.js';
 import { getIdempotencyStats } from '../services/tool-idempotency.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { isAdmin } from '../middleware/adminAuth.js';
+import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 
 const router = express.Router();
 
@@ -49,9 +49,9 @@ function metricsAuth(req, res, next) {
     return next();
   }
 
-  // Option 3: Authenticated admin session (cookie/Bearer)
+  // Option 3: Authenticated admin session with recent MFA (cookie/Bearer)
   return authenticateToken(req, res, () => {
-    return isAdmin(req, res, next);
+    return isAdmin(req, res, () => requireAdminMfa(req, res, next));
   });
 }
 
