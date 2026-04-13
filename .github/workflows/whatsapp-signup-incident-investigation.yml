@@ -1,6 +1,12 @@
 name: WhatsApp Signup Incident Investigation
 
 on:
+  push:
+    branches:
+      - codex/investigate-whatsapp-connect-2026-04-12
+    paths:
+      - .github/workflows/whatsapp-signup-incident-investigation.yml
+      - backend/scripts/inspect-whatsapp-signup-incident.js
   workflow_dispatch:
     inputs:
       start_at:
