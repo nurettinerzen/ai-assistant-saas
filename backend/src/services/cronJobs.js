@@ -11,6 +11,7 @@
 
 import prisma from '../prismaClient.js';
 import { calculateTLToMinutes, getFixedOveragePrice } from '../config/plans.js';
+import { shouldSendUsageNotification } from './settingsPreferences.js';
 
 // Email service import (if available)
 let emailService = null;
@@ -25,7 +26,7 @@ try {
  * RECONCILE missed resets and sync periods from payment provider
  *
  * IMPORTANT: This function does NOT create or calculate period dates.
- * Period dates are ONLY set by payment provider webhooks (Stripe/iyzico).
+ * Period dates are ONLY set by Stripe webhooks.
  *
  * This function:
  * 1. Finds subscriptions whose period has ended (according to provider)
@@ -47,7 +48,7 @@ export async function resetIncludedMinutes() {
       where: {
         status: 'ACTIVE',
         plan: { in: ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC'] },
-        stripeSubscriptionId: { not: null },  // Only Stripe subs (iyzico handled separately)
+        stripeSubscriptionId: { not: null },
         currentPeriodEnd: { lte: now }
       },
       include: {
@@ -164,7 +165,7 @@ export async function checkLowBalance() {
     for (const subscription of lowBalanceSubscriptions) {
       const ownerEmail = subscription.business?.users?.[0]?.email;
 
-      if (ownerEmail && emailService) {
+      if (ownerEmail && emailService && await shouldSendUsageNotification(subscription.business.id)) {
         try {
           // Send low balance email
           await emailService.sendLowBalanceWarning({
@@ -234,7 +235,7 @@ export async function processAutoReload() {
     let reloadedCount = 0;
     for (const subscription of needReload) {
       try {
-        if (!subscription.stripeCustomerId && !subscription.iyzicoCardToken) {
+        if (!subscription.stripeCustomerId) {
           console.log(`⚠️ No payment method for ${subscription.business?.name}, skipping`);
           continue;
         }
@@ -489,7 +490,7 @@ export async function billOverageUsage() {
 
         // Send email notification
         const ownerEmail = subscription.business?.users?.[0]?.email;
-        if (ownerEmail && emailService) {
+        if (ownerEmail && emailService && await shouldSendUsageNotification(subscription.business.id)) {
           try {
             await emailService.sendOverageBillNotification({
               to: ownerEmail,

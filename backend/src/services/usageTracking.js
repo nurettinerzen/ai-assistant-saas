@@ -10,6 +10,7 @@
 import prisma from '../prismaClient.js';
 import emailService from './emailService.js';
 import { getEffectivePlanConfig } from './planConfig.js';
+import { shouldSendUsageNotification } from './settingsPreferences.js';
 
 /**
  * Track call usage with credit system
@@ -147,7 +148,7 @@ async function deductMinutesWithCredits(businessId, subscription, minutes, callI
 
     // Email gönder
     const ownerEmail = subscription.business?.users?.[0]?.email;
-    if (ownerEmail) {
+    if (ownerEmail && await shouldSendUsageNotification(businessId)) {
       try {
         await emailService.sendOverageLimitReachedEmail(
           ownerEmail,
@@ -362,13 +363,6 @@ export const resetMonthlyUsage = async () => {
           const overageAmount = subscription.overageMinutes * subscription.overageRate;
           console.log(`💰 Aşım faturası: Business ${subscription.businessId}, ${subscription.overageMinutes} dk, ${overageAmount} TL`);
 
-          // TODO: iyzico ile çek
-          // await iyzicoService.chargeCard({
-          //   cardToken: subscription.iyzicoCardToken,
-          //   amount: overageAmount,
-          //   description: `${subscription.overageMinutes} dakika aşım ücreti`
-          // });
-
           // Usage log kaydet
           await prisma.usageLog.create({
             data: {
@@ -463,6 +457,10 @@ export const sendLimitWarning = async (businessId, limitType, usage) => {
       return;
     }
 
+    if (!await shouldSendUsageNotification(businessId)) {
+      return;
+    }
+
     const email = subscription.business.users[0].email;
     const businessName = subscription.business.name;
 
@@ -505,6 +503,10 @@ export const sendLimitReached = async (businessId, limitType, usage) => {
     });
 
     if (!subscription?.business.users[0]?.email) {
+      return;
+    }
+
+    if (!await shouldSendUsageNotification(businessId)) {
       return;
     }
 

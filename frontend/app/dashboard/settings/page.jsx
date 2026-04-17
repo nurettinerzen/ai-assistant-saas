@@ -7,12 +7,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SecurePasswordInput } from '@/components/ui/secure-password-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -20,10 +20,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User, Bell, AlertTriangle, Globe, Mail, Loader2, Phone, Plus } from 'lucide-react';
+import {
+  User,
+  Bell,
+  AlertTriangle,
+  Globe,
+  Mail,
+  Loader2,
+  Trash2,
+} from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { apiClient } from '@/lib/api';
-import { toast, toastHelpers } from '@/lib/toast';
+import { toast } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import PageIntro from '@/components/PageIntro';
@@ -34,14 +42,16 @@ import {
   useNotifications,
   useEmailSignature,
   useEmailPairStats,
-  usePhoneNumbers,
   useUpdateProfile,
   useUpdateNotifications,
   useUpdateEmailSignature,
+  useChangeEmail,
   useChangePassword,
+  useDeleteAccount,
 } from '@/hooks/useSettings';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { t, locale, changeLocale } = useLanguage();
   const { can } = usePermissions();
   const pageHelp = getPageHelp('settings', locale);
@@ -51,12 +61,13 @@ export default function SettingsPage() {
   const { data: notificationsData, isLoading: notificationsLoading } = useNotifications();
   const { data: signatureData, isLoading: signatureLoading } = useEmailSignature();
   const { data: pairStats } = useEmailPairStats();
-  const { data: phoneNumbers = [] } = usePhoneNumbers();
 
   const updateProfile = useUpdateProfile();
   const updateNotifications = useUpdateNotifications();
   const updateEmailSignature = useUpdateEmailSignature();
   const changePassword = useChangePassword();
+  const changeEmail = useChangeEmail();
+  const deleteAccount = useDeleteAccount();
 
   const loading = profileLoading || notificationsLoading || signatureLoading;
 
@@ -64,16 +75,18 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
   const [region, setRegion] = useState({ language: 'TR', country: 'TR', timezone: 'Europe/Istanbul' });
   const [notifications, setNotifications] = useState({
-    emailOnCall: true,
     emailOnLimit: true,
-    weeklySummary: true,
-    smsNotifications: false,
   });
   const [emailSignature, setEmailSignature] = useState({
     signature: '',
     signatureType: 'PLAIN',
   });
-  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [passwordInputNonce, setPasswordInputNonce] = useState(0);
+  const [emailInputNonce, setEmailInputNonce] = useState(0);
+  const [deleteInputNonce, setDeleteInputNonce] = useState(0);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [hasDeletePassword, setHasDeletePassword] = useState(false);
+  const [emailChange, setEmailChange] = useState({ newEmail: '' });
 
   // Password values stored in refs to avoid React DevTools exposure
   const passwordValues = useRef({
@@ -81,6 +94,11 @@ export default function SettingsPage() {
     newPassword: '',
     confirmPassword: ''
   });
+  const emailPasswordRef = useRef('');
+  const deletePasswordRef = useRef('');
+
+  const deleteConfirmationPhrase = locale === 'tr' ? 'hesabımı sil' : 'delete my account';
+  const isOwner = profileData?.user?.role === 'OWNER';
 
   // Update local state when data is loaded
   useEffect(() => {
@@ -111,42 +129,84 @@ export default function SettingsPage() {
     }
   }, [signatureData]);
 
+  const getApiErrorMessage = (error, fallback) => {
+    return error?.response?.data?.error
+      || error?.response?.data?.message
+      || error?.message
+      || fallback;
+  };
+
+  const normalizeConfirmation = (value) => {
+    return String(value || '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  };
+
+  const dispatchUserRefresh = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('telyx:user-updated'));
+    }
+  };
+
+  const runToastAction = async (promiseFactory, messages) => {
+    const toastId = toast.loading(messages.loading);
+
+    try {
+      const result = await promiseFactory();
+      toast.dismiss(toastId);
+      toast.success(messages.success);
+      return result;
+    } catch (error) {
+      toast.dismiss(toastId);
+      toast.error(getApiErrorMessage(error, messages.error));
+      throw error;
+    }
+  };
+
   const handleSaveProfile = async () => {
     try {
-      await toastHelpers.async(
-        updateProfile.mutateAsync(profile),
-        t('dashboard.settingsPage.savingProfile'),
-        t('dashboard.settingsPage.profileUpdatedSuccess')
+      await runToastAction(
+        () => updateProfile.mutateAsync(profile),
+        {
+          loading: t('dashboard.settingsPage.savingProfile'),
+          success: t('dashboard.settingsPage.profileUpdatedSuccess'),
+          error: t('dashboard.settingsPage.profileUpdateFailed'),
+        }
       );
-    } catch (error) {
-      // Error handled
-    }
+      dispatchUserRefresh();
+    } catch {}
   };
 
   const handleSaveNotifications = async () => {
     try {
-      await toastHelpers.async(
-        updateNotifications.mutateAsync(notifications),
-        t('dashboard.settingsPage.savingPreferences'),
-        t('dashboard.settingsPage.notificationPreferencesUpdated')
+      await runToastAction(
+        () => updateNotifications.mutateAsync(notifications),
+        {
+          loading: t('dashboard.settingsPage.savingPreferences'),
+          success: t('dashboard.settingsPage.notificationPreferencesUpdated'),
+          error: t('dashboard.settingsPage.notificationPreferencesFailed'),
+        }
       );
-    } catch (error) {
-      // Error handled
-    }
+    } catch {}
   };
 
   const handleSaveRegion = async () => {
-  try {
-    await toastHelpers.async(
-      updateProfile.mutateAsync(region),
-      t('dashboard.settingsPage.savingRegion'),
-      t('dashboard.settingsPage.regionUpdated')
-    );
-  } catch (error) {
-    console.error('Update region error:', error);
-    toast.error(t('dashboard.settingsPage.regionUpdateFailed'));
-  }
-};
+    try {
+      await runToastAction(
+        () => updateProfile.mutateAsync(region),
+        {
+          loading: t('dashboard.settingsPage.savingRegion'),
+          success: t('dashboard.settingsPage.regionUpdated'),
+          error: t('dashboard.settingsPage.regionUpdateFailed'),
+        }
+      );
+      dispatchUserRefresh();
+    } catch (error) {
+      console.error('Update region error:', error);
+    }
+  };
 
   const handleSaveSignature = async () => {
     try {
@@ -156,12 +216,56 @@ export default function SettingsPage() {
       });
       toast.success(t('dashboard.settingsPage.signatureSaved'));
     } catch (error) {
-      toast.error(t('dashboard.settingsPage.signatureFailed'));
+      toast.error(getApiErrorMessage(error, t('dashboard.settingsPage.signatureFailed')));
     }
+  };
+
+  const handleChangeEmail = async () => {
+    const nextEmail = String(emailChange.newEmail || '').trim().toLowerCase();
+    const currentEmail = String(profile.email || '').trim().toLowerCase();
+
+    if (!nextEmail || !emailPasswordRef.current) {
+      toast.error(t('dashboard.settingsPage.emailFieldsRequired'));
+      return;
+    }
+
+    if (nextEmail === currentEmail) {
+      toast.error(t('dashboard.settingsPage.emailMustBeDifferent'));
+      return;
+    }
+
+    try {
+      const result = await runToastAction(
+        async () => {
+          await apiClient.auth.reauthenticate(emailPasswordRef.current);
+          return changeEmail.mutateAsync({
+            newEmail: nextEmail,
+            password: emailPasswordRef.current,
+          });
+        },
+        {
+          loading: t('dashboard.settingsPage.changingEmail'),
+          success: t('auth.emailChanged'),
+          error: t('auth.emailChangeFailed'),
+        }
+      );
+
+      emailPasswordRef.current = '';
+      setEmailChange({ newEmail: '' });
+      setEmailInputNonce((current) => current + 1);
+      setProfile((current) => ({ ...current, email: result?.data?.email || nextEmail }));
+      dispatchUserRefresh();
+      router.push('/auth/email-pending');
+    } catch {}
   };
 
   const handleChangePassword = async () => {
     const { currentPassword, newPassword, confirmPassword } = passwordValues.current;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error(t('dashboard.settingsPage.passwordFieldsRequired'));
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       toast.error(t('dashboard.settingsPage.passwordsDoNotMatch'));
@@ -173,20 +277,63 @@ export default function SettingsPage() {
     }
 
     try {
-      await toastHelpers.async(
-        changePassword.mutateAsync({
-          currentPassword,
-          newPassword,
-        }),
-        t('dashboard.settingsPage.changingPassword'),
-        t('dashboard.settingsPage.passwordChangedSuccess')
+      await runToastAction(
+        async () => {
+          await apiClient.auth.reauthenticate(currentPassword);
+          return changePassword.mutateAsync({
+            currentPassword,
+            newPassword,
+          });
+        },
+        {
+          loading: t('dashboard.settingsPage.changingPassword'),
+          success: t('dashboard.settingsPage.passwordChangedSuccess'),
+          error: t('dashboard.settingsPage.passwordChangeFailed'),
+        }
       );
-      // Clear password values after successful change
       passwordValues.current = { currentPassword: '', newPassword: '', confirmPassword: '' };
-      // Force re-render to clear inputs
-      window.location.reload();
-    } catch (error) {
-      // Error handled
+      setPasswordInputNonce((current) => current + 1);
+      dispatchUserRefresh();
+    } catch {}
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePasswordRef.current) {
+      toast.error(t('dashboard.settingsPage.deleteAccountPasswordRequired'));
+      return;
+    }
+
+    if (normalizeConfirmation(deleteConfirmationText) !== normalizeConfirmation(deleteConfirmationPhrase)) {
+      toast.error(t('dashboard.settingsPage.deleteAccountConfirmationMismatch'));
+      return;
+    }
+
+    try {
+      const result = await runToastAction(
+        async () => {
+          await apiClient.auth.reauthenticate(deletePasswordRef.current);
+          return deleteAccount.mutateAsync({
+            currentPassword: deletePasswordRef.current,
+            confirmationText: deleteConfirmationText,
+          });
+        },
+        {
+          loading: t('dashboard.settingsPage.deletingAccount'),
+          success: isOwner
+            ? t('dashboard.settingsPage.workspaceDeletedSuccess')
+            : t('dashboard.settingsPage.accountDeletedSuccess'),
+          error: t('dashboard.settingsPage.deleteAccountFailed'),
+        }
+      );
+
+      deletePasswordRef.current = '';
+      setDeleteConfirmationText('');
+      setHasDeletePassword(false);
+      setDeleteInputNonce((current) => current + 1);
+      window.location.href = '/login';
+      return result;
+    } catch {
+      return null;
     }
   };
 
@@ -235,8 +382,56 @@ export default function SettingsPage() {
               id="email"
               type="email"
               value={profile.email}
-              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+              readOnly
+              disabled
+              className="bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
             />
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              {t('dashboard.settingsPage.emailChangeHint')}
+            </p>
+          </div>
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                  {t('auth.changeEmailAddress')}
+                </p>
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  {t('dashboard.settingsPage.emailChangeVerificationHint')}
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="newEmailAddress">{t('auth.newEmailAddress')}</Label>
+                <Input
+                  id="newEmailAddress"
+                  type="email"
+                  autoComplete="email"
+                  value={emailChange.newEmail}
+                  onChange={(e) => setEmailChange({ newEmail: e.target.value })}
+                  placeholder="name@company.com"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="emailChangePassword">{t('dashboard.settingsPage.emailChangePasswordLabel')}</Label>
+                <SecurePasswordInput
+                  key={`email-change-password-${emailInputNonce}`}
+                  id="emailChangePassword"
+                  autoComplete="current-password"
+                  onValueChange={(value) => {
+                    emailPasswordRef.current = value;
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button onClick={handleChangeEmail} disabled={changeEmail.isPending}>
+                {changeEmail.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t('auth.changeEmail')}
+              </Button>
+            </div>
           </div>
           <div>
             <Label htmlFor="company">{t('dashboard.settingsPage.companyNameOptional')}</Label>
@@ -248,8 +443,18 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-800/50">
+          <p className="text-xs text-neutral-600 dark:text-neutral-300">
+            <span className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.profileImpactTitle')}</span>{' '}
+            {t('dashboard.settingsPage.profileImpactDescription')}
+          </p>
+        </div>
+
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveProfile}>{t('dashboard.settingsPage.saveChangesBtn')}</Button>
+          <Button onClick={handleSaveProfile} disabled={updateProfile.isPending}>
+            {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t('dashboard.settingsPage.saveChangesBtn')}
+          </Button>
         </div>
       </div>
 
@@ -397,18 +602,24 @@ export default function SettingsPage() {
                 : t('dashboard.settingsPage.signatureHelpPlain')
               }
             </p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {t('dashboard.settingsPage.signatureOverrideNote')}
+            </p>
           </div>
 
           {/* Pair Stats */}
           {pairStats && pairStats.total > 0 && (
             <div className="mt-4 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
               <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                <span className="font-semibold text-neutral-900 dark:text-white">{pairStats.total}</span> {t('dashboard.settingsPage.learnedEmailPatterns')}
+                <span className="font-semibold text-neutral-900 dark:text-white">{pairStats.total}</span> {t('dashboard.settingsPage.learnedEmailExamples')}
                 {pairStats.byLanguage && pairStats.byLanguage.length > 0 && (
                   <span className="ml-2">
                     ({pairStats.byLanguage.map(l => `${l._count._all} ${l.language}`).join(', ')})
                   </span>
                 )}
+              </p>
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                {t('dashboard.settingsPage.learnedEmailExamplesHelp')}
               </p>
             </div>
           )}
@@ -420,87 +631,6 @@ export default function SettingsPage() {
             {t('dashboard.settingsPage.saveSignatureBtn')}
           </Button>
         </div>
-      </div>
-
-      {/* Channels Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg">
-              <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                {t('dashboard.settingsPage.channelsTitle')}
-              </h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {t('dashboard.settingsPage.channelsDescription')}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {phoneNumbers.length > 0 ? (
-          <div className="space-y-3">
-            {/* Phone Number Card */}
-            {phoneNumbers.map((number) => (
-              <div
-                key={number.id}
-                className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                    <div>
-                      <p className="font-mono font-semibold text-lg text-neutral-900 dark:text-white">
-                        {number.phoneNumber}
-                      </p>
-                      <p className="text-sm text-neutral-500 mt-0.5">
-                        {number.assistantName ? (
-                          <span>{t('dashboard.settingsPage.assignedTo')} <span className="text-neutral-900 dark:text-white font-medium">{number.assistantName}</span></span>
-                        ) : (
-                          <span className="text-amber-600 dark:text-amber-400">{t('dashboard.settingsPage.noAssistantAssigned')}</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => window.location.href = '/dashboard/phone-numbers'}
-                    className="flex-1"
-                  >
-                    {t('dashboard.settingsPage.manage')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowPhoneModal(true)}
-                  >
-                    {t('dashboard.settingsPage.change')}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <Phone className="h-12 w-12 mx-auto mb-3 opacity-50 text-neutral-400" />
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-              {t('dashboard.settingsPage.noPhoneConnected')}
-            </p>
-            <Button
-              size="sm"
-              onClick={() => setShowPhoneModal(true)}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              {t('dashboard.settingsPage.connectPhoneNumber')}
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Notifications Section */}
@@ -515,68 +645,32 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.emailOnNewCall')}</p>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.notifyOnCall')}</p>
+        <div className="space-y-4">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            {t('dashboard.settingsPage.notificationsOnlyLiveHint')}
+          </p>
+
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.usageLimitAlerts')}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.alertApproachingLimit')}</p>
+              </div>
+              <Switch
+                checked={notifications.emailOnLimit}
+                onCheckedChange={(checked) =>
+                  setNotifications({ ...notifications, emailOnLimit: checked })
+                }
+              />
             </div>
-            <Switch
-              checked={notifications.emailOnCall}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, emailOnCall: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.usageLimitAlerts')}</p>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.alertApproachingLimit')}</p>
-            </div>
-            <Switch
-              checked={notifications.emailOnLimit}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, emailOnLimit: checked })
-              }
-            />
-          </div>
-
-          <Separator className="dark:bg-neutral-700" />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.weeklySummaryLabel')}</p>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.receiveWeeklyReports')}</p>
-            </div>
-            <Switch
-              checked={notifications.weeklySummary}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, weeklySummary: checked })
-              }
-            />
-          </div>
-
-          <Separator className="dark:bg-neutral-700" />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.smsNotificationsLabel')}</p>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.criticalAlertsViaSms')}</p>
-            </div>
-            <Switch
-              checked={notifications.smsNotifications}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, smsNotifications: checked })
-              }
-            />
           </div>
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveNotifications}>{t('dashboard.settingsPage.savePreferencesBtn')}</Button>
+          <Button onClick={handleSaveNotifications} disabled={updateNotifications.isPending}>
+            {updateNotifications.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t('dashboard.settingsPage.savePreferencesBtn')}
+          </Button>
         </div>
       </div>
 
@@ -596,6 +690,7 @@ export default function SettingsPage() {
           <div>
             <Label htmlFor="currentPassword">{t('dashboard.settingsPage.currentPasswordLabel')}</Label>
             <SecurePasswordInput
+              key={`current-password-${passwordInputNonce}`}
               id="currentPassword"
               autoComplete="current-password"
               onValueChange={(val) => passwordValues.current.currentPassword = val}
@@ -604,6 +699,7 @@ export default function SettingsPage() {
           <div>
             <Label htmlFor="newPassword">{t('dashboard.settingsPage.newPasswordLabel')}</Label>
             <SecurePasswordInput
+              key={`new-password-${passwordInputNonce}`}
               id="newPassword"
               autoComplete="new-password"
               showToggle
@@ -613,6 +709,7 @@ export default function SettingsPage() {
           <div>
             <Label htmlFor="confirmPassword">{t('dashboard.settingsPage.confirmNewPassword')}</Label>
             <SecurePasswordInput
+              key={`confirm-password-${passwordInputNonce}`}
               id="confirmPassword"
               autoComplete="new-password"
               onValueChange={(val) => passwordValues.current.confirmPassword = val}
@@ -620,8 +717,15 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
+          {t('dashboard.settingsPage.passwordRecentAuthHint')}
+        </p>
+
         <div className="flex justify-end mt-6">
-          <Button onClick={handleChangePassword}>{t('dashboard.settingsPage.changePasswordBtn')}</Button>
+          <Button onClick={handleChangePassword} disabled={changePassword.isPending}>
+            {changePassword.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t('dashboard.settingsPage.changePasswordBtn')}
+          </Button>
         </div>
       </div>
 
@@ -634,7 +738,61 @@ export default function SettingsPage() {
         <p className="text-sm text-red-700 dark:text-red-400 mb-4">
           {t('dashboard.settingsPage.deleteAccountWarning')}
         </p>
-        <Button variant="destructive">{t('dashboard.settingsPage.deleteAccountBtn')}</Button>
+
+        <div className="space-y-3">
+          <div className="rounded-lg border border-red-200 bg-white/70 p-3 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+            {isOwner
+              ? t('dashboard.settingsPage.deleteWorkspaceOwnerWarning')
+              : t('dashboard.settingsPage.deleteAccountMemberWarning')}
+          </div>
+
+          <div>
+            <Label htmlFor="deleteAccountPassword">{t('dashboard.settingsPage.deleteAccountPasswordLabel')}</Label>
+            <SecurePasswordInput
+              key={`delete-password-${deleteInputNonce}`}
+              id="deleteAccountPassword"
+              autoComplete="current-password"
+              onValueChange={(value) => {
+                deletePasswordRef.current = value;
+                setHasDeletePassword(Boolean(value));
+              }}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="deleteAccountPhrase">{t('dashboard.settingsPage.deleteAccountConfirmationLabel')}</Label>
+            <Input
+              id="deleteAccountPhrase"
+              value={deleteConfirmationText}
+              onChange={(e) => setDeleteConfirmationText(e.target.value)}
+              placeholder={deleteConfirmationPhrase}
+            />
+            <p className="mt-1 text-xs text-red-700 dark:text-red-400">
+              {t('dashboard.settingsPage.deleteAccountConfirmationHelp', { phrase: deleteConfirmationPhrase })}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="destructive"
+            onClick={handleDeleteAccount}
+            disabled={
+              deleteAccount.isPending
+              || !hasDeletePassword
+              || normalizeConfirmation(deleteConfirmationText) !== normalizeConfirmation(deleteConfirmationPhrase)
+            }
+          >
+            {deleteAccount.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-4 w-4" />
+            )}
+            {isOwner
+              ? t('dashboard.settingsPage.deleteWorkspaceBtn')
+              : t('dashboard.settingsPage.deleteAccountBtn')}
+          </Button>
+        </div>
       </div>
     </div>
   );
