@@ -84,6 +84,7 @@ export const apiClient = {
     logout: () => api.post('/api/auth/logout'),
     verifyEmail: (token) => api.post('/api/auth/verify-email', { token }),
     reauthenticate: (password) => api.post('/api/auth/reauthenticate', { password }),
+    changeEmail: (data) => api.post('/api/auth/change-email', data),
     googleAuth: (credential) => api.post('/api/auth/google', { credential }),
     googleCodeAuth: (code) => api.post('/api/auth/google/code', { code }),
     adminMfaChallenge: () => api.post('/api/auth/admin-mfa/challenge'),
@@ -132,9 +133,10 @@ export const apiClient = {
     getNotifications: () => api.get('/api/settings/notifications'),
     updateNotifications: (data) => api.put('/api/settings/notifications', data),
     changePassword: (data) => api.post('/api/settings/change-password', data),
+    deleteAccount: (data) => api.post('/api/settings/delete-account', data),
   },
 
-  // Subscription - supports both Stripe and iyzico
+  // Subscription - Stripe billing
   subscription: {
     getCurrent: () => api.get('/api/subscription/current'),
     getPlans: () => api.get('/api/subscription/plans'),
@@ -147,17 +149,6 @@ export const apiClient = {
     undoScheduledChange: () => api.post('/api/subscription/undo-scheduled-change'),
     getBillingHistory: () => api.get('/api/subscription/billing-history'),
     createPortalSession: () => api.post('/api/subscription/create-portal-session'),
-  },
-
-  // Credits - Kredi Sistemi
-  credits: {
-    getBalance: () => api.get('/api/credits/balance'),
-    getPricing: () => api.get('/api/credits/pricing'),
-    calculate: (minutes) => api.post('/api/credits/calculate', { minutes }),
-    purchase: (minutes) => api.post('/api/credits/purchase', { minutes }),
-    getHistory: (params) => api.get('/api/credits/history', { params }),
-    getUsageLogs: (params) => api.get('/api/credits/usage-logs', { params }),
-    canMakeCall: () => api.get('/api/credits/can-make-call'),
   },
 
   // Integrations

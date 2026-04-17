@@ -14,7 +14,9 @@ export function useProfile() {
         name: response.data?.name || '',
         email: response.data?.email || '',
         company: response.data?.company || '',
+        user: response.data?.user || null,
         business: response.data?.business || {},
+        subscription: response.data?.subscription || null,
       };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -31,10 +33,7 @@ export function useNotifications() {
     queryFn: async () => {
       const response = await apiClient.settings.getNotifications();
       return {
-        emailOnCall: response.data?.emailOnCall ?? true,
         emailOnLimit: response.data?.emailOnLimit ?? true,
-        weeklySummary: response.data?.weeklySummary ?? true,
-        smsNotifications: response.data?.smsNotifications ?? false,
       };
     },
     staleTime: 2 * 60 * 1000,
@@ -82,25 +81,6 @@ export function useEmailPairStats() {
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
-/**
- * Hook to fetch phone numbers (for settings page)
- * @returns {object} Query result with phone numbers data
- */
-export function usePhoneNumbers() {
-  return useQuery({
-    queryKey: ['settings', 'phoneNumbers'],
-    queryFn: async () => {
-      try {
-        const response = await apiClient.phoneNumbers.getAll();
-        return response.data.phoneNumbers || [];
-      } catch (error) {
-        return [];
-      }
-    },
-    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -163,6 +143,35 @@ export function useChangePassword() {
   return useMutation({
     mutationFn: async (passwordData) => {
       return await apiClient.settings.changePassword(passwordData);
+    },
+  });
+}
+
+/**
+ * Hook to change login email
+ * @returns {object} Mutation object
+ */
+export function useChangeEmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload) => {
+      return await apiClient.auth.changeEmail(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings', 'profile'] });
+    },
+  });
+}
+
+/**
+ * Hook to delete account or workspace
+ * @returns {object} Mutation object
+ */
+export function useDeleteAccount() {
+  return useMutation({
+    mutationFn: async (payload) => {
+      return await apiClient.settings.deleteAccount(payload);
     },
   });
 }

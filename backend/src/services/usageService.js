@@ -31,6 +31,7 @@ import {
 } from '../config/plans.js';
 import balanceService from './balanceService.js';
 import chargeCalculator from './chargeCalculator.js';
+import { shouldSendUsageNotification } from './settingsPreferences.js';
 
 /**
  * Kullanım kaydı oluştur ve ücretlendir
@@ -386,7 +387,7 @@ async function checkUsageWarnings(subscriptionId) {
         });
 
         const ownerEmail = subscription.business?.users?.[0]?.email;
-        if (ownerEmail) {
+        if (ownerEmail && await shouldSendUsageNotification(subscription.business.id)) {
           try {
             const emailService = (await import('./emailService.js')).default;
             await emailService.sendLimitWarningEmail(
@@ -425,7 +426,7 @@ async function checkUsageWarnings(subscriptionId) {
           });
 
           const ownerEmail = subscription.business?.users?.[0]?.email;
-          if (ownerEmail) {
+          if (ownerEmail && await shouldSendUsageNotification(subscription.business.id)) {
             try {
               const emailService = (await import('./emailService.js')).default;
               await emailService.sendLowBalanceWarningEmail(

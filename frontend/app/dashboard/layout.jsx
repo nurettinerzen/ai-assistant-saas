@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { apiClient } from '@/lib/api';
@@ -92,7 +92,7 @@ export default function DashboardLayout({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadUserData = async (showLoading = true) => {
+  const loadUserData = useCallback(async (showLoading = true) => {
     if (showLoading) {
       setLoading(true);
     }
@@ -171,7 +171,18 @@ export default function DashboardLayout({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    const handleUserRefresh = () => {
+      loadUserData(false);
+    };
+
+    window.addEventListener('telyx:user-updated', handleUserRefresh);
+    return () => {
+      window.removeEventListener('telyx:user-updated', handleUserRefresh);
+    };
+  }, [loadUserData]);
 
   const handleOnboardingComplete = async () => {
     try {

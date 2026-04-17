@@ -4,7 +4,16 @@ import bcrypt from 'bcrypt';
 import { authenticateToken } from '../middleware/auth.js';
 import { requireRecentAuth } from '../middleware/reauth.js';
 import { validatePasswordPolicy, passwordPolicyMessage } from '../security/passwordPolicy.js';
-import { issueSession } from '../security/sessionToken.js';
+import { clearSessionCookie, issueSession } from '../security/sessionToken.js';
+import {
+  getBusinessNotificationPreferences,
+  updateBusinessNotificationPreferences,
+} from '../services/settingsPreferences.js';
+import {
+  hardDeleteSelfUser,
+  hardDeleteWorkspaceForOwner,
+  isValidDeleteAccountConfirmation,
+} from '../services/accountDeletion.js';
 
 const router = express.Router();
 
@@ -191,14 +200,8 @@ router.put('/profile', authenticateToken, async (req, res) => {
 // GET /api/settings/notifications
 router.get('/notifications', authenticateToken, async (req, res) => {
   try {
-    // For now, return default values
-    // You can add a NotificationSettings table later
-    res.json({
-      emailOnCall: true,
-      emailOnLimit: true,
-      weeklySummary: false,
-      smsNotifications: false,
-    });
+    const preferences = await getBusinessNotificationPreferences(req.businessId);
+    res.json(preferences);
   } catch (error) {
     console.error('Error fetching notifications:', error);
     res.status(500).json({ error: 'Failed to fetch notifications' });
@@ -208,10 +211,7 @@ router.get('/notifications', authenticateToken, async (req, res) => {
 // PUT /api/settings/notifications
 router.put('/notifications', authenticateToken, async (req, res) => {
   try {
-    const preferences = req.body;
-
-    // For now, just return the preferences
-    // You can add database storage later
+    const preferences = await updateBusinessNotificationPreferences(req.businessId, req.body || {});
     res.json({
       message: 'Notification preferences updated',
       preferences,
@@ -287,6 +287,68 @@ router.post('/change-password', authenticateToken, requireRecentAuth(15), async 
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+router.post('/delete-account', authenticateToken, requireRecentAuth(15), async (req, res) => {
+  try {
+    const { currentPassword, confirmationText } = req.body || {};
+
+    if (!currentPassword || !confirmationText) {
+      return res.status(400).json({
+        error: 'Current password and confirmation text are required',
+      });
+    }
+
+    if (!isValidDeleteAccountConfirmation(confirmationText)) {
+      return res.status(400).json({
+        error: 'Confirmation text is incorrect',
+        code: 'DELETE_CONFIRMATION_INVALID',
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        role: true,
+        businessId: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const validPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    if (user.role === 'OWNER') {
+      await hardDeleteWorkspaceForOwner(user.businessId);
+      clearSessionCookie(res);
+
+      return res.json({
+        message: 'Workspace and all related data were permanently deleted',
+        deletedScope: 'workspace',
+      });
+    }
+
+    await hardDeleteSelfUser(user.id);
+    clearSessionCookie(res);
+
+    return res.json({
+      message: 'Account deleted permanently',
+      deletedScope: 'account',
+    });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    return res.status(500).json({
+      error: 'Failed to delete account',
+    });
   }
 });
 
