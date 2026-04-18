@@ -1247,6 +1247,7 @@
       "purposeCollection": "Tahsilat",
       "purposeGeneral": "Genel Bilgilendirme",
       "syncWith11Labs": "Asistanı senkronize et",
+      "syncNotRequired": "Yazı asistanlarında senkron gerekmez",
       "typeSelectorTitle": "Ne tür bir asistan oluşturmak istiyorsunuz?",
       "typeSelectorDesc": "Asistanınızın kullanım amacını seçin",
       "inboundCall": "Gelen Arama",
