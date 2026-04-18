@@ -190,18 +190,75 @@ function getDefaultPhoneFirstMessage({
 }
 
 function shouldUseExpressiveVoice(callDirection, assistantType = 'phone') {
-  return assistantType !== 'text' && callDirection === 'outbound_sales';
+  return assistantType !== 'text';
 }
 
-function getSuggestedAudioTags() {
+function getSuggestedAudioTags(callDirection) {
+  const direction = String(callDirection || '').toLowerCase();
+
+  if (direction === 'outbound_sales') {
+    return [
+      {
+        tag: 'warmly',
+        description: 'Use for greetings, thanks, reassurance, and smooth transitions. Keep it natural and professional.'
+      },
+      {
+        tag: 'confidently',
+        description: 'Use when explaining value clearly and guiding the conversation. Stay composed and avoid sounding pushy.'
+      },
+      {
+        tag: 'excitedly',
+        description: 'Use sparingly only when the customer shows clear interest or agrees to a next step. Avoid in the opening, objections, or pricing.'
+      }
+    ];
+  }
+
+  if (direction === 'outbound_collection' || direction === 'outbound') {
+    return [
+      {
+        tag: 'patiently',
+        description: 'Use when explaining details, listening through hesitation, or giving the customer space to respond.'
+      },
+      {
+        tag: 'empathetically',
+        description: 'Use when the customer sounds stressed, confused, or concerned. Keep it respectful and measured.'
+      },
+      {
+        tag: 'confidently',
+        description: 'Use when stating important information or the next step. Sound clear and steady, not harsh.'
+      }
+    ];
+  }
+
+  if (direction === 'outbound_general') {
+    return [
+      {
+        tag: 'warmly',
+        description: 'Use for greetings, thanks, and smooth informational updates.'
+      },
+      {
+        tag: 'patiently',
+        description: 'Use when clarifying information or when the other side needs a moment to follow.'
+      },
+      {
+        tag: 'confidently',
+        description: 'Use when delivering key information or confirming the next step.'
+      }
+    ];
+  }
+
   return [
     {
       tag: 'warmly',
-      description: 'Use for greetings, thanks, reassurance, and smooth transitions. Keep it natural and professional.'
+      description: 'Use for greetings, thanks, and reassuring moments. Keep it professional and natural.'
     },
     {
-      tag: 'excitedly',
-      description: 'Use sparingly only when the customer shows clear interest or agrees to a next step. Avoid in the opening, objections, or pricing.'
+      tag: 'empathetically',
+      description: 'Use when the caller sounds frustrated, worried, or upset. Stay calm and supportive.'
+    },
+    {
+      tag: 'patiently',
+      description: 'Use when explaining steps, clarifying details, or allowing the caller time to think.'
     }
   ];
 }
@@ -212,7 +269,7 @@ function buildPhoneTtsConfig({ voiceId, callDirection, assistantType = 'phone' }
       voice_id: voiceId,
       model_id: 'eleven_v3_conversational',
       expressive_mode: true,
-      suggested_audio_tags: getSuggestedAudioTags()
+      suggested_audio_tags: getSuggestedAudioTags(callDirection)
     };
   }
 
