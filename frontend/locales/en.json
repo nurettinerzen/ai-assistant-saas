@@ -1247,6 +1247,7 @@
       "purposeCollection": "Collection",
       "purposeGeneral": "General Information",
       "syncWith11Labs": "Sync assistant",
+      "syncNotRequired": "Sync is not required for text assistants",
       "typeSelectorTitle": "What type of assistant do you want to create?",
       "typeSelectorDesc": "Select the purpose of your assistant",
       "inboundCall": "Inbound Call",

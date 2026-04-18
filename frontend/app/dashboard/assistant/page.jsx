@@ -699,35 +699,44 @@ export default function AssistantsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="grid grid-cols-3 gap-1 justify-center w-fit mx-auto">
                         {can('assistants:edit') && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(assistant)}
-                            className="h-8 px-2"
+                            className="h-8 w-8 px-0"
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        {!isText && can('assistants:edit') && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSync(assistant)}
-                            disabled={syncing === assistant.id}
-                            title={t('dashboard.assistantsPage.syncWith11Labs')}
-                            className="h-8 px-2"
-                          >
-                            <RefreshCw className={`h-3.5 w-3.5 ${syncing === assistant.id ? 'animate-spin' : ''}`} />
-                          </Button>
+                        {can('assistants:edit') && (
+                          !isText ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSync(assistant)}
+                              disabled={syncing === assistant.id}
+                              title={t('dashboard.assistantsPage.syncWith11Labs')}
+                              className="h-8 w-8 px-0"
+                            >
+                              <RefreshCw className={`h-3.5 w-3.5 ${syncing === assistant.id ? 'animate-spin' : ''}`} />
+                            </Button>
+                          ) : (
+                            <div
+                              className="h-8 w-8 flex items-center justify-center text-neutral-300 dark:text-neutral-600"
+                              title={t('dashboard.assistantsPage.syncNotRequired')}
+                            >
+                              <span className="text-sm leading-none">-</span>
+                            </div>
+                          )
                         )}
                         {can('assistants:delete') && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(assistant)}
-                            className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            className="h-8 w-8 px-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
