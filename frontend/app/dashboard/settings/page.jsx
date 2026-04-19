@@ -376,12 +376,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="email">{t('dashboard.settingsPage.emailAddressLabel')}</Label>
-              <Button variant="outline" size="sm" onClick={() => setShowEmailChangeModal(true)}>
-                {t('auth.changeEmail')}
-              </Button>
-            </div>
+            <Label htmlFor="email">{t('dashboard.settingsPage.emailAddressLabel')}</Label>
             <Input
               id="email"
               type="email"
@@ -390,9 +385,19 @@ export default function SettingsPage() {
               disabled
               className="bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
             />
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              {t('dashboard.settingsPage.emailChangeHint')}
-            </p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {t('dashboard.settingsPage.emailChangeHint')}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start sm:ml-auto sm:self-end"
+                onClick={() => setShowEmailChangeModal(true)}
+              >
+                {t('auth.changeEmail')}
+              </Button>
+            </div>
           </div>
           <div>
             <Label htmlFor="company">{t('dashboard.settingsPage.companyNameOptional')}</Label>
