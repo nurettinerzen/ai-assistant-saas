@@ -14,7 +14,6 @@ import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TelyxLogoFull } from '@/components/TelyxLogo';
-import { AuthFlowShell, AuthFlowCard } from '@/components/AuthFlowShell';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -102,24 +101,25 @@ export default function SignupPage() {
   // Show loading while checking auth
   if (checkingAuth) {
     return (
-      <AuthFlowShell>
+      <div className="min-h-screen bg-gradient-to-br from-[#edf3ff] via-white to-[#edfbff] dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#051752] dark:text-[#00C4E6]" />
-      </AuthFlowShell>
+      </div>
     );
   }
 
   return (
-    <AuthFlowShell>
+    <div className="min-h-screen bg-gradient-to-br from-[#edf3ff] via-white to-[#edfbff] dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       <Toaster position="top-right" />
 
-      <div className="flex justify-between items-center mb-6">
-        <Link href="/">
-          <TelyxLogoFull width={136} height={38} darkMode={mounted && resolvedTheme === 'dark'} />
-        </Link>
-        <LanguageSwitcher />
-      </div>
+      <div className="w-full max-w-md">
+        <div className="flex justify-between items-center mb-8">
+          <Link href="/">
+            <TelyxLogoFull width={136} height={38} darkMode={mounted && resolvedTheme === 'dark'} />
+          </Link>
+          <LanguageSwitcher />
+        </div>
 
-      <AuthFlowCard>
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl dark:border dark:border-neutral-700 p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {t('auth.signupTitle')}
@@ -259,7 +259,8 @@ export default function SignupPage() {
               {t('common.signIn')}
             </Link>
           </div>
-      </AuthFlowCard>
-    </AuthFlowShell>
+        </div>
+      </div>
+    </div>
   );
 }
