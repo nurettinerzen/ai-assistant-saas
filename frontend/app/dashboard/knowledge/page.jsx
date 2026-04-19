@@ -194,7 +194,7 @@ function KnowledgeBaseContent() {
     }
 
     if (droppedFiles.length > 1) {
-      toast.error(locale === 'tr' ? 'Lutfen tek seferde sadece bir dosya birakin.' : 'Please drop only one file at a time.');
+      toast.error(t('dashboard.knowledgeBasePage.dropSingleFile'));
     }
 
     applySelectedFile(droppedFiles[0]);
