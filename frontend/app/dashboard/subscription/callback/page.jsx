@@ -17,11 +17,11 @@ export default function SubscriptionCallback() {
 
     if (statusParam === 'success') {
       setStatus('success');
-      toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Aboneliginiz basariyla aktiflestirildi!');
+      toast.success(t('dashboard.subscriptionPage.upgradeSuccess'));
     } else if (statusParam === 'error') {
       setStatus('error');
       const message = searchParams.get('message');
-      toast.error(message || t('dashboard.subscriptionPage.upgradeFailed') || 'Odeme islemi basarisiz oldu.');
+      toast.error(message || t('dashboard.subscriptionPage.upgradeFailed'));
     } else {
       // No explicit state in the URL; keep a short processing state before redirect.
       setStatus('processing');
@@ -37,20 +37,20 @@ export default function SubscriptionCallback() {
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="text-center p-8 bg-white rounded-xl shadow-sm border border-neutral-200 max-w-md w-full">
+      <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-8 text-center shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
         {status === 'success' && (
           <>
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-12 w-12 text-green-600" />
             </div>
-            <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-              {t('dashboard.subscriptionPage.paymentSuccess') || 'Odeme Basarili!'}
+            <h1 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-white">
+              {t('dashboard.subscriptionPage.paymentSuccess')}
             </h1>
-            <p className="text-neutral-600 mb-4">
-              {t('dashboard.subscriptionPage.subscriptionActivated') || 'Aboneliginiz aktiflestirildi.'}
+            <p className="mb-4 text-neutral-600 dark:text-neutral-300">
+              {t('dashboard.subscriptionPage.subscriptionActivated')}
             </p>
-            <p className="text-sm text-neutral-500">
-              {t('dashboard.subscriptionPage.redirecting') || 'Yonlendiriliyorsunuz...'}
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {t('dashboard.subscriptionPage.redirecting')}
             </p>
           </>
         )}
@@ -60,14 +60,14 @@ export default function SubscriptionCallback() {
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <XCircle className="h-12 w-12 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-              {t('dashboard.subscriptionPage.paymentFailed') || 'Odeme Basarisiz'}
+            <h1 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-white">
+              {t('dashboard.subscriptionPage.paymentFailed')}
             </h1>
-            <p className="text-neutral-600 mb-4">
-              {t('dashboard.subscriptionPage.paymentFailedDesc') || 'Odeme islemi tamamlanamadi. Lutfen tekrar deneyin.'}
+            <p className="mb-4 text-neutral-600 dark:text-neutral-300">
+              {t('dashboard.subscriptionPage.paymentFailedDesc')}
             </p>
-            <p className="text-sm text-neutral-500">
-              {t('dashboard.subscriptionPage.redirecting') || 'Yonlendiriliyorsunuz...'}
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {t('dashboard.subscriptionPage.redirecting')}
             </p>
           </>
         )}
@@ -77,11 +77,11 @@ export default function SubscriptionCallback() {
             <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Loader2 className="h-12 w-12 text-primary-600 animate-spin" />
             </div>
-            <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-              {t('dashboard.subscriptionPage.processingPayment') || 'Odeme Isleniyor'}
+            <h1 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-white">
+              {t('dashboard.subscriptionPage.processingPayment')}
             </h1>
-            <p className="text-neutral-600">
-              {t('dashboard.subscriptionPage.pleaseWait') || 'Lutfen bekleyin...'}
+            <p className="text-neutral-600 dark:text-neutral-300">
+              {t('dashboard.subscriptionPage.pleaseWait')}
             </p>
           </>
         )}

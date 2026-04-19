@@ -159,6 +159,28 @@ export default function SubscriptionPage() {
     }).format(Number(amount || 0));
   }, []);
 
+  const getAddOnLabel = useCallback((kind) => {
+    return kind === 'VOICE'
+      ? t('dashboard.subscriptionPage.voiceMinuteAddon')
+      : t('dashboard.subscriptionPage.writtenInteractionAddon');
+  }, [t]);
+
+  const getBillingStatusLabel = useCallback((status) => {
+    const normalized = String(status || 'paid').toLowerCase();
+    const keyMap = {
+      paid: 'dashboard.subscriptionPage.paid',
+      pending: 'dashboard.subscriptionPage.pending',
+      open: 'dashboard.subscriptionPage.statusOpen',
+      draft: 'dashboard.subscriptionPage.statusDraft',
+      void: 'dashboard.subscriptionPage.statusVoid',
+      uncollectible: 'dashboard.subscriptionPage.statusUncollectible',
+    };
+
+    return keyMap[normalized]
+      ? t(keyMap[normalized])
+      : normalized.replace(/_/g, ' ');
+  }, [t]);
+
   const refreshBillingState = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['subscription'] }),
@@ -195,13 +217,13 @@ export default function SubscriptionPage() {
           if (session_id) {
             await apiClient.get(`/api/balance/verify-topup-session?session_id=${session_id}`);
           }
-          toast.success(locale === 'tr' ? 'Bakiye yükleme tamamlandı' : 'Balance top-up completed');
+          toast.success(t('dashboard.subscriptionPage.balanceTopupCompleted'));
           await refreshBillingState();
         } catch (error) {
           console.error('Top-up verification error:', error);
           toast.error(
             error.response?.data?.error
-            || (locale === 'tr' ? 'Bakiye yükleme doğrulanamadı' : 'Balance top-up could not be verified')
+            || t('dashboard.subscriptionPage.balanceTopupVerificationFailed')
           );
         } finally {
           window.history.replaceState({}, '', window.location.pathname);
@@ -210,7 +232,7 @@ export default function SubscriptionPage() {
       }
 
       if (walletTopup === 'cancel') {
-        toast.error(locale === 'tr' ? 'Bakiye yükleme iptal edildi' : 'Balance top-up canceled');
+        toast.error(t('dashboard.subscriptionPage.balanceTopupCanceled'));
         window.history.replaceState({}, '', window.location.pathname);
         return;
       }
@@ -221,16 +243,15 @@ export default function SubscriptionPage() {
             await apiClient.get(`/api/subscription/verify-addon-session?session_id=${session_id}`);
           }
           toast.success(
-            locale === 'tr'
-              ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı etkileşim'} ek paketi satın alındı`
-              : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written interaction'} add-on purchase completed`
+            t('dashboard.subscriptionPage.addonPurchaseCompleted')
+              .replace('{addonName}', getAddOnLabel(addonKind))
           );
           await refreshBillingState();
         } catch (error) {
           console.error('Add-on verification error:', error);
           toast.error(
             error.response?.data?.error
-            || (locale === 'tr' ? 'Ek paket doğrulanamadı' : 'Add-on purchase could not be verified')
+            || t('dashboard.subscriptionPage.addonPurchaseVerificationFailed')
           );
         } finally {
           window.history.replaceState({}, '', window.location.pathname);
@@ -240,9 +261,8 @@ export default function SubscriptionPage() {
 
       if (addonStatus === 'cancel') {
         toast.error(
-          locale === 'tr'
-            ? `${addonKind === 'VOICE' ? 'Ses dakikası' : 'Yazılı etkileşim'} ek paket satın alma iptal edildi`
-            : `${addonKind === 'VOICE' ? 'Voice minute' : 'Written interaction'} add-on purchase canceled`
+          t('dashboard.subscriptionPage.addonPurchaseCanceled')
+            .replace('{addonName}', getAddOnLabel(addonKind))
         );
         window.history.replaceState({}, '', window.location.pathname);
         return;
@@ -273,7 +293,7 @@ export default function SubscriptionPage() {
     };
 
     handleUrlState();
-  }, [locale, refreshBillingState, t]);
+  }, [getAddOnLabel, locale, refreshBillingState, t]);
 
   const handleUpgrade = async (planId) => {
     // Get plan name from translation keys
@@ -406,10 +426,10 @@ export default function SubscriptionPage() {
         window.location.href = response.data.sessionUrl;
         return;
       }
-      toast.error(locale === 'tr' ? 'Ek paket ödeme oturumu oluşturulamadı' : 'Failed to create add-on checkout session');
+      toast.error(t('dashboard.subscriptionPage.addonCheckoutFailed'));
     } catch (error) {
       console.error('Add-on checkout error:', error);
-      toast.error(error.response?.data?.error || (locale === 'tr' ? 'Ek paket satın alma başarısız oldu' : 'Add-on purchase failed'));
+      toast.error(error.response?.data?.error || t('dashboard.subscriptionPage.addonPurchaseFailed'));
     } finally {
       setPurchasingAddOn('');
     }
@@ -969,45 +989,46 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-neutral-200 shadow-sm">
-        <div className="p-6 border-b border-neutral-200">
+      <div className="rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-primary-600" />
-            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.subscriptionPage.billingHistory')}</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.billingHistory')}</h2>
           </div>
         </div>
-        <div className="divide-y divide-neutral-200">
+        <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
           {billingHistory.length === 0 ? (
-            <div className="p-8 text-center text-sm text-neutral-500">
+            <div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
               {t('dashboard.subscriptionPage.noBillingHistory')}
             </div>
           ) : (
             billingHistory.map((entry) => {
               const invoiceUrl = entry.invoicePdfUrl || entry.hostedInvoiceUrl || null;
+              const localizedPlan = entry.plan ? getPlanDisplayName(entry.plan, locale) : null;
               const statusTone = entry.status === 'paid'
-                ? 'text-emerald-600'
+                ? 'text-emerald-600 dark:text-emerald-400'
                 : entry.status === 'open'
-                  ? 'text-amber-600'
-                  : 'text-neutral-500';
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-neutral-500 dark:text-neutral-400';
 
               return (
                 <div key={entry.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-medium text-neutral-900">
-                      {entry.description || entry.plan || t('dashboard.subscriptionPage.billingHistory')}
+                    <p className="font-medium text-neutral-900 dark:text-white">
+                      {entry.description || localizedPlan || t('dashboard.subscriptionPage.billingHistory')}
                     </p>
-                    <p className="mt-1 text-sm text-neutral-500">
+                    <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                       {formatDate(entry.date, 'long', locale)}
-                      {entry.plan ? ` • ${entry.plan}` : ''}
+                      {localizedPlan ? ` • ${localizedPlan}` : ''}
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
-                    <p className="font-semibold text-neutral-900">
+                    <p className="font-semibold text-neutral-900 dark:text-white">
                       {formatBillingAmount(entry.amount, entry.currency)}
                     </p>
                     <div className="mt-1 flex items-center gap-3 text-sm sm:justify-end">
                       <span className={statusTone}>
-                        {String(entry.status || 'paid').replace('_', ' ')}
+                        {getBillingStatusLabel(entry.status)}
                       </span>
                       {invoiceUrl && (
                         <a
@@ -1016,7 +1037,7 @@ export default function SubscriptionPage() {
                           rel="noreferrer"
                           className="text-primary-600 hover:text-primary-700"
                         >
-                          {locale === 'tr' ? 'Faturayi ac' : 'Open invoice'}
+                          {t('dashboard.subscriptionPage.openInvoice')}
                         </a>
                       )}
                     </div>

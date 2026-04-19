@@ -45,7 +45,8 @@ const TRANSLATIONS = {
     requiresCard: 'Bakiye yüklemek için önce bir kart kaydetmeniz gerekiyor.',
     perMin: '/dk',
     autoReloadSaved: 'Otomatik yükleme ayarları kaydedildi',
-    paymentRedirect: 'Ödeme sayfasına yönlendiriliyorsunuz...'
+    paymentRedirect: 'Ödeme sayfasına yönlendiriliyorsunuz...',
+    saveSettingsFailed: 'Ayarlar kaydedilemedi'
   },
   EN: {
     title: 'Top Up Balance',
@@ -71,7 +72,8 @@ const TRANSLATIONS = {
     requiresCard: 'You need to save a card first to top up balance.',
     perMin: '/min',
     autoReloadSaved: 'Auto reload settings saved',
-    paymentRedirect: 'Redirecting to payment page...'
+    paymentRedirect: 'Redirecting to payment page...',
+    saveSettingsFailed: 'Failed to save settings'
   }
 };
 
@@ -203,7 +205,7 @@ export default function BuyCreditModal({ isOpen, onClose, onSuccess, initialRegi
       });
       toast.success(txt.autoReloadSaved);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to save settings');
+      toast.error(error.response?.data?.error || txt.saveSettingsFailed);
     }
   };
 

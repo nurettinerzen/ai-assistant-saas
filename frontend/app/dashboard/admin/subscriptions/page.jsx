@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   CreditCard,
@@ -15,12 +15,9 @@ import {
   MoreHorizontal,
   Eye,
   Edit,
-  Shield,
   Loader2,
   Building2,
   Calendar,
-  DollarSign,
-  Clock,
   AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,6 +47,7 @@ import {
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { PLAN_COLORS } from '@/lib/planConfig';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 
 const STATUS_COLORS = {
@@ -61,16 +59,8 @@ const STATUS_COLORS = {
   pending_payment: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
 };
 
-const STATUS_LABELS = {
-  active: 'Aktif',
-  trialing: 'Deneme',
-  past_due: 'Gecikmiş',
-  canceled: 'İptal',
-  unpaid: 'Ödenmemiş',
-  pending_payment: 'Ödeme Bekliyor',
-};
-
 export default function AdminSubscriptionsPage() {
+  const { t, locale } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
@@ -85,11 +75,16 @@ export default function AdminSubscriptionsPage() {
   const [editData, setEditData] = useState({ plan: '', status: '', minutesIncluded: '' });
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    loadSubscriptions();
-  }, [pagination.page, planFilter, statusFilter]);
+  const statusLabels = {
+    active: t('dashboard.adminSubscriptionsPage.statusActive'),
+    trialing: t('dashboard.adminSubscriptionsPage.statusTrialing'),
+    past_due: t('dashboard.adminSubscriptionsPage.statusPastDue'),
+    canceled: t('dashboard.adminSubscriptionsPage.statusCanceled'),
+    unpaid: t('dashboard.adminSubscriptionsPage.statusUnpaid'),
+    pending_payment: t('dashboard.adminSubscriptionsPage.statusPendingPayment'),
+  };
 
-  const loadSubscriptions = async () => {
+  const loadSubscriptions = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
@@ -108,11 +103,15 @@ export default function AdminSubscriptionsPage() {
       }));
     } catch (error) {
       console.error('Failed to load subscriptions:', error);
-      toast.error('Abonelikler yüklenemedi');
+      toast.error(t('dashboard.adminSubscriptionsPage.loadFailed'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit, planFilter, statusFilter, search, t]);
+
+  useEffect(() => {
+    loadSubscriptions();
+  }, [loadSubscriptions]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -143,12 +142,12 @@ export default function AdminSubscriptionsPage() {
       }
 
       await apiClient.admin.updateSubscription(editModal.subscription.id, data);
-      toast.success('Abonelik güncellendi');
+      toast.success(t('dashboard.adminSubscriptionsPage.updateSuccess'));
       setEditModal({ open: false, subscription: null });
       loadSubscriptions();
     } catch (error) {
       console.error('Failed to update subscription:', error);
-      toast.error('Güncelleme başarısız');
+      toast.error(t('dashboard.adminSubscriptionsPage.updateFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -156,7 +155,7 @@ export default function AdminSubscriptionsPage() {
 
   const formatDate = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('tr-TR', {
+    return new Date(date).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -176,9 +175,9 @@ export default function AdminSubscriptionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Abonelikler</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('dashboard.adminSubscriptionsPage.title')}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Tüm platform abonelikleri ({pagination.total})
+            {t('dashboard.adminSubscriptionsPage.description').replace('{count}', String(pagination.total))}
           </p>
         </div>
       </div>
@@ -189,21 +188,21 @@ export default function AdminSubscriptionsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Email veya işletme ara..."
+              placeholder={t('dashboard.adminSubscriptionsPage.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 w-64"
             />
           </div>
-          <Button type="submit" variant="outline">Ara</Button>
+          <Button type="submit" variant="outline">{t('dashboard.adminSubscriptionsPage.search')}</Button>
         </form>
 
         <Select value={planFilter} onValueChange={setPlanFilter}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Plan filtrele" />
+            <SelectValue placeholder={t('dashboard.adminSubscriptionsPage.filterPlan')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">Tüm Planlar</SelectItem>
+            <SelectItem value="ALL">{t('dashboard.adminSubscriptionsPage.allPlans')}</SelectItem>
             <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
             <SelectItem value="PRO">Pro</SelectItem>
             <SelectItem value="STARTER">Starter</SelectItem>
@@ -215,15 +214,15 @@ export default function AdminSubscriptionsPage() {
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Durum" />
+            <SelectValue placeholder={t('dashboard.adminSubscriptionsPage.filterStatus')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">Tüm Durumlar</SelectItem>
-            <SelectItem value="active">Aktif</SelectItem>
-            <SelectItem value="trialing">Deneme</SelectItem>
-            <SelectItem value="past_due">Gecikmiş</SelectItem>
-            <SelectItem value="canceled">İptal</SelectItem>
-            <SelectItem value="pending_payment">Ödeme Bekliyor</SelectItem>
+            <SelectItem value="ALL">{t('dashboard.adminSubscriptionsPage.allStatuses')}</SelectItem>
+            <SelectItem value="active">{t('dashboard.adminSubscriptionsPage.statusActive')}</SelectItem>
+            <SelectItem value="trialing">{t('dashboard.adminSubscriptionsPage.statusTrialing')}</SelectItem>
+            <SelectItem value="past_due">{t('dashboard.adminSubscriptionsPage.statusPastDue')}</SelectItem>
+            <SelectItem value="canceled">{t('dashboard.adminSubscriptionsPage.statusCanceled')}</SelectItem>
+            <SelectItem value="pending_payment">{t('dashboard.adminSubscriptionsPage.statusPendingPayment')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -237,19 +236,19 @@ export default function AdminSubscriptionsPage() {
         ) : subscriptions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
             <CreditCard className="w-12 h-12 text-gray-400 mb-4" />
-            <p className="text-gray-500">Abonelik bulunamadı</p>
+            <p className="text-gray-500">{t('dashboard.adminSubscriptionsPage.notFound')}</p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Kullanıcı</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Plan</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Durum</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Dakika</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Dönem Sonu</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Ödeme</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">İşlem</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">{t('dashboard.adminSubscriptionsPage.user')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">{t('dashboard.adminSubscriptionsPage.plan')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">{t('dashboard.adminSubscriptionsPage.status')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">{t('dashboard.adminSubscriptionsPage.minutes')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">{t('dashboard.adminSubscriptionsPage.periodEnd')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">{t('dashboard.adminSubscriptionsPage.payment')}</th>
+                <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">{t('dashboard.adminSubscriptionsPage.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -271,7 +270,7 @@ export default function AdminSubscriptionsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Badge className={STATUS_COLORS[sub.status] || STATUS_COLORS.active}>
-                      {STATUS_LABELS[sub.status] || sub.status}
+                      {statusLabels[sub.status] || sub.status}
                     </Badge>
                     {sub.status === 'past_due' && (
                       <AlertTriangle className="inline-block w-4 h-4 ml-2 text-red-500" />
@@ -280,7 +279,7 @@ export default function AdminSubscriptionsPage() {
                   <td className="px-4 py-3">
                     <div className="text-sm">
                       <p className="text-gray-900 dark:text-white">{sub.minutesUsed || 0} / {sub.minutesIncluded || 0}</p>
-                      <p className="text-gray-500">dakika kullanıldı</p>
+                      <p className="text-gray-500">{t('dashboard.adminSubscriptionsPage.minutesUsed')}</p>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -298,7 +297,7 @@ export default function AdminSubscriptionsPage() {
                           ? 'Stripe'
                           : sub.paymentProvider === 'stripe_brl'
                             ? 'Stripe (BR)'
-                            : 'Manual'}
+                            : t('dashboard.adminSubscriptionsPage.providerManual')}
                       </p>
                       {sub.stripeSubscriptionId && (
                         <p className="text-xs text-gray-500 font-mono truncate max-w-[100px]">{sub.stripeSubscriptionId}</p>
@@ -316,12 +315,12 @@ export default function AdminSubscriptionsPage() {
                         <DropdownMenuItem asChild>
                           <Link href={`/dashboard/admin/users/${sub.userId}`}>
                             <Eye className="w-4 h-4 mr-2" />
-                            Kullanıcıyı Gör
+                            {t('dashboard.adminSubscriptionsPage.viewUser')}
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openEditModal(sub)}>
                           <Edit className="w-4 h-4 mr-2" />
-                          Düzenle
+                          {t('dashboard.adminSubscriptionsPage.edit')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -364,17 +363,17 @@ export default function AdminSubscriptionsPage() {
       <Dialog open={editModal.open} onOpenChange={(open) => setEditModal({ ...editModal, open })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Aboneliği Düzenle</DialogTitle>
+            <DialogTitle>{t('dashboard.adminSubscriptionsPage.editTitle')}</DialogTitle>
             <DialogDescription>
               {editModal.subscription?.user?.email}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Plan</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.adminSubscriptionsPage.plan')}</label>
               <Select value={editData.plan} onValueChange={(v) => setEditData(prev => ({ ...prev, plan: v }))}>
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Plan seç" />
+                  <SelectValue placeholder={t('dashboard.adminSubscriptionsPage.selectPlan')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="FREE">Free</SelectItem>
@@ -387,26 +386,26 @@ export default function AdminSubscriptionsPage() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Durum</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.adminSubscriptionsPage.status')}</label>
               <Select value={editData.status} onValueChange={(v) => setEditData(prev => ({ ...prev, status: v }))}>
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Durum seç" />
+                  <SelectValue placeholder={t('dashboard.adminSubscriptionsPage.selectStatus')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Aktif</SelectItem>
-                  <SelectItem value="trialing">Deneme</SelectItem>
-                  <SelectItem value="past_due">Gecikmiş</SelectItem>
-                  <SelectItem value="canceled">İptal</SelectItem>
-                  <SelectItem value="pending_payment">Ödeme Bekliyor</SelectItem>
+                  <SelectItem value="active">{t('dashboard.adminSubscriptionsPage.statusActive')}</SelectItem>
+                  <SelectItem value="trialing">{t('dashboard.adminSubscriptionsPage.statusTrialing')}</SelectItem>
+                  <SelectItem value="past_due">{t('dashboard.adminSubscriptionsPage.statusPastDue')}</SelectItem>
+                  <SelectItem value="canceled">{t('dashboard.adminSubscriptionsPage.statusCanceled')}</SelectItem>
+                  <SelectItem value="pending_payment">{t('dashboard.adminSubscriptionsPage.statusPendingPayment')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Dahil Dakika</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.adminSubscriptionsPage.includedMinutes')}</label>
               <Input
                 type="number"
                 className="mt-2"
-                placeholder="Dakika miktarı"
+                placeholder={t('dashboard.adminSubscriptionsPage.minutesPlaceholder')}
                 value={editData.minutesIncluded}
                 onChange={(e) => setEditData(prev => ({ ...prev, minutesIncluded: e.target.value }))}
               />
@@ -414,11 +413,11 @@ export default function AdminSubscriptionsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditModal({ open: false, subscription: null })}>
-              İptal
+              {t('dashboard.adminSubscriptionsPage.cancel')}
             </Button>
             <Button onClick={handleEdit} disabled={actionLoading}>
               {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Kaydet
+              {t('dashboard.adminSubscriptionsPage.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
