@@ -13,7 +13,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { apiClient } from '@/lib/api';
 import { TelyxLogoFull } from '@/components/TelyxLogo';
-import { AuthFlowShell, AuthFlowCard } from '@/components/AuthFlowShell';
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -212,10 +211,11 @@ export default function ResetPasswordPage() {
   }, []);
 
   return (
-    <AuthFlowShell>
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       <Toaster position="top-right" richColors />
 
-      <AuthFlowCard>
+      <div className="w-full max-w-md">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo and Language Switcher */}
           <div className="flex items-center justify-between mb-8">
             <TelyxLogoFull width={148} height={42} darkMode={mounted && resolvedTheme === 'dark'} />
@@ -238,7 +238,8 @@ export default function ResetPasswordPage() {
           }>
             <ResetPasswordContent />
           </Suspense>
-      </AuthFlowCard>
-    </AuthFlowShell>
+        </div>
+      </div>
+    </div>
   );
 }
