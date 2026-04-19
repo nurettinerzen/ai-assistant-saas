@@ -289,19 +289,28 @@ router.get('/', auditSensitiveDataAccess('call_logs_list'), async (req, res) => 
       })
     ]);
 
-    // Lazy load missing data for recent calls (last 5 minutes)
-    // This catches cases where webhook hasn't finished processing yet
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const recentCallsWithMissingData = callLogs.filter(call =>
-      call.createdAt > fiveMinutesAgo &&
-      call.callId &&
-      call.status !== 'in_progress' &&
-      (!call.endReason || !call.callCost)
-    );
+    // Lazy load missing data for visible calls on the current page.
+    // This keeps the list consistent with the detail modal, which already backfills
+    // missing end reasons/costs on demand regardless of call age.
+    const callsWithMissingData = callLogs
+      .filter(call =>
+        call.callId &&
+        call.status !== 'in_progress' &&
+        call.status !== 'in-progress' &&
+        (!call.endReason || !call.callCost)
+      )
+      .sort((a, b) => {
+        const aMissingEndReason = a.endReason ? 0 : 1;
+        const bMissingEndReason = b.endReason ? 0 : 1;
+        if (aMissingEndReason !== bMissingEndReason) {
+          return bMissingEndReason - aMissingEndReason;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
 
-    // Update missing data and wait for it (only for recent calls, max 3)
-    if (recentCallsWithMissingData.length > 0 && business) {
-      const callsToUpdate = recentCallsWithMissingData.slice(0, 3); // Limit to 3 to avoid slow response
+    // Update missing data and wait for it (limit to keep response fast)
+    if (callsWithMissingData.length > 0 && business) {
+      const callsToUpdate = callsWithMissingData.slice(0, 5);
       await Promise.all(
         callsToUpdate.map(async (call) => {
           try {

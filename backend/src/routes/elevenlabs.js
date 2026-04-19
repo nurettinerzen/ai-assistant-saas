@@ -1761,8 +1761,14 @@ router.post('/sync-conversations', authenticateToken, async (req, res) => {
           where: { callId: conv.conversation_id }
         });
 
-        // Skip only if exists AND is already completed/answered (not in_progress)
-        if (existing && existing.status !== 'in_progress' && existing.status !== 'in-progress') {
+        const existingNeedsRefresh = existing && (
+          !existing.endReason
+          || !existing.callCost
+          || !existing.summary
+        );
+
+        // Skip only if this conversation is already complete and enriched enough.
+        if (existing && existing.status !== 'in_progress' && existing.status !== 'in-progress' && !existingNeedsRefresh) {
           skippedCount++;
           continue;
         }
