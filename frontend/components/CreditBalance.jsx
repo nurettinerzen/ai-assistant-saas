@@ -212,12 +212,19 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
 
   if (!balance) return null;
 
+  const shouldUseNewSystem =
+    balance.isNewSystem === true
+    || Object.prototype.hasOwnProperty.call(balance, 'paymentModel')
+    || Object.prototype.hasOwnProperty.call(balance, 'includedMinutes')
+    || Object.prototype.hasOwnProperty.call(balance, 'writtenInteractions')
+    || ['FREE', 'TRIAL', 'PAYG', 'STARTER', 'PRO', 'BASIC', 'ENTERPRISE'].includes(String(balance.plan || '').toUpperCase());
+
   // Currency based on region
   const currency = balance.currency || '₺';
   const dateLocale = lang === 'TR' ? 'tr-TR' : 'en-US';
 
   // New system display
-  if (balance.isNewSystem) {
+  if (shouldUseNewSystem) {
     const plan = balance.plan || 'FREE';
     const isTrial = plan === 'TRIAL';
     const isPayg = plan === 'PAYG';

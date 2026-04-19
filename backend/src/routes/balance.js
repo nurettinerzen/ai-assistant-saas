@@ -481,6 +481,8 @@ router.get('/', async (req, res) => {
     } : null;
 
     res.json({
+      isNewSystem: true,
+
       // Basic info
       plan,
       paymentModel, // 'PREPAID' veya 'POSTPAID'
