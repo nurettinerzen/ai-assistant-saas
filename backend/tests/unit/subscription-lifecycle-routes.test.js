@@ -64,6 +64,7 @@ const getBillingPlanDefinitionMock = jest.fn();
 const getWrittenUsageSummaryMock = jest.fn();
 const resolvePlanFromStripePriceIdMock = jest.fn();
 const resolveStripePriceIdForPlanMock = jest.fn();
+const logAuditEventMock = jest.fn();
 
 jest.unstable_mockModule('@prisma/client', () => ({
   PrismaClient: jest.fn(() => prismaMock)
@@ -130,6 +131,10 @@ jest.unstable_mockModule('../../src/services/stripePlanCatalog.js', () => ({
   resolveStripePriceIdForPlan: resolveStripePriceIdForPlanMock
 }));
 
+jest.unstable_mockModule('../../src/utils/auditLogger.js', () => ({
+  logAuditEvent: logAuditEventMock
+}));
+
 let router;
 
 beforeAll(async () => {
@@ -156,6 +161,7 @@ describe('Subscription lifecycle routes', () => {
       customer: { id: 'cus_test_123' },
       recreated: false
     });
+    logAuditEventMock.mockResolvedValue(undefined);
 
     prismaMock.user.findFirst.mockResolvedValue({
       id: 8,
@@ -340,8 +346,14 @@ describe('Subscription lifecycle routes', () => {
       paymentProvider: 'stripe',
       stripeSubscriptionId: 'sub_test_123'
     });
+    stripeClientMock.subscriptions.update.mockResolvedValue({
+      current_period_end: 1770000000
+    });
 
-    const response = await request(app).post('/api/subscription/cancel').send({});
+    const response = await request(app).post('/api/subscription/cancel').send({
+      reasonCode: 'LOW_QUALITY',
+      reasonDetail: 'Canli chat cevaplari bekledigim kadar iyi degil.'
+    });
 
     expect(response.status).toBe(200);
     expect(stripeClientMock.subscriptions.update).toHaveBeenCalledWith('sub_test_123', {
@@ -351,6 +363,43 @@ describe('Subscription lifecycle routes', () => {
       where: { businessId: 11 },
       data: { cancelAtPeriodEnd: true }
     });
+    expect(logAuditEventMock).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'subscription_cancel_requested',
+      actorUserId: 8,
+      businessId: 11,
+      metadata: expect.objectContaining({
+        subscriptionId: 33,
+        plan: 'PRO',
+        stripeSubscriptionId: 'sub_test_123',
+        reasonCode: 'LOW_QUALITY',
+        reasonDetail: 'Canli chat cevaplari bekledigim kadar iyi degil.',
+        source: 'dashboard_subscription'
+      })
+    }));
+  });
+
+  it('keeps cancellation backward compatible when no survey payload is sent', async () => {
+    prismaMock.subscription.findUnique.mockResolvedValue({
+      id: 33,
+      businessId: 11,
+      plan: 'PRO',
+      status: 'ACTIVE',
+      paymentProvider: 'stripe',
+      stripeSubscriptionId: 'sub_test_123'
+    });
+    stripeClientMock.subscriptions.update.mockResolvedValue({
+      current_period_end: 1770000000
+    });
+
+    const response = await request(app).post('/api/subscription/cancel').send({});
+
+    expect(response.status).toBe(200);
+    expect(logAuditEventMock).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({
+        reasonCode: 'UNSPECIFIED',
+        reasonDetail: null
+      })
+    }));
   });
 
   it('reactivates Stripe subscriptions by clearing period-end cancellation', async () => {

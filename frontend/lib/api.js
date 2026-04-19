@@ -148,7 +148,7 @@ export const apiClient = {
     createCheckout: (data) => api.post('/api/subscription/create-checkout', data),
     createAddOnCheckout: (data) => api.post('/api/subscription/addons/checkout', data),
     upgrade: (planId, locale) => api.post('/api/subscription/upgrade', { planId, locale }),
-    cancel: () => api.post('/api/subscription/cancel'),
+    cancel: (data = {}) => api.post('/api/subscription/cancel', data),
     reactivate: () => api.post('/api/subscription/reactivate'),
     undoScheduledChange: () => api.post('/api/subscription/undo-scheduled-change'),
     getBillingHistory: () => api.get('/api/subscription/billing-history'),
