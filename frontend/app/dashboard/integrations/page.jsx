@@ -25,7 +25,7 @@ import EmptyState from '@/components/EmptyState';
 import {
   Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2, CreditCard, Zap,
   MessageSquare, Target, Cloud, Calendar, CalendarDays, Smartphone,
-  ShoppingCart, Utensils, Scissors, Stethoscope, Package, Mail, Hash,
+  ShoppingCart, ShoppingBag, Utensils, Scissors, Stethoscope, Package, Mail, Hash,
   Wallet, Inbox, RefreshCw, Lock, Info, AlertTriangle
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
@@ -51,6 +51,7 @@ import {
   useIkasStatus,
   useTrendyolStatus,
   useHepsiburadaStatus,
+  useAmazonStatus,
   useSikayetvarStatus,
   useConnectWhatsApp,
   useDisconnectWhatsApp,
@@ -64,6 +65,8 @@ import {
   useConnectHepsiburada,
   useDisconnectHepsiburada,
   useTestHepsiburada,
+  useDisconnectAmazon,
+  useTestAmazon,
   useConnectSikayetvar,
   useDisconnectSikayetvar,
   useTestSikayetvar,
@@ -185,6 +188,7 @@ const INTEGRATION_ICONS = {
   IKAS: ({ className }) => <IntegrationLogo type="IKAS" className={className} />,
   TRENDYOL: ({ className }) => <IntegrationLogo type="TRENDYOL" className={className} />,
   HEPSIBURADA: ({ className }) => <IntegrationLogo type="HEPSIBURADA" className={className} />,
+  AMAZON: ShoppingBag,
   SIKAYETVAR: AlertTriangle,
   CUSTOM: Hash
 };
@@ -196,6 +200,7 @@ const INTEGRATION_DOCS = {
   IKAS: 'https://ikas.dev',
   TRENDYOL: 'https://developers.trendyol.com/docs/musteri-sorularini-cekme',
   HEPSIBURADA: 'https://developers.hepsiburada.com/hepsiburada/reference/saticiya-sor',
+  AMAZON: 'https://developer-docs.amazon.com/sp-api/docs/messaging-api',
   SIKAYETVAR: 'https://doc.sikayetplus.com/'
 };
 
@@ -210,6 +215,8 @@ export default function IntegrationsPage() {
     connectionActive: isTr ? 'Bağlantı aktif' : 'Connection active',
     sellerId: 'Seller ID',
     merchantId: 'Merchant ID',
+    sellingPartnerId: isTr ? 'Selling Partner ID' : 'Selling Partner ID',
+    marketplaceId: isTr ? 'Marketplace ID' : 'Marketplace ID',
     apiKey: 'API Key',
     apiSecret: 'API Secret',
     company: isTr ? 'Şirket' : 'Company',
@@ -250,6 +257,17 @@ export default function IntegrationsPage() {
     merchantIdPlaceholder: isTr ? 'mağaza kimliği' : 'merchant identifier',
     hepsiburadaHelper: isTr ? 'Hepsiburada soruları çekilir, AI yanıtı oluşturulur ve panelden onaylandığında platforma gönderilir.' : 'Hepsiburada questions are pulled, AI replies are generated, and posted after approval from the panel.',
     hepsiburadaConnectButton: isTr ? 'Hepsiburada Bağla' : 'Connect Hepsiburada',
+    amazonConnectDescription: isTr ? 'Amazon SP-API OAuth bağlantısı. Buyer Messaging ve sipariş bazlı müşteri iletişimi için altyapı hazırlar; ürün soru-cevap feedi değildir.' : 'Amazon SP-API OAuth connection. Prepares infrastructure for Buyer Messaging and order-based customer communication; this is not a product Q&A feed.',
+    amazonConnectSuccess: isTr ? 'Amazon yönlendirmesi başlatıldı' : 'Amazon authorization started',
+    amazonConnectError: isTr ? 'Amazon bağlantısı başlatılamadı' : 'Failed to start Amazon authorization',
+    amazonDisconnected: isTr ? 'Amazon bağlantısı kesildi' : 'Amazon disconnected',
+    amazonActive: isTr ? 'Amazon bağlantısı aktif' : 'Amazon connection is active',
+    amazonValidationWarning: isTr ? 'OAuth tamam, ancak test için SP-API rolü ve/veya gerçek sipariş verisi gerekebilir.' : 'OAuth is complete, but SP-API roles and/or real order data may still be required for validation.',
+    amazonBuyerMessaging: isTr ? 'Buyer Messaging hazır' : 'Buyer Messaging ready',
+    amazonProductQaUnsupported: isTr ? 'Ürün soru-cevap feedi Amazon SP-API içinde birebir sunulmuyor.' : 'Product Q&A feed is not exposed one-to-one in Amazon SP-API.',
+    amazonSandbox: isTr ? 'Sandbox modu' : 'Sandbox mode',
+    amazonAuthorizedMarketplaces: isTr ? 'Yetkili pazarlar' : 'Authorized marketplaces',
+    amazonRolesHint: isTr ? 'Derin test için uygulamada en az Selling Partner Insights veya Product Listing rolü önerilir.' : 'For deeper validation, configure at least the Selling Partner Insights or Product Listing role in the app.',
     sikayetvarModalTitle: isTr ? 'Şikayetvar Bağlantısı' : 'Sikayetvar Connection',
     sikayetvarModalDescription: isTr ? 'Kurumsal üyelik tokenınızı girin. Sistem bağlantıyı test eder, açık şikayetleri çeker ve AI taslaklarını manuel onaya hazırlar.' : 'Enter your corporate membership token. The system will test the connection, pull open complaints, and prepare AI drafts for manual approval.',
     sikayetvarTokenLabel: isTr ? 'X-Auth-Key / API Token' : 'X-Auth-Key / API Token',
@@ -298,6 +316,9 @@ export default function IntegrationsPage() {
   const { data: hepsiburadaStatus } = useHepsiburadaStatus({
     enabled: integrationsLoaded && hasIntegrationType('HEPSIBURADA') && (isIntegrationConnected('HEPSIBURADA') || hepsiburadaModalOpen),
   });
+  const { data: amazonStatus } = useAmazonStatus({
+    enabled: integrationsLoaded && hasIntegrationType('AMAZON') && isIntegrationConnected('AMAZON'),
+  });
   const { data: sikayetvarStatus } = useSikayetvarStatus({
     enabled: integrationsLoaded && hasIntegrationType('SIKAYETVAR') && (isIntegrationConnected('SIKAYETVAR') || sikayetvarModalOpen),
   });
@@ -319,6 +340,8 @@ export default function IntegrationsPage() {
   const connectHepsiburada = useConnectHepsiburada();
   const disconnectHepsiburada = useDisconnectHepsiburada();
   const testHepsiburada = useTestHepsiburada();
+  const disconnectAmazon = useDisconnectAmazon();
+  const testAmazon = useTestAmazon();
   const connectSikayetvar = useConnectSikayetvar();
   const disconnectSikayetvar = useDisconnectSikayetvar();
   const testSikayetvar = useTestSikayetvar();
@@ -784,12 +807,21 @@ const handleShopifyConnect = async () => {
         window.location.href = response.data.authUrl;
         return;
       }
+      if (integration.type === 'AMAZON') {
+        const response = await apiClient.get('/api/integrations/amazon/auth');
+        window.location.href = response.data.authUrl;
+        return;
+      }
       if (integration.type === 'IKAS') { setIkasModalOpen(true); return; }
       if (integration.type === 'TRENDYOL') { setTrendyolModalOpen(true); return; }
       if (integration.type === 'HEPSIBURADA') { setHepsiburadaModalOpen(true); return; }
       if (integration.type === 'SIKAYETVAR') { setSikayetvarModalOpen(true); return; }
       toast.info(`${integration.name} ${t('dashboard.integrationsPage.comingSoonIntegration')}`);
     } catch (error) {
+      if (integration.type === 'AMAZON') {
+        toast.error(error.response?.data?.error || marketplaceCopy.amazonConnectError);
+        return;
+      }
       toast.error(t('dashboard.integrationsPage.connectFailed'));
     }
   };
@@ -815,6 +847,10 @@ const handleShopifyConnect = async () => {
     else if (integration.type === 'HEPSIBURADA') {
       await disconnectHepsiburada.mutateAsync();
       toast.success(marketplaceCopy.hepsiburadaDisconnected);
+    }
+    else if (integration.type === 'AMAZON') {
+      await disconnectAmazon.mutateAsync();
+      toast.success(marketplaceCopy.amazonDisconnected);
     }
     else if (integration.type === 'SIKAYETVAR') {
       await disconnectSikayetvar.mutateAsync();
@@ -853,6 +889,19 @@ const handleShopifyConnect = async () => {
       const response = await testHepsiburada.mutateAsync();
       if (response.data.success) toast.success(marketplaceCopy.hepsiburadaActive);
       else toast.error(t('dashboard.integrationsPage.testFailed'));
+      return;
+    }
+    if (integration.type === 'AMAZON') {
+      const response = await testAmazon.mutateAsync();
+      if (response.data.success) {
+        if (response.data.validationWarning) {
+          toast.info(response.data.validationWarning);
+        } else {
+          toast.success(marketplaceCopy.amazonActive);
+        }
+      } else {
+        toast.error(t('dashboard.integrationsPage.testFailed'));
+      }
       return;
     }
     if (integration.type === 'SIKAYETVAR') {
@@ -904,6 +953,7 @@ const handleShopifyConnect = async () => {
       IKAS: t('dashboard.integrationsPage.ikasConnect'),
       TRENDYOL: t('dashboard.integrationsPage.trendyolConnect'),
       HEPSIBURADA: t('dashboard.integrationsPage.hepsiburadaConnect'),
+      AMAZON: marketplaceCopy.amazonConnectDescription,
       SIKAYETVAR: t('dashboard.integrationsPage.sikayetvarConnect'),
       IDEASOFT: t('dashboard.integrationsPage.ideasoftConnect'),
       TICIMAX: t('dashboard.integrationsPage.ticimaxConnect')
@@ -953,7 +1003,7 @@ const handleShopifyConnect = async () => {
       id: 'marketplace',
       title: marketplaceCopy.marketplaceCategory,
       icon: Package,
-      types: ['TRENDYOL', 'HEPSIBURADA']
+      types: ['TRENDYOL', 'HEPSIBURADA', 'AMAZON']
     },
     {
       id: 'complaints',
@@ -1005,20 +1055,21 @@ const handleShopifyConnect = async () => {
     const isWhatsApp = integration.type === 'WHATSAPP';
     const isTrendyol = integration.type === 'TRENDYOL';
     const isHepsiburada = integration.type === 'HEPSIBURADA';
+    const isAmazon = integration.type === 'AMAZON';
     const isSikayetvar = integration.type === 'SIKAYETVAR';
-    const isMarketplaceBeta = isTrendyol || isHepsiburada || isSikayetvar;
+    const isMarketplaceBeta = isTrendyol || isHepsiburada || isAmazon || isSikayetvar;
     const isMarketplaceImageIcon = isTrendyol || isHepsiburada;
     const disabled = isEcommerceDisabled(integration.type);
     const marketplaceStatus = isTrendyol
       ? trendyolStatus
-      : (isHepsiburada ? hepsiburadaStatus : null);
+      : (isHepsiburada ? hepsiburadaStatus : (isAmazon ? amazonStatus : null));
     const complaintStatus = isSikayetvar ? sikayetvarStatus : null;
     const whatsappConnected = isWhatsApp ? Boolean(whatsappStatus?.connected ?? integration.connected) : integration.connected;
     const whatsappNeedsReconnect = isWhatsApp ? Boolean(whatsappStatus?.needsReconnect) : false;
     const shouldShowWhatsappDetails = isWhatsApp && (whatsappConnected || whatsappNeedsReconnect);
     const isEffectivelyConnected = isWhatsApp
       ? (whatsappConnected || whatsappNeedsReconnect)
-      : (isTrendyol || isHepsiburada)
+      : (isTrendyol || isHepsiburada || isAmazon)
         ? Boolean(marketplaceStatus?.connected ?? integration.connected)
         : isSikayetvar
           ? Boolean(complaintStatus?.connected ?? integration.connected)
@@ -1029,7 +1080,9 @@ const handleShopifyConnect = async () => {
     const whatsappExpiryLabel = formatWhatsAppTimestamp(whatsappStatus?.tokenExpiresAt);
     const marketplaceIdentifier = isTrendyol
       ? marketplaceStatus?.sellerId
-      : marketplaceStatus?.merchantId;
+      : isHepsiburada
+        ? marketplaceStatus?.merchantId
+        : marketplaceStatus?.sellingPartnerId;
     const complaintIdentifier = complaintStatus?.companyName || complaintStatus?.companyId;
     const whatsappActionLabel = whatsappEmbeddedSignupState === 'awaiting_completion'
       ? t('dashboard.integrationsPage.whatsappWaitingForMeta')
@@ -1105,6 +1158,56 @@ const handleShopifyConnect = async () => {
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
               {marketplaceCopy.marketplacePanel}: <button className="underline" onClick={() => { window.location.href = '/dashboard/marketplace-qa'; }}>{marketplaceCopy.marketplacePanelCta}</button>
             </p>
+          </div>
+        )}
+
+        {isAmazon && isEffectivelyConnected && (
+          <div className="space-y-2 mb-4">
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              {marketplaceCopy.amazonBuyerMessaging}
+            </p>
+            {marketplaceIdentifier && (
+              <p className="text-xs text-neutral-700 dark:text-neutral-300">
+                {marketplaceCopy.sellingPartnerId}: <span className="font-medium">{marketplaceIdentifier}</span>
+              </p>
+            )}
+            {marketplaceStatus?.marketplaceId && (
+              <p className="text-xs text-neutral-700 dark:text-neutral-300">
+                {marketplaceCopy.marketplaceId}: <span className="font-medium">{marketplaceStatus.marketplaceId}</span>
+              </p>
+            )}
+            {marketplaceStatus?.sellerCentralUrl && (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 break-all">
+                Seller Central: <span className="font-medium">{marketplaceStatus.sellerCentralUrl}</span>
+              </p>
+            )}
+            {marketplaceStatus?.useSandbox && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                {marketplaceCopy.amazonSandbox}
+              </p>
+            )}
+            {marketplaceStatus?.authorizedMarketplaces?.length > 0 && (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {marketplaceCopy.amazonAuthorizedMarketplaces}: {marketplaceStatus.authorizedMarketplaces.map((item) => item.marketplaceName || item.marketplaceId).filter(Boolean).join(', ')}
+              </p>
+            )}
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {marketplaceCopy.amazonProductQaUnsupported}
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {marketplaceCopy.amazonRolesHint}
+            </p>
+            {marketplaceStatus?.lastValidationError && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                {marketplaceStatus.lastValidationError}
+              </p>
+            )}
+            {marketplaceStatus?.lastSync && (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {marketplaceCopy.lastSync}: {formatWhatsAppTimestamp(marketplaceStatus.lastSync)}
+              </p>
+            )}
           </div>
         )}
 
