@@ -37,6 +37,7 @@ import {
 } from '../services/billingAudit.js';
 import runtimeConfig from '../config/runtime.js';
 import { buildUsageAlerts } from '../services/usageAlertService.js';
+import { logAuditEvent } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -116,6 +117,29 @@ const BILLING_V2_EXTENSION_SELECT = {
 };
 
 const LOCAL_MANAGED_CYCLE_MS = 30 * 24 * 60 * 60 * 1000;
+const SUBSCRIPTION_CANCELLATION_REASON_LABELS = Object.freeze({
+  UNSPECIFIED: 'Unspecified',
+  LOW_USAGE: 'Low usage',
+  NO_NEED: 'No longer needed',
+  TOO_EXPENSIVE: 'Too expensive',
+  LOW_QUALITY: 'Low quality',
+  MISSING_FEATURES: 'Missing features',
+  TOO_COMPLEX: 'Too complex',
+  OTHER: 'Other'
+});
+
+function normalizeCancellationReasonCode(rawReasonCode) {
+  const normalized = String(rawReasonCode || '').trim().toUpperCase();
+  if (!normalized) return 'UNSPECIFIED';
+  return SUBSCRIPTION_CANCELLATION_REASON_LABELS[normalized] ? normalized : 'OTHER';
+}
+
+function sanitizeCancellationReasonDetail(rawReasonDetail) {
+  if (typeof rawReasonDetail !== 'string') return null;
+  const trimmed = rawReasonDetail.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 1000);
+}
 
 function isMissingBillingSchemaError(error) {
   const code = String(error?.code || '').toUpperCase();
@@ -2224,6 +2248,8 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
 router.post('/cancel', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
+    const cancellationReasonCode = normalizeCancellationReasonCode(req.body?.reasonCode);
+    const cancellationReasonDetail = sanitizeCancellationReasonDetail(req.body?.reasonDetail);
 
     const subscription = await prisma.subscription.findUnique({
       where: { businessId }
@@ -2248,13 +2274,35 @@ router.post('/cancel', verifyBusinessAccess, async (req, res) => {
       }
     });
 
+    const cancelAt = canceledSubscription?.current_period_end
+      ? new Date(canceledSubscription.current_period_end * 1000)
+      : (subscription.currentPeriodEnd || null);
+
+    await logAuditEvent({
+      action: 'subscription_cancel_requested',
+      actorUserId: req.userId || req.user?.id || null,
+      businessId,
+      metadata: {
+        subscriptionId: subscription.id,
+        plan: subscription.plan,
+        provider: 'stripe',
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        cancelAtPeriodEnd: true,
+        cancelAt: cancelAt ? cancelAt.toISOString() : null,
+        reasonCode: cancellationReasonCode,
+        reasonLabel: SUBSCRIPTION_CANCELLATION_REASON_LABELS[cancellationReasonCode] || cancellationReasonCode,
+        reasonDetail: cancellationReasonDetail,
+        source: 'dashboard_subscription'
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] || null
+    });
+
     res.json({
       success: true,
       provider: 'stripe',
       message: 'Subscription will be canceled at the end of the current period',
-      cancelAt: canceledSubscription?.current_period_end
-        ? new Date(canceledSubscription.current_period_end * 1000)
-        : (subscription.currentPeriodEnd || null)
+      cancelAt
     });
   } catch (error) {
     console.error('Cancel subscription error:', error);

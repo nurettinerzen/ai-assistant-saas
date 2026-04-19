@@ -10,6 +10,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, CreditCard, Loader2, AlertCircle, MessageSquare, PhoneCall, X } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate } from '@/lib/utils';
@@ -73,6 +82,56 @@ const BASE_PLANS = [
   },
 ];
 
+const CANCELLATION_REASON_OPTIONS = Object.freeze([
+  { code: 'LOW_USAGE', tr: 'Çok kullanmıyorum', en: 'I do not use it enough' },
+  { code: 'NO_NEED', tr: 'Artık ihtiyacım yok', en: 'I no longer need it' },
+  { code: 'TOO_EXPENSIVE', tr: 'Pahalı geldi', en: 'It feels too expensive' },
+  { code: 'LOW_QUALITY', tr: 'Kalitesini yeterli bulmadım', en: 'The quality is not good enough' },
+  { code: 'MISSING_FEATURES', tr: 'Özellikler ihtiyacımı karşılamıyor', en: 'The features do not meet my needs' },
+  { code: 'TOO_COMPLEX', tr: 'Karmaşık geldi', en: 'It feels too complex' },
+  { code: 'OTHER', tr: 'Diğer', en: 'Other' },
+]);
+
+function getCancellationFlowCopy(locale) {
+  const isTr = String(locale || '').toLowerCase().startsWith('tr');
+
+  if (isTr) {
+    return {
+      sectionTitle: 'Aboneliği Sonlandır',
+      sectionDescription: 'Aboneliğinizi dönem sonunda sonlandırabilirsiniz. İptalden önce kısa bir geri bildirim alacağız.',
+      sectionFootnote: 'İptal etseniz bile mevcut dönem bitene kadar kullanımınız devam eder.',
+      confirmTitle: 'Gideceğinizi duymak üzücü',
+      confirmDescription: 'Devam etmek isterseniz aboneliğiniz dönem sonunda iptal edilecektir.',
+      confirmWarning: 'Bu işlem anında erişiminizi kapatmaz. Mevcut plan haklarınız dönem sonuna kadar aktif kalır.',
+      confirmAction: 'İptale Devam Et',
+      surveyTitle: 'Ayrılma nedeninizi paylaşır mısınız?',
+      surveyDescription: 'Bu geri bildirim yalnızca ürün ve fiyatlandırmayı iyileştirmek için kullanılacaktır.',
+      surveyOtherLabel: 'Diğer neden',
+      surveyOtherPlaceholder: 'İsterseniz kısaca paylaşın',
+      surveySubmit: 'İptali Onayla',
+      surveyBack: 'Geri',
+      surveySelectPrompt: 'Lütfen bir neden seçin.',
+    };
+  }
+
+  return {
+    sectionTitle: 'End Subscription',
+    sectionDescription: 'You can end your subscription at the end of the current billing period. We will ask for a short reason first.',
+    sectionFootnote: 'Your current access stays active until the period ends.',
+    confirmTitle: 'Sorry to see you go',
+    confirmDescription: 'If you continue, your subscription will be canceled at the end of the current period.',
+    confirmWarning: 'This does not remove access immediately. Your current plan stays active until the billing period ends.',
+    confirmAction: 'Continue to Cancellation',
+    surveyTitle: 'Could you share why you are leaving?',
+    surveyDescription: 'This feedback is only used to improve the product and pricing.',
+    surveyOtherLabel: 'Other reason',
+    surveyOtherPlaceholder: 'Share a short note if you want',
+    surveySubmit: 'Confirm Cancellation',
+    surveyBack: 'Back',
+    surveySelectPrompt: 'Please select a reason.',
+  };
+}
+
 export default function SubscriptionPage() {
   const { t, locale } = useLanguage();
   const { can, loading: permissionsLoading } = usePermissions();
@@ -87,6 +146,10 @@ export default function SubscriptionPage() {
   const loading = subscriptionLoading || billingLoading;
   const [upgrading, setUpgrading] = useState(false);
   const [purchasingAddOn, setPurchasingAddOn] = useState('');
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelDialogStep, setCancelDialogStep] = useState('confirm');
+  const [selectedCancellationReason, setSelectedCancellationReason] = useState('');
+  const [cancellationReasonDetail, setCancellationReasonDetail] = useState('');
   // Credit modal state
   const [creditModalOpen, setCreditModalOpen] = useState(false);
   const [userCountry, setUserCountry] = useState(() => {
@@ -129,6 +192,11 @@ export default function SubscriptionPage() {
 
   const region = getRegion(); // For pricing (based on country)
   const regionConfig = REGIONAL_PRICING[region] || REGIONAL_PRICING.US;
+  const cancellationCopy = getCancellationFlowCopy(locale);
+  const cancellationReasons = CANCELLATION_REASON_OPTIONS.map((reason) => ({
+    code: reason.code,
+    label: String(locale || '').toLowerCase().startsWith('tr') ? reason.tr : reason.en,
+  }));
 
   // Format currency based on region
   const formatPrice = (amount) => {
@@ -200,6 +268,13 @@ export default function SubscriptionPage() {
   const getPlanName = (plan) => {
     return t(plan.nameKey);
   };
+
+  const resetCancellationFlow = useCallback(() => {
+    setCancelDialogOpen(false);
+    setCancelDialogStep('confirm');
+    setSelectedCancellationReason('');
+    setCancellationReasonDetail('');
+  }, []);
 
   // Check for success/error in URL params (after payment callback)
   useEffect(() => {
@@ -357,18 +432,47 @@ export default function SubscriptionPage() {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm(t('dashboard.subscriptionPage.cancelConfirm'))) {
+    setCancelDialogOpen(true);
+    setCancelDialogStep('confirm');
+  };
+
+  const handleCancelDialogOpenChange = (open) => {
+    if (upgrading) return;
+    if (!open) {
+      resetCancellationFlow();
+      return;
+    }
+
+    setCancelDialogOpen(true);
+  };
+
+  const handleContinueToCancellationSurvey = () => {
+    setCancelDialogStep('survey');
+  };
+
+  const handleConfirmCancellation = async () => {
+    if (!selectedCancellationReason) {
+      toast.error(cancellationCopy.surveySelectPrompt);
+      return;
+    }
+
+    if (selectedCancellationReason === 'OTHER' && !cancellationReasonDetail.trim()) {
+      toast.error(cancellationCopy.surveyOtherLabel);
       return;
     }
 
     try {
       setUpgrading(true);
-      const response = await apiClient.post('/api/subscription/cancel');
+      const response = await apiClient.subscription.cancel({
+        reasonCode: selectedCancellationReason,
+        reasonDetail: cancellationReasonDetail.trim() || undefined,
+      });
 
       if (response.data?.success) {
         const cancelDate = response.data.cancelAt
           ? formatDate(response.data.cancelAt, 'long', locale)
           : null;
+        resetCancellationFlow();
         toast.success(
           cancelDate
             ? t('dashboard.subscriptionPage.cancelSuccess').replace('{date}', cancelDate)
@@ -439,6 +543,8 @@ export default function SubscriptionPage() {
   const voiceAddOnCatalog = subscription?.addOnCatalog?.voice || [];
   const currentPlanPricing = subscription ? getPlanPricing(subscription.plan) : null;
   const showCancelableSubscription = Boolean(subscription?.stripeSubscriptionId) && !['FREE', 'TRIAL', 'PAYG'].includes(subscription.plan);
+  const canSubmitCancellation = Boolean(selectedCancellationReason)
+    && (selectedCancellationReason !== 'OTHER' || Boolean(cancellationReasonDetail.trim()));
   const pendingPlanName = subscription?.pendingPlanId
     ? getPlanDisplayName(subscription.pendingPlanId, locale)
     : null;
@@ -519,9 +625,7 @@ export default function SubscriptionPage() {
         <div className="space-y-6">
           {/* Compact Plan Info Bar */}
           <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-6 py-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              {/* Left side: plan badge + info items */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <Badge className="bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-400 text-sm px-3 py-1">
                   {getPlanDisplayName(subscription.plan, locale)}
                 </Badge>
@@ -572,30 +676,6 @@ export default function SubscriptionPage() {
                     </div>
                   </>
                 )}
-              </div>
-
-              {/* Right side: cancel button */}
-              {showCancelableSubscription && !subscription.cancelAtPeriodEnd && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelSubscription}
-                  disabled={upgrading}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 shrink-0"
-                >
-                  {upgrading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t('dashboard.subscriptionPage.processing')}
-                    </>
-                  ) : (
-                    <>
-                      <X className="mr-2 h-4 w-4" />
-                      {t('dashboard.subscriptionPage.cancelSubscription')}
-                    </>
-                  )}
-                </Button>
-              )}
             </div>
 
             {/* Canceled status message */}
@@ -632,6 +712,45 @@ export default function SubscriptionPage() {
               </div>
             )}
           </div>
+
+          {showCancelableSubscription && !subscription.cancelAtPeriodEnd && (
+            <div className="rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50/70 dark:bg-red-950/20 px-5 py-5 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                    <AlertCircle className="h-4 w-4" />
+                    <h3 className="text-sm font-semibold">{cancellationCopy.sectionTitle}</h3>
+                  </div>
+                  <p className="text-sm text-red-700/90 dark:text-red-200/90">
+                    {cancellationCopy.sectionDescription}
+                  </p>
+                  <p className="text-xs text-red-700/70 dark:text-red-200/70">
+                    {cancellationCopy.sectionFootnote}
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelSubscription}
+                  disabled={upgrading}
+                  className="shrink-0 border-red-300 bg-white text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-800 dark:bg-transparent dark:text-red-300"
+                >
+                  {upgrading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('dashboard.subscriptionPage.processing')}
+                    </>
+                  ) : (
+                    <>
+                      <X className="mr-2 h-4 w-4" />
+                      {t('dashboard.subscriptionPage.cancelSubscription')}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {subscription.pendingPlanId && (
             <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
@@ -672,6 +791,116 @@ export default function SubscriptionPage() {
           />
         </div>
       )}
+
+      <Dialog open={cancelDialogOpen} onOpenChange={handleCancelDialogOpenChange}>
+        <DialogContent className="sm:max-w-xl">
+          {cancelDialogStep === 'confirm' ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{cancellationCopy.confirmTitle}</DialogTitle>
+                <DialogDescription>
+                  {cancellationCopy.confirmDescription}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                {cancellationCopy.confirmWarning}
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={resetCancellationFlow}
+                  disabled={upgrading}
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  onClick={handleContinueToCancellationSurvey}
+                  disabled={upgrading}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {cancellationCopy.confirmAction}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>{cancellationCopy.surveyTitle}</DialogTitle>
+                <DialogDescription>
+                  {cancellationCopy.surveyDescription}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3">
+                {cancellationReasons.map((reason) => {
+                  const selected = selectedCancellationReason === reason.code;
+                  return (
+                    <button
+                      key={reason.code}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCancellationReason(reason.code);
+                        if (reason.code !== 'OTHER') {
+                          setCancellationReasonDetail('');
+                        }
+                      }}
+                      className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+                        selected
+                          ? 'border-red-500 bg-red-50 dark:border-red-500 dark:bg-red-950/30'
+                          : 'border-neutral-200 bg-white hover:border-red-200 hover:bg-red-50/50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-red-900 dark:hover:bg-red-950/20'
+                      }`}
+                    >
+                      <span className={`text-sm font-medium ${selected ? 'text-red-700 dark:text-red-300' : 'text-neutral-900 dark:text-white'}`}>
+                        {reason.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedCancellationReason === 'OTHER' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-neutral-900 dark:text-white">
+                    {cancellationCopy.surveyOtherLabel}
+                  </label>
+                  <Textarea
+                    rows={4}
+                    value={cancellationReasonDetail}
+                    onChange={(event) => setCancellationReasonDetail(event.target.value)}
+                    placeholder={cancellationCopy.surveyOtherPlaceholder}
+                  />
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setCancelDialogStep('confirm')}
+                  disabled={upgrading}
+                >
+                  {cancellationCopy.surveyBack}
+                </Button>
+                <Button
+                  onClick={handleConfirmCancellation}
+                  disabled={upgrading || !canSubmitCancellation}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {upgrading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('dashboard.subscriptionPage.processing')}
+                    </>
+                  ) : (
+                    cancellationCopy.surveySubmit
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Add-on Store — only purchase options, usage shown in CreditBalance above */}
       {!loading && subscription && (writtenAddOnCatalog.length > 0 || voiceAddOnCatalog.length > 0) && (
