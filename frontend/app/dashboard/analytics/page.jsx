@@ -1,10 +1,11 @@
 /**
- * Analytics Dashboard — Modern dark SaaS redesign
+ * Analytics Dashboard — Modern SaaS design, light + dark theme aware
  */
 
 'use client';
 
 import React, { useState } from 'react';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getPageHelp } from '@/content/pageHelp';
@@ -50,11 +51,11 @@ import {
 
 /* ─── Colour tokens ──────────────────────────────────────────────── */
 const C = {
-  phone:    { hex: '#00D4E8', glow: 'rgba(0,212,232,0.35)',    bg: 'from-cyan-500/20 to-cyan-600/5',    border: 'border-cyan-500/30',    text: 'text-cyan-400' },
-  chat:     { hex: '#6C63FF', glow: 'rgba(108,99,255,0.35)',   bg: 'from-violet-500/20 to-violet-600/5', border: 'border-violet-500/30', text: 'text-violet-400' },
-  whatsapp: { hex: '#22D3A5', glow: 'rgba(34,211,165,0.35)',   bg: 'from-emerald-500/20 to-emerald-600/5', border: 'border-emerald-500/30', text: 'text-emerald-400' },
-  email:    { hex: '#F59E0B', glow: 'rgba(245,158,11,0.35)',   bg: 'from-amber-500/20 to-amber-600/5',  border: 'border-amber-500/30',  text: 'text-amber-400' },
-  duration: { hex: '#A78BFA', glow: 'rgba(167,139,250,0.35)',  bg: 'from-purple-500/20 to-purple-600/5', border: 'border-purple-500/30', text: 'text-purple-400' },
+  phone:    { hex: '#00D4E8', light: '#0891b2', bg: 'from-cyan-500/20 to-cyan-600/5',      lightBg: 'from-cyan-50 to-cyan-50/50',     border: 'border-cyan-500/30', lightBorder: 'border-cyan-200', text: 'text-cyan-400', lightText: 'text-cyan-600' },
+  chat:     { hex: '#6C63FF', light: '#4f46e5', bg: 'from-violet-500/20 to-violet-600/5',  lightBg: 'from-violet-50 to-violet-50/50', border: 'border-violet-500/30', lightBorder: 'border-violet-200', text: 'text-violet-400', lightText: 'text-violet-600' },
+  whatsapp: { hex: '#22D3A5', light: '#059669', bg: 'from-emerald-500/20 to-emerald-600/5', lightBg: 'from-emerald-50 to-emerald-50/50', border: 'border-emerald-500/30', lightBorder: 'border-emerald-200', text: 'text-emerald-400', lightText: 'text-emerald-600' },
+  email:    { hex: '#F59E0B', light: '#d97706', bg: 'from-amber-500/20 to-amber-600/5',    lightBg: 'from-amber-50 to-amber-50/50',   border: 'border-amber-500/30', lightBorder: 'border-amber-200', text: 'text-amber-400', lightText: 'text-amber-600' },
+  duration: { hex: '#A78BFA', light: '#7c3aed', bg: 'from-purple-500/20 to-purple-600/5', lightBg: 'from-purple-50 to-purple-50/50', border: 'border-purple-500/30', lightBorder: 'border-purple-200', text: 'text-purple-400', lightText: 'text-purple-600' },
 };
 
 /* ─── WhatsApp SVG ───────────────────────────────────────────────── */
@@ -64,117 +65,55 @@ const WhatsAppIcon = ({ className }) => (
   </svg>
 );
 
-/* ─── Gradient defs for area chart ──────────────────────────────── */
-const ChartGradients = () => (
+/* ─── SVG gradient defs (used inside Recharts) ───────────────────── */
+const ChartGradients = ({ dark }) => (
   <defs>
-    {Object.entries(C).filter(([k]) => k !== 'duration').map(([key, val]) => (
-      <linearGradient key={key} id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="5%"  stopColor={val.hex} stopOpacity={0.45} />
-        <stop offset="95%" stopColor={val.hex} stopOpacity={0.02} />
-      </linearGradient>
-    ))}
-    <linearGradient id="grad-duration" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="5%"  stopColor={C.duration.hex} stopOpacity={0.45} />
-      <stop offset="95%" stopColor={C.duration.hex} stopOpacity={0.02} />
-    </linearGradient>
-    {/* bar gradients */}
-    {Object.entries(C).filter(([k]) => k !== 'duration').map(([key, val]) => (
-      <linearGradient key={`bar-${key}`} id={`bar-${key}`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%"  stopColor={val.hex} stopOpacity={1} />
-        <stop offset="100%" stopColor={val.hex} stopOpacity={0.55} />
-      </linearGradient>
+    {[
+      { id: 'phone',    color: C.phone.hex },
+      { id: 'chat',     color: C.chat.hex },
+      { id: 'whatsapp', color: C.whatsapp.hex },
+      { id: 'email',    color: C.email.hex },
+    ].map(({ id, color }) => (
+      <React.Fragment key={id}>
+        <linearGradient id={`grad-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%"  stopColor={color} stopOpacity={dark ? 0.45 : 0.3} />
+          <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+        </linearGradient>
+        <linearGradient id={`bar-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor={color} stopOpacity={1} />
+          <stop offset="100%" stopColor={color} stopOpacity={dark ? 0.55 : 0.7} />
+        </linearGradient>
+      </React.Fragment>
     ))}
   </defs>
 );
 
-/* ─── Shared tooltip style ───────────────────────────────────────── */
-const tooltipStyle = {
+/* ─── Chart style helpers (theme-aware) ─────────────────────────── */
+const makeTooltipStyle = (dark) => ({
   contentStyle: {
-    backgroundColor: '#0f1629',
-    border: '1px solid rgba(255,255,255,0.1)',
+    backgroundColor: dark ? '#0f1629' : '#ffffff',
+    border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`,
     borderRadius: '12px',
-    color: '#e2e8f0',
+    color: dark ? '#e2e8f0' : '#111827',
     fontSize: 12,
-    boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+    boxShadow: dark ? '0 20px 40px rgba(0,0,0,0.5)' : '0 10px 30px rgba(0,0,0,0.12)',
   },
-  labelStyle: { color: '#94a3b8', marginBottom: 4 },
-  itemStyle: { color: '#e2e8f0' },
-  cursor: { stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 },
-};
+  labelStyle: { color: dark ? '#94a3b8' : '#6b7280', marginBottom: 4 },
+  itemStyle:  { color: dark ? '#e2e8f0' : '#374151' },
+  cursor:     { stroke: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', strokeWidth: 1 },
+});
 
-/* ─── Shared axis props ──────────────────────────────────────────── */
-const axisProps = {
-  tick: { fill: '#64748b', fontSize: 11 },
-  axisLine: { stroke: 'rgba(255,255,255,0.06)' },
+const makeAxisProps = (dark) => ({
+  tick:     { fill: dark ? '#64748b' : '#9ca3af', fontSize: 11 },
+  axisLine: { stroke: dark ? 'rgba(255,255,255,0.06)' : '#e5e7eb' },
   tickLine: false,
-};
+});
 
-const gridProps = {
+const makeGridProps = (dark) => ({
   strokeDasharray: '3 3',
-  stroke: 'rgba(255,255,255,0.05)',
+  stroke: dark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
   vertical: false,
-};
-
-/* ─── Stat card ──────────────────────────────────────────────────── */
-function StatCard({ icon: Icon, value, label, colorKey, trend }) {
-  const col = C[colorKey] || C.phone;
-  const isUp = trend > 0;
-  const isNeutral = trend === undefined || trend === null;
-  return (
-    <div className={`relative overflow-hidden rounded-2xl border ${col.border} bg-gradient-to-br ${col.bg} backdrop-blur-sm p-5`}
-         style={{ background: 'rgba(15,22,41,0.7)' }}>
-      {/* glow blob */}
-      <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-30"
-           style={{ background: col.hex }} />
-      <div className="relative">
-        <div className="flex items-center justify-between mb-3">
-          <div className="p-2 rounded-xl" style={{ background: `${col.hex}22` }}>
-            <Icon className={`h-4 w-4 ${col.text}`} />
-          </div>
-          {!isNeutral && (
-            <span className={`flex items-center gap-0.5 text-xs font-semibold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              {Math.abs(trend)}%
-            </span>
-          )}
-        </div>
-        <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Section card shell ─────────────────────────────────────────── */
-function Card({ children, className = '' }) {
-  return (
-    <div className={`rounded-2xl border border-white/[0.07] backdrop-blur-sm p-5 ${className}`}
-         style={{ background: 'rgba(15,22,41,0.7)' }}>
-      {children}
-    </div>
-  );
-}
-
-function CardTitle({ children }) {
-  return <h3 className="text-sm font-semibold text-slate-200 mb-4">{children}</h3>;
-}
-
-/* ─── Channel filter pill ────────────────────────────────────────── */
-function Pill({ active, onClick, color, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all flex items-center gap-1.5 ${
-        active
-          ? 'text-white shadow-lg'
-          : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
-      }`}
-      style={active ? { background: color } : {}}
-    >
-      {children}
-    </button>
-  );
-}
+});
 
 /* ─── Custom donut label ─────────────────────────────────────────── */
 const DonutLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }) => {
@@ -189,11 +128,85 @@ const DonutLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }) 
   );
 };
 
+/* ─── Stat card ──────────────────────────────────────────────────── */
+function StatCard({ icon: Icon, value, label, colorKey, dark }) {
+  const col = C[colorKey] || C.phone;
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border p-5 transition-colors
+      ${dark
+        ? `${col.border} bg-gradient-to-br ${col.bg}`
+        : `${col.lightBorder} bg-gradient-to-br ${col.lightBg} bg-white`
+      }`}
+      style={dark ? { background: 'rgba(15,22,41,0.7)' } : {}}
+    >
+      {/* glow blob — dark only */}
+      {dark && (
+        <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-30"
+             style={{ background: col.hex }} />
+      )}
+      <div className="relative">
+        <div className="mb-3">
+          <div className="p-2 inline-flex rounded-xl" style={{ background: `${dark ? col.hex : (colorKey === 'phone' ? '#0891b2' : colorKey === 'chat' ? '#4f46e5' : colorKey === 'whatsapp' ? '#059669' : colorKey === 'email' ? '#d97706' : '#7c3aed')}22` }}>
+            <Icon className={`h-4 w-4 ${dark ? col.text : col.lightText}`} />
+          </div>
+        </div>
+        <p className={`text-2xl font-bold tracking-tight ${dark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
+        <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Section card shell ─────────────────────────────────────────── */
+function Card({ children, className = '', dark }) {
+  return (
+    <div
+      className={`rounded-2xl border p-5 transition-colors ${className}
+        ${dark
+          ? 'border-white/[0.07]'
+          : 'border-gray-200 bg-white shadow-sm'
+        }`}
+      style={dark ? { background: 'rgba(15,22,41,0.7)' } : {}}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardTitle({ children, dark }) {
+  return (
+    <h3 className={`text-sm font-semibold mb-4 ${dark ? 'text-slate-200' : 'text-gray-800'}`}>
+      {children}
+    </h3>
+  );
+}
+
+/* ─── Channel filter pill ────────────────────────────────────────── */
+function Pill({ active, onClick, color, dark, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all flex items-center gap-1.5 ${
+        active
+          ? 'text-white shadow-md'
+          : dark
+            ? 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+            : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+      }`}
+      style={active ? { background: color } : {}}
+    >
+      {children}
+    </button>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    Main page
 ═══════════════════════════════════════════════════════════════════ */
 export default function AnalyticsPage() {
   const { t, locale } = useLanguage();
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === 'dark';
   const pageHelp = getPageHelp('analytics', locale);
   const [timeRange, setTimeRange] = useState('30d');
   const [channelFilter, setChannelFilter] = useState('all');
@@ -210,7 +223,11 @@ export default function AnalyticsPage() {
   const topTopics = topQuestionsData?.topTopics || [];
   const loading = overviewLoading || peakHoursLoading;
 
-  /* CSV export — unchanged logic */
+  const tooltipStyle = makeTooltipStyle(dark);
+  const axisProps    = makeAxisProps(dark);
+  const gridProps    = makeGridProps(dark);
+
+  /* CSV export */
   const handleExport = () => {
     if (!analytics) return;
     const csvRows = [];
@@ -268,19 +285,19 @@ export default function AnalyticsPage() {
 
   /* Donut data */
   const channelData = analytics?.channelStats ? [
-    { name: t('dashboard.analyticsPage.phoneCalls'),      value: analytics.channelStats.phone.count,            percentage: analytics.channelStats.phone.percentage,            color: C.phone.hex },
-    { name: t('dashboard.analyticsPage.chatSessions'),    value: analytics.channelStats.chat.count,             percentage: analytics.channelStats.chat.percentage,             color: C.chat.hex },
-    { name: t('dashboard.analyticsPage.whatsappMessages'),value: analytics.channelStats.whatsapp?.count || 0,   percentage: analytics.channelStats.whatsapp?.percentage || 0,   color: C.whatsapp.hex },
-    { name: t('dashboard.analyticsPage.emailsAnswered'),  value: analytics.channelStats.email.count,            percentage: analytics.channelStats.email.percentage,            color: C.email.hex },
+    { name: t('dashboard.analyticsPage.phoneCalls'),       value: analytics.channelStats.phone.count,          percentage: analytics.channelStats.phone.percentage,          color: C.phone.hex },
+    { name: t('dashboard.analyticsPage.chatSessions'),     value: analytics.channelStats.chat.count,           percentage: analytics.channelStats.chat.percentage,           color: C.chat.hex },
+    { name: t('dashboard.analyticsPage.whatsappMessages'), value: analytics.channelStats.whatsapp?.count || 0, percentage: analytics.channelStats.whatsapp?.percentage || 0, color: C.whatsapp.hex },
+    { name: t('dashboard.analyticsPage.emailsAnswered'),   value: analytics.channelStats.email.count,          percentage: analytics.channelStats.email.percentage,          color: C.email.hex },
   ].filter(i => i.value > 0) : [];
 
-  /* Chart data: format dates */
+  /* Area chart data */
   const chartData = (analytics?.callsOverTime || []).map(item => ({
     ...item,
     date: new Date(item.date).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { month: 'short', day: 'numeric' }),
   }));
 
-  /* Channel helpers */
+  /* Channel icon helper */
   const channelIcon = (ch) => {
     switch (ch) {
       case 'phone':    return <Phone className="h-3 w-3" />;
@@ -290,51 +307,63 @@ export default function AnalyticsPage() {
       default:         return <HelpCircle className="h-3 w-3" />;
     }
   };
-  const channelColor = (ch) => C[ch]?.hex || '#94a3b8';
+  const channelHex = (ch) => C[ch]?.hex || '#94a3b8';
+
+  /* Legend formatter */
+  const legendFormatter = (v) => (
+    <span style={{ color: dark ? '#94a3b8' : '#6b7280', fontSize: 11 }}>{v}</span>
+  );
 
   /* ── Skeleton ── */
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-64 bg-white/10 rounded-lg" />
+        <div className={`h-8 w-64 rounded-lg ${dark ? 'bg-white/10' : 'bg-gray-200'}`} />
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {[...Array(5)].map((_, i) => <div key={i} className="h-28 bg-white/5 rounded-2xl" />)}
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className={`h-28 rounded-2xl ${dark ? 'bg-white/5' : 'bg-gray-100'}`} />
+          ))}
         </div>
-        <div className="h-72 bg-white/5 rounded-2xl" />
+        <div className={`h-72 rounded-2xl ${dark ? 'bg-white/5' : 'bg-gray-100'}`} />
       </div>
     );
   }
 
   return (
-    /* Page wrapper — subtle dark gradient that sits on top of the sidebar's light/dark bg */
-    <div className="space-y-6 -m-6 p-6 min-h-screen"
-         style={{ background: 'linear-gradient(135deg, #070d1f 0%, #0c1427 40%, #091225 100%)' }}>
+    /* Page wrapper — dark gets navy gradient, light keeps default bg */
+    <div
+      className="space-y-6 -m-6 p-6 min-h-screen transition-colors"
+      style={dark
+        ? { background: 'linear-gradient(135deg, #070d1f 0%, #0c1427 40%, #091225 100%)' }
+        : {}
+      }
+    >
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Activity className="h-5 w-5 text-cyan-400" />
-            <h1 className="text-xl font-bold text-white">{pageHelp.title}</h1>
+            <Activity className={`h-5 w-5 ${dark ? 'text-cyan-400' : 'text-cyan-600'}`} />
+            <h1 className={`text-xl font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>{pageHelp.title}</h1>
           </div>
-          <p className="text-sm text-slate-400">{pageHelp.subtitle}</p>
+          <p className={`text-sm ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{pageHelp.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-44 h-9 bg-white/5 border-white/10 text-slate-200 text-sm">
-              <Calendar className="h-3.5 w-3.5 mr-2 text-slate-400" />
+            <SelectTrigger className={`w-44 h-9 text-sm ${dark ? 'bg-white/5 border-white/10 text-slate-200' : ''}`}>
+              <Calendar className={`h-3.5 w-3.5 mr-2 ${dark ? 'text-slate-400' : 'text-gray-400'}`} />
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-[#0f1629] border-white/10 text-slate-200">
+            <SelectContent className={dark ? 'bg-[#0f1629] border-white/10 text-slate-200' : ''}>
               {TIME_RANGES.map(r => (
-                <SelectItem key={r.value} value={r.value} className="focus:bg-white/10">{r.label}</SelectItem>
+                <SelectItem key={r.value} value={r.value} className={dark ? 'focus:bg-white/10' : ''}>{r.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Button
             variant="outline"
             size="sm"
-            className="h-9 bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:text-white"
+            className={`h-9 ${dark ? 'bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:text-white' : ''}`}
             onClick={handleExport}
             disabled={!analytics}
           >
@@ -346,48 +375,44 @@ export default function AnalyticsPage() {
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <StatCard icon={Phone}          value={analytics?.totalCalls || 0}             label={t('dashboard.analyticsPage.totalCalls')}      colorKey="phone" />
-        <StatCard icon={MessageCircle}  value={analytics?.chatSessions || 0}           label={t('dashboard.analyticsPage.chatSessions')}    colorKey="chat" />
-        <StatCard icon={WhatsAppIcon}   value={analytics?.whatsappSessions || 0}       label={t('dashboard.analyticsPage.whatsappMessages')} colorKey="whatsapp" />
-        <StatCard icon={Mail}           value={analytics?.emailsAnswered || 0}          label={t('dashboard.analyticsPage.emailsAnswered')}  colorKey="email" />
-        <StatCard icon={Clock}          value={formatDuration(analytics?.avgDuration || 0)} label={t('dashboard.analyticsPage.avgCallDuration')} colorKey="duration" />
+        <StatCard dark={dark} icon={Phone}         value={analytics?.totalCalls || 0}              label={t('dashboard.analyticsPage.totalCalls')}      colorKey="phone" />
+        <StatCard dark={dark} icon={MessageCircle} value={analytics?.chatSessions || 0}            label={t('dashboard.analyticsPage.chatSessions')}    colorKey="chat" />
+        <StatCard dark={dark} icon={WhatsAppIcon}  value={analytics?.whatsappSessions || 0}        label={t('dashboard.analyticsPage.whatsappMessages')} colorKey="whatsapp" />
+        <StatCard dark={dark} icon={Mail}          value={analytics?.emailsAnswered || 0}           label={t('dashboard.analyticsPage.emailsAnswered')}  colorKey="email" />
+        <StatCard dark={dark} icon={Clock}         value={formatDuration(analytics?.avgDuration || 0)} label={t('dashboard.analyticsPage.avgCallDuration')} colorKey="duration" />
       </div>
 
       {/* ── Area chart + Donut ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Area chart — 2/3 width */}
-        <Card className="lg:col-span-2">
-          <CardTitle>{t('dashboard.analyticsPage.activityOverTime')}</CardTitle>
+        {/* Area chart — 2/3 */}
+        <Card dark={dark} className="lg:col-span-2">
+          <CardTitle dark={dark}>{t('dashboard.analyticsPage.activityOverTime')}</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <ChartGradients />
+              <ChartGradients dark={dark} />
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="date" {...axisProps} />
               <YAxis {...axisProps} />
               <Tooltip {...tooltipStyle} />
-              <Legend
-                iconType="circle"
-                iconSize={7}
-                formatter={v => <span style={{ color: '#94a3b8', fontSize: 11 }}>{v}</span>}
-              />
+              <Legend iconType="circle" iconSize={7} formatter={legendFormatter} />
               {[
-                { key: 'calls',   col: C.phone,    name: t('dashboard.analyticsPage.phoneCalls')    },
-                { key: 'chats',   col: C.chat,     name: t('dashboard.analyticsPage.chatSessions')  },
-                { key: 'whatsapp',col: C.whatsapp,  name: t('dashboard.analyticsPage.whatsappMessages') },
-                { key: 'emails',  col: C.email,    name: t('dashboard.analyticsPage.emailsAnswered') },
-              ].map(({ key, col, name }) => (
+                { key: 'calls',    gradId: 'phone',    stroke: C.phone.hex,    name: t('dashboard.analyticsPage.phoneCalls') },
+                { key: 'chats',    gradId: 'chat',     stroke: C.chat.hex,     name: t('dashboard.analyticsPage.chatSessions') },
+                { key: 'whatsapp', gradId: 'whatsapp', stroke: C.whatsapp.hex, name: t('dashboard.analyticsPage.whatsappMessages') },
+                { key: 'emails',   gradId: 'email',    stroke: C.email.hex,    name: t('dashboard.analyticsPage.emailsAnswered') },
+              ].map(({ key, gradId, stroke, name }) => (
                 <Area key={key} type="monotoneX" dataKey={key} name={name}
-                      stroke={col.hex} strokeWidth={2}
-                      fill={`url(#grad-${key === 'calls' ? 'phone' : key === 'chats' ? 'chat' : key === 'emails' ? 'email' : key})`}
-                      dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: col.hex }} />
+                      stroke={stroke} strokeWidth={2}
+                      fill={`url(#grad-${gradId})`}
+                      dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: stroke }} />
               ))}
             </AreaChart>
           </ResponsiveContainer>
         </Card>
 
-        {/* Donut — 1/3 width */}
-        <Card>
-          <CardTitle>{t('dashboard.analyticsPage.channelDistribution')}</CardTitle>
+        {/* Donut — 1/3 */}
+        <Card dark={dark}>
+          <CardTitle dark={dark}>{t('dashboard.analyticsPage.channelDistribution')}</CardTitle>
           {channelData.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={180}>
@@ -399,7 +424,7 @@ export default function AnalyticsPage() {
                        strokeWidth={0}>
                     {channelData.map((entry, i) => (
                       <Cell key={i} fill={entry.color}
-                            style={{ filter: `drop-shadow(0 0 6px ${entry.color}88)` }} />
+                            style={{ filter: dark ? `drop-shadow(0 0 6px ${entry.color}88)` : 'none' }} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -408,57 +433,58 @@ export default function AnalyticsPage() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              {/* Legend rows */}
               <div className="mt-2 space-y-2">
                 {channelData.map((d, i) => (
                   <div key={i} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color, boxShadow: `0 0 6px ${d.color}` }} />
-                      <span className="text-xs text-slate-400">{d.name}</span>
+                      <span className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: d.color, boxShadow: dark ? `0 0 6px ${d.color}` : 'none' }} />
+                      <span className={`text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{d.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-200">{d.value}</span>
-                      <span className="text-xs text-slate-500">{d.percentage}%</span>
+                      <span className={`text-xs font-semibold ${dark ? 'text-slate-200' : 'text-gray-800'}`}>{d.value}</span>
+                      <span className={`text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{d.percentage}%</span>
                     </div>
                   </div>
                 ))}
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-[200px] text-slate-500 text-sm">
+            <div className={`flex items-center justify-center h-[200px] text-sm ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
               {t('dashboard.analyticsPage.noDataYet')}
             </div>
           )}
         </Card>
       </div>
 
-      {/* ── Session duration cards ── */}
+      {/* ── Session duration ── */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-          <Clock className="h-4 w-4 text-slate-400" />
+        <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${dark ? 'text-slate-300' : 'text-gray-700'}`}>
+          <Clock className={`h-4 w-4 ${dark ? 'text-slate-400' : 'text-gray-400'}`} />
           {t('dashboard.analyticsPage.channelSessionDurationTitle')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
-            { ch: 'chat',     icon: MessageCircle, label: t('dashboard.analyticsPage.chatSessions'),    data: analytics?.channelSessionDuration?.chat },
-            { ch: 'whatsapp', icon: WhatsAppIcon,  label: 'WhatsApp',                                   data: analytics?.channelSessionDuration?.whatsapp },
-            { ch: 'email',    icon: Mail,          label: t('dashboard.analyticsPage.email'),            data: analytics?.channelSessionDuration?.email },
+            { ch: 'chat',     icon: MessageCircle, label: t('dashboard.analyticsPage.chatSessions'), data: analytics?.channelSessionDuration?.chat },
+            { ch: 'whatsapp', icon: WhatsAppIcon,  label: 'WhatsApp',                                data: analytics?.channelSessionDuration?.whatsapp },
+            { ch: 'email',    icon: Mail,          label: t('dashboard.analyticsPage.email'),         data: analytics?.channelSessionDuration?.email },
           ].map(({ ch, icon: Icon, label, data }) => (
-            <Card key={ch} className="flex items-start gap-3">
+            <Card key={ch} dark={dark} className="flex items-start gap-3">
               <div className="p-2 rounded-xl mt-0.5 flex-shrink-0" style={{ background: `${C[ch].hex}22` }}>
-                <Icon className={`h-4 w-4 ${C[ch].text}`} />
+                <Icon className={`h-4 w-4 ${dark ? C[ch].text : C[ch].lightText}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-200 mb-2">{label}</p>
+                <p className={`text-sm font-medium mb-2 ${dark ? 'text-slate-200' : 'text-gray-800'}`}>{label}</p>
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">{t('dashboard.analyticsPage.averageSessionDuration')}</span>
-                    <span className="text-xs font-semibold text-slate-200">{formatDuration(data?.averageSeconds || 0)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">{t('dashboard.analyticsPage.totalSessionDuration')}</span>
-                    <span className="text-xs font-semibold text-slate-200">{formatDuration(data?.totalSeconds || 0)}</span>
-                  </div>
+                  {[
+                    [t('dashboard.analyticsPage.averageSessionDuration'), formatDuration(data?.averageSeconds || 0)],
+                    [t('dashboard.analyticsPage.totalSessionDuration'),   formatDuration(data?.totalSeconds   || 0)],
+                  ].map(([lbl, val]) => (
+                    <div key={lbl} className="flex items-center justify-between">
+                      <span className={`text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{lbl}</span>
+                      <span className={`text-xs font-semibold ${dark ? 'text-slate-200' : 'text-gray-700'}`}>{val}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </Card>
@@ -466,24 +492,24 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* ── Peak hours bar chart ── */}
-      <Card>
-        <CardTitle>
+      {/* ── Peak hours ── */}
+      <Card dark={dark}>
+        <CardTitle dark={dark}>
           <span className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-400" />
+            <Zap className={`h-4 w-4 ${dark ? 'text-amber-400' : 'text-amber-500'}`} />
             {t('dashboard.analyticsPage.peakActivityHours')}
           </span>
         </CardTitle>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={peakHours} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={14}>
-            <ChartGradients />
+            <ChartGradients dark={dark} />
             <CartesianGrid {...gridProps} />
             <XAxis dataKey="hour" {...axisProps} />
             <YAxis {...axisProps} />
             <Tooltip {...tooltipStyle} />
-            <Legend iconType="circle" iconSize={7} formatter={v => <span style={{ color: '#94a3b8', fontSize: 11 }}>{v}</span>} />
+            <Legend iconType="circle" iconSize={7} formatter={legendFormatter} />
             <Bar dataKey="phone"    stackId="a" fill={`url(#bar-phone)`}    name={t('dashboard.analyticsPage.phoneCalls')}     radius={[0,0,0,0]} />
-            <Bar dataKey="chat"     stackId="a" fill={`url(#bar-chat)`}     name={t('dashboard.analyticsPage.chatSessions')}   />
+            <Bar dataKey="chat"     stackId="a" fill={`url(#bar-chat)`}     name={t('dashboard.analyticsPage.chatSessions')} />
             <Bar dataKey="whatsapp" stackId="a" fill={`url(#bar-whatsapp)`} name="WhatsApp" />
             <Bar dataKey="email"    stackId="a" fill={`url(#bar-email)`}    name={t('dashboard.analyticsPage.emailsAnswered')} radius={[4,4,0,0]} />
           </BarChart>
@@ -491,73 +517,76 @@ export default function AnalyticsPage() {
       </Card>
 
       {/* ── Top Topics ── */}
-      <Card>
-        {/* header row */}
+      <Card dark={dark}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-1">
           <div className="flex items-center gap-2">
-            <Tag className="h-4 w-4 text-slate-400" />
-            <h3 className="text-sm font-semibold text-slate-200">{t('dashboard.analyticsPage.topQuestions')}</h3>
+            <Tag className={`h-4 w-4 ${dark ? 'text-slate-400' : 'text-gray-400'}`} />
+            <h3 className={`text-sm font-semibold ${dark ? 'text-slate-200' : 'text-gray-800'}`}>{t('dashboard.analyticsPage.topQuestions')}</h3>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Pill active={channelFilter === 'all'} onClick={() => setChannelFilter('all')} color="#334155">
+            <Pill dark={dark} active={channelFilter === 'all'} onClick={() => setChannelFilter('all')} color={dark ? '#334155' : '#4b5563'}>
               {t('dashboard.analyticsPage.allChannels')}
             </Pill>
             {[
-              { key: 'phone',    label: t('dashboard.analyticsPage.phoneCalls'),    icon: <Phone className="h-3 w-3" /> },
-              { key: 'chat',     label: 'Chat',                                      icon: <MessageCircle className="h-3 w-3" /> },
-              { key: 'whatsapp', label: 'WhatsApp',                                  icon: <WhatsAppIcon className="h-3 w-3" /> },
-              { key: 'email',    label: t('dashboard.analyticsPage.email'),           icon: <Mail className="h-3 w-3" /> },
+              { key: 'phone',    label: t('dashboard.analyticsPage.phoneCalls'), icon: <Phone className="h-3 w-3" /> },
+              { key: 'chat',     label: 'Chat',                                   icon: <MessageCircle className="h-3 w-3" /> },
+              { key: 'whatsapp', label: 'WhatsApp',                               icon: <WhatsAppIcon className="h-3 w-3" /> },
+              { key: 'email',    label: t('dashboard.analyticsPage.email'),        icon: <Mail className="h-3 w-3" /> },
             ].map(({ key, label, icon }) => (
-              <Pill key={key} active={channelFilter === key} onClick={() => setChannelFilter(key)} color={C[key].hex}>
+              <Pill key={key} dark={dark} active={channelFilter === key} onClick={() => setChannelFilter(key)} color={C[key].hex}>
                 {icon}{label}
               </Pill>
             ))}
           </div>
         </div>
-        <p className="text-xs text-slate-500 mb-4">{t('dashboard.analyticsPage.topQuestionsDescription')}</p>
+        <p className={`text-xs mb-4 ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{t('dashboard.analyticsPage.topQuestionsDescription')}</p>
 
         {topicsLoading ? (
           <div className="space-y-3">
-            {[1,2,3].map(i => <div key={i} className="h-16 bg-white/5 rounded-xl animate-pulse" />)}
+            {[1,2,3].map(i => (
+              <div key={i} className={`h-16 rounded-xl animate-pulse ${dark ? 'bg-white/5' : 'bg-gray-100'}`} />
+            ))}
           </div>
         ) : topTopics.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {topTopics.map((topic, idx) => (
-              <div key={idx} className="p-3.5 rounded-xl border border-white/[0.06]"
-                   style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <div key={idx}
+                   className={`p-3.5 rounded-xl border ${dark ? 'border-white/[0.06]' : 'border-gray-100 bg-gray-50'}`}
+                   style={dark ? { background: 'rgba(255,255,255,0.03)' } : {}}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-200">{topic.category}</span>
-                    <span className="px-1.5 py-0.5 text-xs font-bold rounded-full"
-                          style={{ background: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}>
+                    <span className={`text-sm font-semibold ${dark ? 'text-slate-200' : 'text-gray-800'}`}>{topic.category}</span>
+                    <span className={`px-1.5 py-0.5 text-xs font-bold rounded-full ${dark ? 'bg-white/8 text-slate-400' : 'bg-gray-200 text-gray-600'}`}
+                          style={dark ? { background: 'rgba(255,255,255,0.08)' } : {}}>
                       {topic.count}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     {topic.channels?.map(ch => (
-                      <span key={ch} style={{ color: channelColor(ch) }}>{channelIcon(ch)}</span>
+                      <span key={ch} style={{ color: channelHex(ch) }}>{channelIcon(ch)}</span>
                     ))}
                   </div>
                 </div>
                 {topic.subtopics?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {topic.subtopics.map((s, i) => (
-                      <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full"
-                            style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
+                      <span key={i}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${dark ? 'text-slate-400' : 'text-gray-500 bg-white border border-gray-200'}`}
+                            style={dark ? { background: 'rgba(255,255,255,0.06)' } : {}}>
                         {s.text}
-                        <span className="font-bold text-cyan-400">{s.count}</span>
+                        <span className={`font-bold ${dark ? 'text-cyan-400' : 'text-cyan-600'}`}>{s.count}</span>
                       </span>
                     ))}
                   </div>
                 )}
                 {!topic.subtopics && topic.examples?.slice(0, 2).map((ex, i) => (
-                  <p key={i} className="text-xs text-slate-500 line-clamp-1 mt-1">"{ex}"</p>
+                  <p key={i} className={`text-xs line-clamp-1 mt-1 ${dark ? 'text-slate-500' : 'text-gray-400'}`}>"{ex}"</p>
                 ))}
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-10 text-slate-500 text-sm">
+          <div className={`text-center py-10 text-sm ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
             {t('dashboard.analyticsPage.noQuestionsYet')}
           </div>
         )}
