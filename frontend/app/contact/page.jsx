@@ -63,9 +63,9 @@ export default function ContactPage() {
       quote: isTR
         ? 'Randevu yönetimi tamamen otomatik hale geldi. Müşterilerimiz WhatsApp üzerinden anında randevu alabiliyor.'
         : 'Appointment management has become fully automated. Our customers can instantly book via WhatsApp.',
-      name: 'Nurettin Erzen',
-      role: isTR ? 'Kurucu, Selenly' : 'Founder, Selenly',
-      initials: 'SE',
+      name: 'Selin Aras',
+      role: isTR ? 'Kurucu, Studio Bloom' : 'Founder, Studio Bloom',
+      initials: 'SB',
       gradient: 'from-[#051752] to-[#006FEB]',
     },
     {
