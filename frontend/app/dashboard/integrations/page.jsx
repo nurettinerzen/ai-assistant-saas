@@ -147,18 +147,18 @@ const INTEGRATION_LOGOS = {
   },
 };
 
-const CARD_ICON_WRAPPER_CLASS = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-950/40';
+const CARD_ICON_WRAPPER_CLASS = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-[#0B1730]/88';
 
 const LockedPlanBadge = ({ text }) => (
   <div tabIndex={0} className="group relative inline-flex outline-none">
     <Badge
       variant="secondary"
-      className="cursor-help bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-600"
+      className="cursor-help bg-neutral-100 text-neutral-700 dark:bg-white/8 dark:text-neutral-400 text-xs focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-cyan-500/20"
     >
       <Lock className="h-3 w-3 mr-1" />
       Pro
     </Badge>
-    <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-56 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+    <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-56 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:border-white/10 dark:bg-[#081224]/98 dark:text-neutral-200">
       {text}
     </div>
   </div>
@@ -917,7 +917,7 @@ const handleShopifyConnect = async () => {
 };
 
   const getIntegrationIcon = (type) => INTEGRATION_ICONS[type] || Hash;
-  const getCategoryColors = () => ({ icon: 'text-neutral-600 dark:text-neutral-400', bg: 'bg-neutral-100 dark:bg-neutral-800' });
+  const getCategoryColors = () => ({ icon: 'text-neutral-600 dark:text-neutral-400', bg: 'bg-neutral-100 dark:bg-white/8' });
   const getDocsUrl = (type) => INTEGRATION_DOCS[type] || '#';
   const formatWhatsAppTimestamp = (value) => {
     if (!value) return null;
@@ -1096,7 +1096,7 @@ const handleShopifyConnect = async () => {
     const isLocked = featureInfo.isLocked && !isEffectivelyConnected;
 
     return (
-      <div key={integration.type} className={`flex h-full flex-col rounded-xl border p-6 transition-shadow ${disabled || isLocked ? 'bg-neutral-50 dark:bg-neutral-800/70' : 'bg-white dark:bg-neutral-900 hover:shadow-md'} border-neutral-200 dark:border-neutral-700`}>
+      <div key={integration.type} className={`flex h-full flex-col rounded-xl border p-6 transition-shadow ${disabled || isLocked ? 'bg-neutral-50 dark:bg-[#0B1730]/88' : 'bg-white dark:bg-[#081224]/95 hover:shadow-md'} border-neutral-200 dark:border-white/10`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex min-h-10 items-center gap-3">
             <div className={CARD_ICON_WRAPPER_CLASS}>
@@ -1268,7 +1268,7 @@ const handleShopifyConnect = async () => {
         )}
 
         {isWhatsApp && whatsappConnected && !whatsappNeedsReconnect && can('integrations:connect') && (
-          <div className="mb-4 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 p-4 space-y-4">
+          <div className="mb-4 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-[#0B1730]/88 p-4 space-y-4">
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">
                 {t('dashboard.integrationsPage.whatsappTestPanelTitle')}
@@ -1277,7 +1277,7 @@ const handleShopifyConnect = async () => {
 
             <div className="grid grid-cols-1 gap-2 text-xs text-neutral-600 dark:text-neutral-400 sm:grid-cols-2">
               {whatsappStatus?.phoneNumberId && (
-                <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/40 px-3 py-2">
+                <div className="rounded-lg border border-neutral-200 dark:border-white/10 bg-white/80 dark:bg-[#081224]/75 px-3 py-2">
                   <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
                     {t('dashboard.integrationsPage.whatsappPhoneNumberIdLabel')}
                   </div>
@@ -1285,7 +1285,7 @@ const handleShopifyConnect = async () => {
                 </div>
               )}
               {whatsappStatus?.wabaId && (
-                <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/40 px-3 py-2">
+                <div className="rounded-lg border border-neutral-200 dark:border-white/10 bg-white/80 dark:bg-[#081224]/75 px-3 py-2">
                   <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
                     {t('dashboard.integrationsPage.whatsappBusinessAccountLabel')}
                   </div>
@@ -1295,7 +1295,7 @@ const handleShopifyConnect = async () => {
             </div>
 
             {whatsappTestResult?.acceptedByMeta && (
-              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/40 px-3 py-2 text-xs text-neutral-600 dark:text-neutral-300">
+              <div className="rounded-lg border border-neutral-200 dark:border-white/10 bg-white/80 dark:bg-[#081224]/75 px-3 py-2 text-xs text-neutral-600 dark:text-neutral-300">
                 {t('dashboard.integrationsPage.whatsappTestAcceptedHint')}
                 {whatsappTestResult.templateInfo?.name === 'hello_world' && (
                   <div className="mt-1 text-neutral-500 dark:text-neutral-400">
@@ -1351,7 +1351,7 @@ const handleShopifyConnect = async () => {
             </Button>
 
             {whatsappTestResult && (
-              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/40 px-3 py-3 text-xs text-neutral-700 dark:text-neutral-300 space-y-2">
+              <div className="rounded-lg border border-neutral-200 dark:border-white/10 bg-white/80 dark:bg-[#081224]/75 px-3 py-3 text-xs text-neutral-700 dark:text-neutral-300 space-y-2">
                 <div className="font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.whatsappTestLastResult')}</div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div>
@@ -1500,11 +1500,11 @@ const handleShopifyConnect = async () => {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 animate-pulse">
-              <div className="h-12 w-12 bg-neutral-200 dark:bg-neutral-700 rounded-lg mb-4"></div>
-              <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
-              <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded mb-4"></div>
-              <div className="h-10 w-full bg-neutral-200 dark:bg-neutral-700 rounded"></div>
+            <div key={i} className="bg-white dark:bg-[#081224]/95 rounded-xl border border-neutral-200 dark:border-white/10 p-6 animate-pulse">
+              <div className="h-12 w-12 bg-neutral-200 dark:bg-[linear-gradient(135deg,rgba(8,18,36,0.96),rgba(48,92,229,0.18),rgba(0,168,199,0.14))] rounded-lg mb-4"></div>
+              <div className="h-6 w-32 bg-neutral-200 dark:bg-[linear-gradient(135deg,rgba(8,18,36,0.96),rgba(48,92,229,0.18),rgba(0,168,199,0.14))] rounded mb-2"></div>
+              <div className="h-4 w-full bg-neutral-200 dark:bg-[linear-gradient(135deg,rgba(8,18,36,0.96),rgba(48,92,229,0.18),rgba(0,168,199,0.14))] rounded mb-4"></div>
+              <div className="h-10 w-full bg-neutral-200 dark:bg-[linear-gradient(135deg,rgba(8,18,36,0.96),rgba(48,92,229,0.18),rgba(0,168,199,0.14))] rounded"></div>
             </div>
           ))}
         </div>
@@ -1516,7 +1516,7 @@ const handleShopifyConnect = async () => {
             const isCrmConnected = !isCRMLocked && crmStatus?.hasWebhook && crmStatus?.isActive;
 
             return (
-            <div className={`flex h-full flex-col rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'bg-neutral-50 dark:bg-neutral-800/70 border-neutral-200 dark:border-neutral-700' : isCrmConnected ? 'bg-white dark:bg-neutral-900 border-neutral-400 dark:border-neutral-600 hover:shadow-md' : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 hover:shadow-md'}`}>
+            <div className={`flex h-full flex-col rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'bg-neutral-50 dark:bg-[#0B1730]/88 border-neutral-200 dark:border-white/10' : isCrmConnected ? 'bg-white dark:bg-[#081224]/95 border-neutral-400 dark:border-cyan-500/35 hover:shadow-md' : 'bg-white dark:bg-[#081224]/95 border-neutral-200 dark:border-white/10 hover:shadow-md'}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex min-h-10 items-center gap-3">
                   <div className={CARD_ICON_WRAPPER_CLASS}>
@@ -1602,7 +1602,7 @@ const handleShopifyConnect = async () => {
           })()}
 
           {/* Gmail Card */}
-          <div className={`flex h-full flex-col bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
+          <div className={`flex h-full flex-col bg-white dark:bg-[#081224]/95 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-neutral-400 dark:border-cyan-500/35' : 'border-neutral-200 dark:border-white/10'}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex min-h-10 items-center gap-3">
                 <div className={CARD_ICON_WRAPPER_CLASS}>
@@ -1640,7 +1640,7 @@ const handleShopifyConnect = async () => {
           </div>
 
           {/* Outlook Card */}
-          <div className={`flex h-full flex-col bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
+          <div className={`flex h-full flex-col bg-white dark:bg-[#081224]/95 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? 'border-neutral-400 dark:border-cyan-500/35' : 'border-neutral-200 dark:border-white/10'}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex min-h-10 items-center gap-3">
                 <div className={CARD_ICON_WRAPPER_CLASS}>
@@ -1751,13 +1751,13 @@ const handleShopifyConnect = async () => {
             </div>
 
             {shopifyStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg">
+              <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-white/8 border border-neutral-200 dark:border-white/10 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                 <p className="text-sm font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.connectedLabel')}: {shopifyStatus.shopName || shopifyStatus.shopDomain}</p>
               </div>
             )}
 
-            <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+            <div className="bg-neutral-50 dark:bg-[#0B1730]/88 border border-neutral-200 dark:border-white/10 rounded-lg p-4">
               <h4 className="text-sm font-medium text-neutral-900 dark:text-white mb-2">{t('dashboard.integrationsPage.howItWorks')}</h4>
               <ol className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1 list-decimal list-inside">
                 <li>{t('dashboard.integrationsPage.shopifyStep1')}</li>
@@ -1864,12 +1864,12 @@ const handleShopifyConnect = async () => {
               />
             </div>
             {ikasStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg">
+              <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-white/8 border border-neutral-200 dark:border-white/10 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                 <p className="text-sm font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.connectedLabel')}: {ikasStatus.storeName}</p>
               </div>
             )}
-            <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+            <div className="bg-neutral-50 dark:bg-[#0B1730]/88 border border-neutral-200 dark:border-white/10 rounded-lg p-4">
               <h4 className="text-sm font-medium text-neutral-900 dark:text-white mb-2">{t('dashboard.integrationsPage.ikasApiInfoTitle')}</h4>
               <ol className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1 list-decimal list-inside">
                 <li>{t('dashboard.integrationsPage.ikasStep1')}</li>

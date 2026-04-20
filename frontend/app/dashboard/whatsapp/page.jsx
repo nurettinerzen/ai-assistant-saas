@@ -155,7 +155,7 @@ function getChannelIcon(channel) {
 function getHandoffBadge(mode, assignedUserName, t, status = 'active') {
   if (status !== 'active') {
     return (
-      <Badge variant="outline" className="border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
+      <Badge variant="outline" className="border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-white/10 dark:bg-[#0B1730]/88 dark:text-neutral-300">
         {t.completedShort}
       </Badge>
     );
@@ -197,7 +197,7 @@ function getCompactStatusLabel(chat, t) {
 
 function getCompactStatusClasses(chat) {
   if (chat?.status !== 'active') {
-    return 'border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300';
+    return 'border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-white/10 dark:bg-[#0B1730]/88 dark:text-neutral-300';
   }
 
   if (chat?.handoff?.currentUserIsAssignee) {
@@ -724,7 +724,7 @@ export default function WhatsAppInboxPage() {
           <div className="flex min-w-0 items-center gap-2">
             {getHandoffBadge(chat?.handoff?.mode, chat?.handoff?.assignedUserName, t, chat?.status)}
             {isUnifiedInbox && (
-              <Badge variant="outline" className="border-neutral-200 bg-white text-[10px] text-neutral-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+              <Badge variant="outline" className="border-neutral-200 bg-white text-[10px] text-neutral-500 dark:border-white/10 dark:bg-[#081224]/95 dark:text-neutral-400">
                 {getChannelLabel(chat.channel, t)}
               </Badge>
             )}
@@ -753,7 +753,7 @@ export default function WhatsAppInboxPage() {
         ? 'ml-auto max-w-2xl rounded-2xl bg-emerald-600 px-4 py-3 text-sm text-white'
         : isHuman
           ? 'max-w-2xl rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-950 dark:bg-blue-950/30 dark:text-blue-100'
-          : 'max-w-2xl rounded-2xl bg-neutral-100 px-4 py-3 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';
+          : 'max-w-2xl rounded-2xl bg-neutral-100 px-4 py-3 text-sm text-neutral-900 dark:bg-[#0B1730]/88 dark:border dark:border-white/10 dark:text-neutral-100';
 
     const label = isUser
       ? t.customer
@@ -783,9 +783,9 @@ export default function WhatsAppInboxPage() {
 
   if (!pageEnabled) {
     return (
-      <div className="fixed inset-0 z-10 flex bg-white dark:bg-neutral-950 lg:left-60">
+      <div className="fixed inset-0 z-10 flex bg-white dark:bg-[#050B18] lg:left-60">
         <div className="flex min-w-0 flex-1 items-center justify-center p-6">
-          <div className="w-full max-w-xl rounded-2xl border border-dashed border-neutral-300 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-950">
+          <div className="w-full max-w-xl rounded-2xl border border-dashed border-neutral-300 bg-white p-8 dark:border-white/10 dark:bg-[#081224]/95">
             <EmptyState
               icon={AlertCircle}
               title={t.featureDisabledTitle}
@@ -798,9 +798,9 @@ export default function WhatsAppInboxPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-10 flex bg-white dark:bg-neutral-950 lg:left-60">
-      <div className="flex w-[340px] min-w-[340px] flex-col border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
+    <div className="fixed inset-0 z-10 flex bg-white dark:bg-[#050B18] lg:left-60">
+      <div className="flex w-[340px] min-w-[340px] flex-col border-r border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#081224]/95">
+        <div className="border-b border-neutral-200 p-4 dark:border-white/10">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
@@ -868,11 +868,11 @@ export default function WhatsAppInboxPage() {
           {listLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((row) => (
-                <div key={row} className="h-24 animate-pulse rounded-xl bg-neutral-200 dark:bg-neutral-800" />
+                <div key={row} className="h-24 animate-pulse rounded-xl bg-neutral-200 dark:bg-[linear-gradient(135deg,rgba(8,18,36,0.96),rgba(48,92,229,0.18),rgba(0,168,199,0.14))]" />
               ))}
             </div>
           ) : filteredConversations.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-6 dark:border-white/10 dark:bg-[#081224]/95">
               <EmptyState
                 icon={MessageSquare}
                 title={t.noConversations}
@@ -885,10 +885,10 @@ export default function WhatsAppInboxPage() {
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-neutral-950">
+      <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-[#050B18]">
         {selectedChat ? (
           <>
-            <div className="border-b border-neutral-200 px-5 py-4 dark:border-neutral-800">
+            <div className="border-b border-neutral-200 px-5 py-4 dark:border-white/10">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -974,13 +974,13 @@ export default function WhatsAppInboxPage() {
                   ) : selectedChat?.messages?.length ? (
                     selectedChat.messages.map(renderMessage)
                   ) : (
-                    <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
+                    <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 text-sm text-neutral-500 dark:border-white/10 dark:bg-[#081224]/95">
                       {t.noMessages}
                     </div>
                   )}
                 </div>
 
-                <div className="border-t border-neutral-200 px-5 py-4 dark:border-neutral-800">
+                <div className="border-t border-neutral-200 px-5 py-4 dark:border-white/10">
                   {selectedChat?.status === 'active' && selectedChat?.handoff?.canReply ? (
                     <form className="space-y-3" onSubmit={handleReplySubmit}>
                       <Textarea
@@ -1023,9 +1023,9 @@ export default function WhatsAppInboxPage() {
               </div>
 
               {sidebarOpen && (
-                <aside className="w-[280px] min-w-[280px] border-l border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
+                <aside className="w-[280px] min-w-[280px] border-l border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#081224]/95">
                   <div className="p-4">
-                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-[#081224]/95">
                       <div className="flex items-center gap-2">
                         <UserCircle2 className="h-4 w-4 text-neutral-400" />
                         <h3 className="font-medium text-neutral-900 dark:text-white">{t.details}</h3>
@@ -1034,7 +1034,7 @@ export default function WhatsAppInboxPage() {
                       {selectedChat?.channel === 'WHATSAPP' && customerLoading ? (
                         <div className="mt-4 space-y-2">
                           {[1, 2, 3].map((row) => (
-                            <div key={row} className="h-4 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />
+                            <div key={row} className="h-4 animate-pulse rounded bg-neutral-200 dark:bg-[linear-gradient(135deg,rgba(8,18,36,0.96),rgba(48,92,229,0.18),rgba(0,168,199,0.14))]" />
                           ))}
                         </div>
                       ) : (
@@ -1088,7 +1088,7 @@ export default function WhatsAppInboxPage() {
                               )}
 
                               {customerData?.notes && (
-                                <div className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300">
+                                <div className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600 dark:bg-[#0B1730]/88 dark:border dark:border-white/10 dark:text-neutral-300">
                                   {customerData.notes}
                                 </div>
                               )}
@@ -1097,7 +1097,7 @@ export default function WhatsAppInboxPage() {
                                 <div className="text-xs text-neutral-500 dark:text-neutral-400">{t.noCustomerDataShort}</div>
                               )}
 
-                              <div className="border-t border-neutral-200 pt-4 dark:border-neutral-800">
+                              <div className="border-t border-neutral-200 pt-4 dark:border-white/10">
                                 <div>
                                   <div className="text-sm font-medium text-neutral-900 dark:text-white">{t.recentSessions}</div>
                                   <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{t.recentSessionsHint}</div>
@@ -1109,13 +1109,13 @@ export default function WhatsAppInboxPage() {
 
                                     if (relatedSessionsLoading) {
                                       return [1, 2, 3].map((row) => (
-                                        <div key={row} className="h-14 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+                                        <div key={row} className="h-14 animate-pulse rounded-xl bg-neutral-100 dark:bg-[linear-gradient(135deg,rgba(8,18,36,0.96),rgba(48,92,229,0.18),rgba(0,168,199,0.14))]" />
                                       ));
                                     }
 
                                     if (otherSessions.length === 0) {
                                       return (
-                                        <div className="rounded-xl border border-dashed border-neutral-200 px-3 py-3 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+                                        <div className="rounded-xl border border-dashed border-neutral-200 px-3 py-3 text-xs text-neutral-500 dark:border-white/10 dark:text-neutral-400">
                                           {t.noRecentSessions}
                                         </div>
                                       );
@@ -1126,7 +1126,7 @@ export default function WhatsAppInboxPage() {
                                         key={chat.id}
                                         type="button"
                                         onClick={() => setSelectedChatId(chat.id)}
-                                        className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left transition hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-700"
+                                        className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left transition hover:border-neutral-300 dark:border-white/10 dark:bg-[#081224]/95 dark:hover:border-cyan-500/30"
                                       >
                                         <div className="flex items-center justify-between gap-2">
                                           <div className="truncate text-xs font-medium text-neutral-900 dark:text-white">
@@ -1146,7 +1146,7 @@ export default function WhatsAppInboxPage() {
                               </div>
                             </>
                           ) : (
-                            <div className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300">
+                            <div className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600 dark:bg-[#0B1730]/88 dark:border dark:border-white/10 dark:text-neutral-300">
                               {formatSessionHandle(selectedChat.sessionId, 'chat')}
                             </div>
                           )}

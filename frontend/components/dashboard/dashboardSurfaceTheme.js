@@ -99,8 +99,8 @@ export function getDashboardInputClass(dark, className) {
 export function getDashboardSelectTriggerClass(dark, className) {
   return cn(
     dark
-      ? 'border-white/10 bg-[#081224] text-slate-200 [&>svg]:text-cyan-300/60 [&_[data-placeholder]]:text-cyan-200/50'
-      : 'border-slate-200 bg-white text-slate-900 [&_[data-placeholder]]:text-sky-500/45',
+      ? 'border-white/10 bg-[#081224] text-slate-200 data-[placeholder]:text-cyan-200/50 [&>svg]:text-cyan-300/60'
+      : 'border-slate-200 bg-white text-slate-900 data-[placeholder]:text-sky-500/45',
     className
   );
 }

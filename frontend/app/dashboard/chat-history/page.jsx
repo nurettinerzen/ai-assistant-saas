@@ -459,7 +459,7 @@ export default function ChatsPage() {
     }
 
     return {
-      wrapperClass: 'bg-gray-50 dark:bg-gray-800',
+      wrapperClass: 'bg-gray-50 dark:bg-[#0B1730]/88 dark:border dark:border-white/10',
       avatarClass: 'bg-gray-200 dark:bg-gray-700',
       icon: <Bot className="h-3 w-3 text-gray-600 dark:text-gray-400" />,
       label: t('dashboard.chatsPage.aiAssistantLabel'),
@@ -553,15 +553,15 @@ export default function ChatsPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-6">
+        <div className="bg-white dark:bg-[#081224]/95 rounded-md border border-gray-200 dark:border-white/10 p-6 shadow-sm">
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-14 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+              <div key={i} className="h-14 rounded animate-pulse bg-gray-100 dark:bg-[linear-gradient(135deg,rgba(8,18,36,0.96),rgba(48,92,229,0.18),rgba(0,168,199,0.14))]" />
             ))}
           </div>
         </div>
       ) : chats.length > 0 ? (
-        <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <div className="bg-white dark:bg-[#081224]/95 rounded-md border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
@@ -617,7 +617,7 @@ export default function ChatsPage() {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-white/10">
               <span className="text-sm text-gray-500">
                 {t('dashboard.chatsPage.showingResults', {
                   from: (pagination.page - 1) * pagination.limit + 1,
@@ -662,7 +662,7 @@ export default function ChatsPage() {
           )}
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-8">
+        <div className="bg-white dark:bg-[#081224]/95 rounded-md border border-gray-200 dark:border-white/10 p-8 shadow-sm">
           <EmptyState
             icon={MessageCircle}
             title={searchQuery || channelFilter !== 'all' || statusFilter !== 'all' || dateRange.from
@@ -692,7 +692,7 @@ export default function ChatsPage() {
           {selectedChat && (
             <div className="space-y-4">
               {/* Chat Info */}
-              <div className="grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-4 text-sm dark:bg-gray-800">
+              <div className="grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-4 text-sm dark:bg-[#0B1730]/88 dark:border dark:border-white/10">
                 <div>
                   <span className="text-gray-500">{t('dashboard.chatsPage.channel')}</span>
                   <p className="font-medium">{selectedChat.channel === 'CHAT' ? t('dashboard.chatsPage.chat') : 'WhatsApp'}</p>
