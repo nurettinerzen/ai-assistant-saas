@@ -157,6 +157,7 @@ export default function Sidebar({ user, credits, business, whatsappPendingCount 
   // Upgrade modal state
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState(null);
+  const isUserAdmin = user?.isAdmin === true;
   const { data: liveSubscription } = useSubscription();
   const { data: trendyolStatus } = useTrendyolStatus();
   const { data: hepsiburadaStatus } = useHepsiburadaStatus();
@@ -170,6 +171,7 @@ export default function Sidebar({ user, credits, business, whatsappPendingCount 
   const hasMarketplaceQaAccess = Boolean(trendyolStatus?.connected || hepsiburadaStatus?.connected);
   const hasComplaintAccess = Boolean(sikayetvarStatus?.connected);
   const isDarkTheme = mounted && resolvedTheme === 'dark';
+  const showAdminNavigation = isUserAdmin || adminAccess.enabled;
 
   // Show skeleton until BOTH conditions are met:
   // 1. Component is mounted (hydration complete)
@@ -218,9 +220,7 @@ export default function Sidebar({ user, credits, business, whatsappPendingCount 
         { icon: Database, label: t('dashboard.sidebar.inbox'), href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
         { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
         { icon: Mail, label: t('dashboard.sidebar.email'), href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
-        ...((whatsappLiveHandoffEnabled || chatLiveHandoffEnabled)
-          ? [{ icon: MessageSquare, label: t('dashboard.sidebar.conversations'), href: NAVIGATION_ITEMS.conversations.href, permission: 'campaigns:view' }]
-          : []),
+        { icon: MessageSquare, label: t('dashboard.sidebar.conversations'), href: NAVIGATION_ITEMS.conversations.href, permission: 'whatsapp:view' },
         ...(hasMarketplaceQaAccess ? [{ icon: Package, label: locale === 'tr' ? NAVIGATION_ITEMS.marketplaceQa.labelTr : NAVIGATION_ITEMS.marketplaceQa.labelEn, href: NAVIGATION_ITEMS.marketplaceQa.href, permission: 'campaigns:view' }] : []),
         ...(hasComplaintAccess ? [{ icon: AlertTriangle, label: locale === 'tr' ? NAVIGATION_ITEMS.complaints.labelTr : NAVIGATION_ITEMS.complaints.labelEn, href: NAVIGATION_ITEMS.complaints.href, permission: 'campaigns:view' }] : []),
       ],
@@ -238,17 +238,19 @@ export default function Sidebar({ user, credits, business, whatsappPendingCount 
       items: [
         { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: NAVIGATION_ITEMS.integrations.href, permission: 'integrations:view' },
         { icon: Users, label: t('dashboard.sidebar.team'), href: NAVIGATION_ITEMS.team.href, permission: 'team:view' },
-        { icon: Phone, label: t('dashboard.sidebar.phoneNumbers'), href: NAVIGATION_ITEMS.phoneNumbers.href, permission: 'settings:view' },
+        { icon: Phone, label: t('dashboard.sidebar.phoneNumbers'), href: NAVIGATION_ITEMS.phoneNumbers.href, permission: 'phone:view' },
         { icon: CreditCard, label: t('dashboard.subscription'), href: NAVIGATION_ITEMS.subscription.href, permission: 'billing:view' },
         { icon: Settings, label: t('dashboard.sidebar.account'), href: NAVIGATION_ITEMS.account.href, permission: 'settings:view' },
       ],
     },
-    ...(adminAccess.enabled ? [{
+    ...(showAdminNavigation ? [{
       label: t('dashboard.sidebar.adminSection'),
       items: [
         { icon: Shield, label: t('dashboard.sidebar.adminPanel'), href: buildAdminHref() },
         { icon: AlertTriangle, label: t('dashboard.sidebar.redAlert'), href: buildAdminHref('/red-alert') },
         { icon: Users, label: t('dashboard.sidebar.adminUsers'), href: buildAdminHref('/users') },
+        { icon: Bot, label: t('dashboard.sidebar.adminAssistants'), href: buildAdminHref('/assistants') },
+        { icon: Phone, label: t('dashboard.sidebar.adminCalls'), href: buildAdminHref('/calls') },
         { icon: Building2, label: t('dashboard.sidebar.adminEnterprise'), href: buildAdminHref('/enterprise') },
         { icon: CreditCard, label: t('dashboard.sidebar.adminSubscriptions'), href: buildAdminHref('/subscriptions') },
         { icon: History, label: t('dashboard.sidebar.adminAuditLog'), href: buildAdminHref('/audit-log') },
@@ -289,7 +291,7 @@ export default function Sidebar({ user, credits, business, whatsappPendingCount 
 
   function buildAdminHref(path = '') {
     const target = `/dashboard/admin${path}`;
-    if (adminAccess.mfaVerified) {
+    if (!adminAccess.enabled || adminAccess.mfaVerified) {
       return target;
     }
 
