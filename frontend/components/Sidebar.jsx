@@ -65,6 +65,10 @@ import {
   getNavigationLabel,
 } from '@/lib/navigationConfig';
 import { resolveSidebarSections } from '@/lib/sidebarAccess.mjs';
+import {
+  getDashboardDropdownItemClass,
+  getDashboardOverlaySurfaceClass,
+} from '@/components/dashboard/dashboardSurfaceTheme';
 
 const SIDEBAR_ICON_MAP = {
   guides: BookMarked,
@@ -151,6 +155,7 @@ export default function Sidebar({ user, credits, business }) {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState(null);
   const isUserAdmin = user?.isAdmin === true || Boolean(user?.adminRole);
+  const darkMenu = mounted && resolvedTheme === 'dark';
 
   const userPlan = user?.subscription?.plan || user?.plan || null;
   const userCountry = business?.country || user?.business?.country || 'TR';
@@ -348,9 +353,14 @@ export default function Sidebar({ user, credits, business }) {
               <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent
+            align="end"
+            className={getDashboardOverlaySurfaceClass(darkMenu, 'w-56 p-1')}
+          >
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="cursor-pointer">
+              <DropdownMenuSubTrigger
+                className={cn('cursor-pointer', getDashboardDropdownItemClass(darkMenu))}
+              >
                 {mounted && theme === 'dark' ? (
                   <Moon className="h-4 w-4 mr-2" />
                 ) : mounted && theme === 'light' ? (
@@ -361,18 +371,27 @@ export default function Sidebar({ user, credits, business }) {
                 {t('dashboard.theme')}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={() => setTheme('light')} className="cursor-pointer">
+                <DropdownMenuSubContent className={getDashboardOverlaySurfaceClass(darkMenu, 'p-1')}>
+                  <DropdownMenuItem
+                    onClick={() => setTheme('light')}
+                    className={cn('cursor-pointer', getDashboardDropdownItemClass(darkMenu))}
+                  >
                     <Sun className="h-4 w-4 mr-2" />
                     {t('dashboard.themeLight')}
                     {mounted && theme === 'light' && <Check className="h-4 w-4 ml-auto" />}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme('dark')} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={() => setTheme('dark')}
+                    className={cn('cursor-pointer', getDashboardDropdownItemClass(darkMenu))}
+                  >
                     <Moon className="h-4 w-4 mr-2" />
                     {t('dashboard.themeDark')}
                     {mounted && theme === 'dark' && <Check className="h-4 w-4 ml-auto" />}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme('system')} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={() => setTheme('system')}
+                    className={cn('cursor-pointer', getDashboardDropdownItemClass(darkMenu))}
+                  >
                     <Monitor className="h-4 w-4 mr-2" />
                     {t('dashboard.themeSystem')}
                     {mounted && theme === 'system' && <Check className="h-4 w-4 ml-auto" />}
@@ -381,7 +400,13 @@ export default function Sidebar({ user, credits, business }) {
               </DropdownMenuPortal>
             </DropdownMenuSub>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-error-600 dark:text-error-400">
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className={cn(
+                'cursor-pointer text-error-600 dark:text-error-400',
+                getDashboardDropdownItemClass(darkMenu)
+              )}
+            >
               <LogOut className="h-4 w-4 mr-2" />
               {t('dashboard.logOut')}
             </DropdownMenuItem>

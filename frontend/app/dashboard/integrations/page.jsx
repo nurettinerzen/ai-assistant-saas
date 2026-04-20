@@ -84,6 +84,7 @@ import { useWhatsAppEmbeddedSignup } from '@/hooks/useWhatsAppEmbeddedSignup';
 import { cn } from '@/lib/utils';
 import {
   getDashboardInsetClass,
+  getDashboardOverlaySurfaceClass,
 } from '@/components/dashboard/dashboardSurfaceTheme';
 
 // Integration logo paths
@@ -1584,34 +1585,36 @@ const handleShopifyConnect = async () => {
 
       {isWhatsAppManualFallbackEnabled && (
         <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
-          <DialogContent className={cn('max-w-2xl', dark && '!border-white/10 !bg-[#081224]/98 !text-gray-100')}>
-            <DialogHeader>
-              <DialogTitle>{t('dashboard.integrationsPage.whatsappModalTitle')}</DialogTitle>
-              <DialogDescription>{t('dashboard.integrationsPage.whatsappModalDesc')}</DialogDescription>
+          <DialogContent className={getDashboardOverlaySurfaceClass(dark, 'max-w-2xl')}>
+            <DialogHeader className={cn(dark && 'text-gray-100')}>
+              <DialogTitle className={cn(dark && '!text-white')}>{t('dashboard.integrationsPage.whatsappModalTitle')}</DialogTitle>
+              <DialogDescription className={cn(dark && '!text-neutral-300')}>
+                {t('dashboard.integrationsPage.whatsappModalDesc')}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>{t('dashboard.integrationsPage.accessToken')}</Label>
+                <Label className={cn(dark && 'text-slate-200')}>{t('dashboard.integrationsPage.accessToken')}</Label>
                 <Input type="password" placeholder={t('dashboard.integrationsPage.accessTokenPlaceholder')} value={whatsappForm.accessToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, accessToken: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t('dashboard.integrationsPage.phoneNumberId')}</Label>
+                <Label className={cn(dark && 'text-slate-200')}>{t('dashboard.integrationsPage.phoneNumberId')}</Label>
                 <Input type="text" placeholder={t('dashboard.integrationsPage.phoneNumberIdPlaceholder')} value={whatsappForm.phoneNumberId} onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumberId: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t('dashboard.integrationsPage.verifyToken')}</Label>
+                <Label className={cn(dark && 'text-slate-200')}>{t('dashboard.integrationsPage.verifyToken')}</Label>
                 <Input type="text" placeholder={t('dashboard.integrationsPage.verifyTokenPlaceholder')} value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
-                <p className="text-xs text-neutral-500">
+                <p className={cn('text-xs', dark ? 'text-neutral-400' : 'text-neutral-500')}>
                   {t('dashboard.integrationsPage.verifyTokenHint')}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Webhook URL</Label>
+                <Label className={cn(dark && 'text-slate-200')}>Webhook URL</Label>
                 <div className="flex gap-2">
                   <Input type="text" readOnly value={`${runtimeConfig.apiUrl}/api/whatsapp/webhook`} className={cn(dark ? '!border-white/10 !bg-[#0B1730]/88 !text-gray-100' : 'bg-neutral-50')} />
                   <Button type="button" variant="outline" size="icon" onClick={copyWebhookUrl}><Copy className="h-4 w-4" /></Button>
                 </div>
-                <p className="text-xs text-neutral-500">
+                <p className={cn('text-xs', dark ? 'text-neutral-400' : 'text-neutral-500')}>
                   {t('dashboard.integrationsPage.webhookUrlPasteHint')}
                 </p>
               </div>
@@ -1625,10 +1628,14 @@ const handleShopifyConnect = async () => {
       )}
 
       <Dialog open={whatsappTestModalOpen} onOpenChange={setWhatsappTestModalOpen}>
-        <DialogContent className={cn('max-w-xl', dark && '!border-white/10 !bg-[#081224]/98 !text-gray-100')}>
-          <DialogHeader>
-            <DialogTitle>{t('dashboard.integrationsPage.whatsappTestPanelTitle')}</DialogTitle>
-            <DialogDescription>{t('dashboard.integrationsPage.whatsappTestAcceptedHint')}</DialogDescription>
+        <DialogContent className={getDashboardOverlaySurfaceClass(dark, 'max-w-xl')}>
+          <DialogHeader className={cn(dark && 'text-gray-100')}>
+            <DialogTitle className={cn(dark && '!text-white')}>
+              {t('dashboard.integrationsPage.whatsappTestPanelTitle')}
+            </DialogTitle>
+            <DialogDescription className={cn(dark && '!text-neutral-300')}>
+              {t('dashboard.integrationsPage.whatsappTestAcceptedHint')}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {whatsappStatus?.displayPhoneNumber && (
@@ -1643,7 +1650,9 @@ const handleShopifyConnect = async () => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="whatsapp-test-recipient">{t('dashboard.integrationsPage.whatsappTestRecipientLabel')}</Label>
+              <Label htmlFor="whatsapp-test-recipient" className={cn(dark && 'text-slate-200')}>
+                {t('dashboard.integrationsPage.whatsappTestRecipientLabel')}
+              </Label>
               <Input
                 id="whatsapp-test-recipient"
                 type="tel"
@@ -1651,13 +1660,15 @@ const handleShopifyConnect = async () => {
                 placeholder={t('dashboard.integrationsPage.whatsappTestRecipientPlaceholder')}
                 onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, recipientPhone: event.target.value }))}
               />
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+              <p className={cn('text-[11px]', dark ? 'text-neutral-400' : 'text-neutral-500')}>
                 {t('dashboard.integrationsPage.whatsappTestRecipientHint')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="whatsapp-test-message">{t('dashboard.integrationsPage.whatsappTestMessageLabel')}</Label>
+              <Label htmlFor="whatsapp-test-message" className={cn(dark && 'text-slate-200')}>
+                {t('dashboard.integrationsPage.whatsappTestMessageLabel')}
+              </Label>
               <Textarea
                 id="whatsapp-test-message"
                 rows={4}
@@ -1665,7 +1676,7 @@ const handleShopifyConnect = async () => {
                 placeholder={t('dashboard.integrationsPage.whatsappTestMessagePlaceholder')}
                 onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, message: event.target.value }))}
               />
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+              <p className={cn('text-[11px]', dark ? 'text-neutral-400' : 'text-neutral-500')}>
                 {t('dashboard.integrationsPage.whatsappTestTemplateFallbackHint')}
               </p>
             </div>

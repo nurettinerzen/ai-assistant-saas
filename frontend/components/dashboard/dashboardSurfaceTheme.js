@@ -63,6 +63,56 @@ export function getDashboardInsetClass(dark, className) {
   );
 }
 
+export function getDashboardOverlaySurfaceClass(dark, className) {
+  return cn(
+    'rounded-xl border shadow-[0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-xl',
+    dark
+      ? 'border-white/10 bg-[#081224]/98 text-slate-100 shadow-[0_28px_80px_rgba(2,6,23,0.48)]'
+      : 'border-slate-200 bg-white/98 text-slate-900',
+    className
+  );
+}
+
+export function getDashboardDropdownItemClass(dark, className) {
+  return cn(
+    dark
+      ? 'text-slate-100 data-[highlighted]:bg-white/[0.06] data-[highlighted]:text-slate-100 focus:bg-white/[0.06] focus:text-slate-100'
+      : 'text-slate-900 data-[highlighted]:bg-slate-100 data-[highlighted]:text-slate-900 focus:bg-slate-100 focus:text-slate-900',
+    className
+  );
+}
+
+export function getDashboardConversationItemClass(dark, selected = false, className) {
+  return cn(
+    'w-full rounded-xl border p-3 text-left transition',
+    selected
+      ? dark
+        ? 'border-emerald-500/35 bg-emerald-950/20 shadow-[0_18px_40px_rgba(16,185,129,0.08)]'
+        : 'border-emerald-300 bg-emerald-50/70'
+      : dark
+        ? 'border-transparent bg-transparent hover:border-white/10 hover:bg-[#0B1730]/88'
+        : 'border-transparent hover:border-neutral-200 hover:bg-white',
+    className
+  );
+}
+
+export function getDashboardMessageBubbleClass(dark, tone = 'assistant', className) {
+  const styles = {
+    system: dark
+      ? 'w-full max-w-xl rounded-xl border border-amber-500/30 bg-amber-950/18 px-4 py-3 text-sm text-amber-100'
+      : 'w-full max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800',
+    user: 'ml-auto max-w-2xl rounded-2xl bg-emerald-600 px-4 py-3 text-sm text-white',
+    human: dark
+      ? 'max-w-2xl rounded-2xl border border-blue-500/20 bg-blue-950/24 px-4 py-3 text-sm text-blue-100'
+      : 'max-w-2xl rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-950',
+    assistant: dark
+      ? 'max-w-2xl rounded-2xl border border-white/10 bg-[#0B1730]/88 px-4 py-3 text-sm text-neutral-100'
+      : 'max-w-2xl rounded-2xl bg-neutral-100 px-4 py-3 text-sm text-neutral-900',
+  };
+
+  return cn(styles[tone] || styles.assistant, className);
+}
+
 export function getDashboardTableHeaderClass(dark, className) {
   return cn(
     dark ? 'bg-white/[0.03] border-b border-white/10' : 'bg-slate-50/80 border-b border-slate-200',
