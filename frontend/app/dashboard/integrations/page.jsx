@@ -1264,36 +1264,39 @@ const handleShopifyConnect = async () => {
         )}
 
         {isWhatsApp && shouldShowWhatsappDetails && (
-          <div className={getDashboardInsetClass(dark, 'mb-4 p-4')}>
-            <div className="space-y-2">
-              <div className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 dark:text-cyan-200/55">
-                {t('dashboard.integrationsPage.whatsappConnectedNumber')}
+          <div className="mb-4 space-y-2">
+            <div className="flex items-start justify-between gap-3 rounded-lg px-1">
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 dark:text-cyan-200/55">
+                  {t('dashboard.integrationsPage.whatsappConnectedNumber')}
+                </div>
+                {whatsappNumberLabel && (
+                  <p className="mt-1 truncate text-sm font-medium text-neutral-900 dark:text-white">
+                    {whatsappNumberLabel}
+                  </p>
+                )}
               </div>
-              {whatsappNumberLabel && (
-                <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-                  {whatsappNumberLabel}
-                </p>
-              )}
               {whatsappStatus?.tokenExpired ? (
-                <p className="text-xs text-amber-700 dark:text-amber-300">
+                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                   {t('dashboard.integrationsPage.whatsappTokenExpired')}
-                </p>
+                </span>
               ) : whatsappExpiryLabel ? (
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t('dashboard.integrationsPage.whatsappTokenExpires')}: {whatsappExpiryLabel}
-                </p>
+                <span className="shrink-0 text-[11px] text-neutral-500 dark:text-neutral-400">
+                  {whatsappExpiryLabel}
+                </span>
               ) : null}
-              {whatsappEmbeddedSignupState === 'awaiting_completion' && (
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  {t('dashboard.integrationsPage.whatsappEmbeddedSignupInProgress')}
-                </p>
-              )}
-              {whatsappEmbeddedSignupState === 'error' && whatsappEmbeddedSignupError && (
-                <p className="text-xs text-red-600 dark:text-red-400">
-                  {whatsappEmbeddedSignupError?.response?.data?.error || whatsappEmbeddedSignupError?.message}
-                </p>
-              )}
             </div>
+
+            {whatsappEmbeddedSignupState === 'awaiting_completion' && (
+              <p className="px-1 text-xs text-blue-700 dark:text-blue-300">
+                {t('dashboard.integrationsPage.whatsappEmbeddedSignupInProgress')}
+              </p>
+            )}
+            {whatsappEmbeddedSignupState === 'error' && whatsappEmbeddedSignupError && (
+              <p className="px-1 text-xs text-red-600 dark:text-red-400">
+                {whatsappEmbeddedSignupError?.response?.data?.error || whatsappEmbeddedSignupError?.message}
+              </p>
+            )}
           </div>
         )}
 
