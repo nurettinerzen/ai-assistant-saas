@@ -58,6 +58,7 @@ import { resolveConversationSystemMessage } from '@/lib/conversationSystemMessag
 import { cn } from '@/lib/utils';
 import {
   getDashboardInsetClass,
+  getDashboardMessageBubbleClass,
   getDashboardTableHeaderClass,
 } from '@/components/dashboard/dashboardSurfaceTheme';
 
@@ -441,7 +442,7 @@ export default function ChatsPage() {
   const getMessagePresentation = (message = {}) => {
     if (message.role === 'user') {
       return {
-        wrapperClass: 'bg-blue-50 dark:bg-blue-900/20',
+        wrapperClass: getDashboardMessageBubbleClass(dark, 'user'),
         avatarClass: 'bg-blue-100 dark:bg-blue-800',
         icon: <User className="h-3 w-3 text-blue-600 dark:text-blue-400" />,
         label: t('dashboard.chatsPage.customerLabel'),
@@ -450,7 +451,7 @@ export default function ChatsPage() {
 
     if (message.role === 'human_agent') {
       return {
-        wrapperClass: 'bg-emerald-50 dark:bg-emerald-900/20',
+        wrapperClass: getDashboardMessageBubbleClass(dark, 'human'),
         avatarClass: 'bg-emerald-100 dark:bg-emerald-800',
         icon: <Headphones className="h-3 w-3 text-emerald-600 dark:text-emerald-300" />,
         label: message?.metadata?.actorName || t('dashboard.chatsPage.liveAgentLabel'),
@@ -459,7 +460,7 @@ export default function ChatsPage() {
 
     if (message.role === 'system') {
       return {
-        wrapperClass: 'bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20',
+        wrapperClass: getDashboardMessageBubbleClass(dark, 'system'),
         avatarClass: 'bg-amber-100 dark:bg-amber-800',
         icon: <RefreshCw className="h-3 w-3 text-amber-700 dark:text-amber-300" />,
         label: t('dashboard.chatsPage.systemLabel'),
@@ -467,7 +468,7 @@ export default function ChatsPage() {
     }
 
     return {
-      wrapperClass: 'bg-gray-50 dark:bg-[#0B1730]/88 dark:border dark:border-white/10',
+      wrapperClass: getDashboardMessageBubbleClass(dark, 'assistant'),
       avatarClass: 'bg-gray-200 dark:bg-cyan-500/15',
       icon: <Bot className="h-3 w-3 text-gray-600 dark:text-cyan-200" />,
       label: t('dashboard.chatsPage.aiAssistantLabel'),
@@ -744,7 +745,7 @@ export default function ChatsPage() {
                         return (
                           <div
                             key={index}
-                            className={`flex gap-2 rounded-lg p-3 ${presentation.wrapperClass}`}
+                            className={cn('flex gap-2', presentation.wrapperClass)}
                           >
                             <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${presentation.avatarClass}`}>
                               {presentation.icon}

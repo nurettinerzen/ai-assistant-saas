@@ -140,9 +140,9 @@ const INTEGRATION_LOGOS = {
   },
   AMAZON: {
     src: '/assets/integrations/amazon.svg',
-    width: 28,
-    height: 28,
-    className: 'h-7 w-7 object-contain',
+    width: 32,
+    height: 32,
+    className: 'h-8 w-8 object-contain',
   },
   HEPSIBURADA: {
     src: '/assets/integrations/hepsiburada.png',
@@ -269,7 +269,7 @@ export default function IntegrationsPage() {
     merchantIdPlaceholder: isTr ? 'mağaza kimliği' : 'merchant identifier',
     hepsiburadaHelper: isTr ? 'Hepsiburada soruları çekilir, AI yanıtı oluşturulur ve panelden onaylandığında platforma gönderilir.' : 'Hepsiburada questions are pulled, AI replies are generated, and posted after approval from the panel.',
     hepsiburadaConnectButton: isTr ? 'Hepsiburada Bağla' : 'Connect Hepsiburada',
-    amazonConnectDescription: isTr ? 'Amazon mağazanızı bağlayın, buyer messaging akışlarını yönetin ve sipariş bazlı müşteri iletişimini AI destekli taslaklarla panelden hızlandırın.' : 'Connect your Amazon store, manage buyer messaging flows, and speed up order-based customer communication with AI-assisted drafts from the dashboard.',
+    amazonConnectDescription: isTr ? 'Amazon mağazanızı bağlayın, buyer messaging akışlarını yönetin ve sipariş iletişimini panelden hızlandırın.' : 'Connect your Amazon store, manage buyer messaging flows, and speed up order-based communication from the dashboard.',
     amazonConnectSuccess: isTr ? 'Amazon yönlendirmesi başlatıldı' : 'Amazon authorization started',
     amazonConnectError: isTr ? 'Amazon bağlantısı başlatılamadı' : 'Failed to start Amazon authorization',
     amazonDisconnected: isTr ? 'Amazon bağlantısı kesildi' : 'Amazon disconnected',
@@ -1072,6 +1072,11 @@ const handleShopifyConnect = async () => {
     const isSikayetvar = integration.type === 'SIKAYETVAR';
     const isMarketplaceBeta = isTrendyol || isHepsiburada || isAmazon || isSikayetvar;
     const isMarketplaceImageIcon = isTrendyol || isHepsiburada;
+    const iconClassName = isAmazon
+      ? 'h-8 w-8 object-contain'
+      : isMarketplaceImageIcon
+        ? 'h-7 w-7 rounded-md object-cover'
+        : `h-6 w-6 ${disabled ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`;
     const disabled = isEcommerceDisabled(integration.type);
     const marketplaceStatus = isTrendyol
       ? trendyolStatus
@@ -1125,7 +1130,7 @@ const handleShopifyConnect = async () => {
         <div className="flex items-start justify-between mb-4">
           <div className="flex min-h-10 items-center gap-3">
             <div className={CARD_ICON_WRAPPER_CLASS}>
-              <Icon className={isMarketplaceImageIcon ? 'h-7 w-7 rounded-md object-cover' : `h-6 w-6 ${disabled ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`} />
+              <Icon className={iconClassName} />
             </div>
             <div className="min-h-10 flex items-center">
               <div className="flex flex-wrap items-center gap-2">
