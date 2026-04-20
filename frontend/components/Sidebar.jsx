@@ -37,6 +37,7 @@ import {
   History,
   AlertTriangle,
   BookMarked,
+  Package,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -66,6 +67,11 @@ import {
 } from '@/lib/navigationConfig';
 import { resolveSidebarSections } from '@/lib/sidebarAccess.mjs';
 import {
+  useHepsiburadaStatus,
+  useSikayetvarStatus,
+  useTrendyolStatus,
+} from '@/hooks/useIntegrations';
+import {
   getDashboardDropdownItemClass,
   getDashboardOverlaySurfaceClass,
 } from '@/components/dashboard/dashboardSurfaceTheme';
@@ -79,6 +85,8 @@ const SIDEBAR_ICON_MAP = {
   campaigns: Megaphone,
   email: Mail,
   conversations: MessageCircle,
+  marketplaceQa: Package,
+  complaints: AlertTriangle,
   analytics: BarChart3,
   callbacks: PhoneCall,
   callHistory: Phone,
@@ -160,6 +168,12 @@ export default function Sidebar({ user, credits, business }) {
   const userPlan = user?.subscription?.plan || user?.plan || null;
   const userCountry = business?.country || user?.business?.country || 'TR';
   const isReady = mounted && userPlan !== null && userPlan !== undefined;
+  const canViewOperations = can('campaigns:view');
+  const { data: trendyolStatus } = useTrendyolStatus({ enabled: canViewOperations });
+  const { data: hepsiburadaStatus } = useHepsiburadaStatus({ enabled: canViewOperations });
+  const { data: sikayetvarStatus } = useSikayetvarStatus({ enabled: canViewOperations });
+  const hasMarketplaceQaAccess = Boolean(trendyolStatus?.connected || hepsiburadaStatus?.connected);
+  const hasComplaintAccess = Boolean(sikayetvarStatus?.connected);
 
   const SidebarSkeleton = () => (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
@@ -204,6 +218,12 @@ export default function Sidebar({ user, credits, business }) {
     isAdmin: isUserAdmin,
     adminAccessEnabled: adminAccess.enabled,
     featureVisibilityResolver: getItemVisibility,
+    extraSectionItems: {
+      operations: [
+        ...(hasMarketplaceQaAccess ? ['marketplaceQa'] : []),
+        ...(hasComplaintAccess ? ['complaints'] : []),
+      ],
+    },
   }).map((section) => ({
     ...section,
     label: t(section.labelKey),

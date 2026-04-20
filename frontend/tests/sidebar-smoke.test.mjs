@@ -153,3 +153,38 @@ test('admin section appears when admin access is enabled', () => {
     ]
   );
 });
+
+test('extra sidebar items can be appended for connected integrations', () => {
+  const canAccess = createRolePermissionChecker('OWNER');
+
+  assert.deepEqual(
+    getVisibleSidebarItemKeys({
+      canAccess,
+      featureVisibilityResolver: visibleFeatures,
+      extraSectionItems: {
+        operations: ['marketplaceQa', 'complaints'],
+      },
+    }),
+    [
+      'guides',
+      'assistants',
+      'knowledgeBase',
+      'chatWidget',
+      'inbox',
+      'campaigns',
+      'email',
+      'conversations',
+      'marketplaceQa',
+      'complaints',
+      'analytics',
+      'callbacks',
+      'callHistory',
+      'chatHistory',
+      'integrations',
+      'team',
+      'phoneNumbers',
+      'subscription',
+      'account',
+    ]
+  );
+});

@@ -162,6 +162,7 @@ router.get('/amazon/login', async (req, res) => authenticateToken(req, res, asyn
   try {
     const amazonCallbackUri = String(req.query?.amazon_callback_uri || '').trim();
     const amazonState = String(req.query?.amazon_state || '').trim();
+    const version = String(req.query?.version || '').trim();
 
     if (!amazonCallbackUri || !amazonState || !isAllowedAmazonCallbackUri(amazonCallbackUri)) {
       return safeRedirect(res, '/dashboard/integrations?error=amazon-invalid');
@@ -184,6 +185,9 @@ router.get('/amazon/login', async (req, res) => authenticateToken(req, res, asyn
     callbackUrl.searchParams.set('amazon_state', amazonState);
     callbackUrl.searchParams.set('state', pendingState.state);
     callbackUrl.searchParams.set('redirect_uri', getAmazonCallbackUri());
+    if (version === 'beta') {
+      callbackUrl.searchParams.set('version', version);
+    }
 
     return res.redirect(callbackUrl.toString());
   } catch (error) {

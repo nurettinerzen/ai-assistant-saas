@@ -28,11 +28,21 @@ export function resolveSidebarSections({
   isAdmin = false,
   adminAccessEnabled = false,
   featureVisibilityResolver,
+  extraSectionItems = {},
 } = {}) {
   const permissionChecker = canAccess || (() => false);
 
   const sections = SIDEBAR_SECTIONS.map((section) => {
-    const itemKeys = section.itemKeys.filter((itemKey) => {
+    const mergedItemKeys = [
+      ...section.itemKeys,
+      ...(extraSectionItems[section.id] || []),
+    ];
+
+    const itemKeys = mergedItemKeys.filter((itemKey, index) => {
+      if (mergedItemKeys.indexOf(itemKey) !== index) {
+        return false;
+      }
+
       const item = NAVIGATION_ITEMS[itemKey];
       return item && isNavigationItemVisible(item, permissionChecker, featureVisibilityResolver);
     });

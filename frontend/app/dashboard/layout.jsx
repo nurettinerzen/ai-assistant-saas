@@ -8,6 +8,7 @@ import { Toaster } from 'sonner';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardProvider } from '@/contexts/DashboardContext';
+import { shouldBypassEmailVerificationForRoute } from '@/lib/dashboardAuthGuards.mjs';
 
 // Avoid storing user/session data in browser storage.
 const USER_CACHE_KEY = 'dashboard_user_cache_disabled';
@@ -93,7 +94,10 @@ export default function DashboardLayout({ children }) {
       // Email verification check - redirect to pending page if not verified
       // Skip check for invited team members (they were invited via email, so implicitly verified)
       const isInvitedMember = userData.acceptedAt || (userData.role && userData.role !== 'OWNER');
-      if (!userData.emailVerified && !isInvitedMember) {
+      const shouldBypassEmailVerification = typeof window !== 'undefined'
+        && shouldBypassEmailVerificationForRoute(window.location.pathname, window.location.search);
+
+      if (!userData.emailVerified && !isInvitedMember && !shouldBypassEmailVerification) {
         router.push('/auth/email-pending');
         return;
       }
