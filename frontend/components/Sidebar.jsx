@@ -4,7 +4,7 @@
  * Clean, minimal design with grouped sections
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -35,7 +35,6 @@ import {
   Mail,
   PhoneCall,
   MessageCircle,
-  History,
   AlertTriangle,
   BookMarked,
 } from 'lucide-react';
@@ -60,7 +59,40 @@ import { apiClient } from '@/lib/api';
 import { VISIBILITY, getFeatureVisibility } from '@/lib/features';
 import { getPlanDisplayName } from '@/lib/planConfig';
 import { TelyxLogoCompact } from './TelyxLogo';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+import {
+  ADMIN_NAVIGATION_ITEMS,
+  getNavigationItemByKey,
+  getNavigationLabel,
+} from '@/lib/navigationConfig';
+import { resolveSidebarSections } from '@/lib/sidebarAccess.mjs';
+
+const SIDEBAR_ICON_MAP = {
+  guides: BookMarked,
+  assistants: Bot,
+  knowledgeBase: BookOpen,
+  chatWidget: MessageSquare,
+  inbox: Database,
+  campaigns: Megaphone,
+  email: Mail,
+  conversations: MessageCircle,
+  analytics: BarChart3,
+  callbacks: PhoneCall,
+  callHistory: Phone,
+  chatHistory: MessageCircle,
+  integrations: Puzzle,
+  team: Users,
+  phoneNumbers: Phone,
+  subscription: CreditCard,
+  account: Settings,
+  adminPanel: Shield,
+  redAlert: AlertTriangle,
+  adminUsers: Users,
+  adminAssistants: Bot,
+  adminCalls: Phone,
+  adminSubscriptions: CreditCard,
+  adminEnterprise: Database,
+  adminAuditLog: BarChart3,
+};
 
 export default function Sidebar({ user, credits, business }) {
   const pathname = usePathname();
@@ -120,6 +152,7 @@ export default function Sidebar({ user, credits, business }) {
   // Upgrade modal state
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState(null);
+  const isUserAdmin = user?.isAdmin === true;
 
   // Get user's current plan and country
   // Only use actual plan from subscription - don't assume STARTER as default
@@ -154,66 +187,6 @@ export default function Sidebar({ user, credits, business }) {
     </div>
   );
 
-  // Navigation structure - 4 groups using translation keys
-  const NAVIGATION = [
-    {
-      label: t('dashboard.sidebar.product'),
-      items: [
-        { icon: BookMarked, label: locale === 'tr' ? 'Rehber' : 'Guide', href: NAVIGATION_ITEMS.guides.href, permission: 'assistants:view' },
-        { icon: Bot, label: t('dashboard.assistants'), href: NAVIGATION_ITEMS.assistants.href, permission: 'assistants:view' },
-        { icon: BookOpen, label: t('dashboard.knowledgeBase'), href: NAVIGATION_ITEMS.knowledgeBase.href, permission: 'knowledge:view' },
-        { icon: MessageSquare, label: t('dashboard.sidebar.chatWidget'), href: NAVIGATION_ITEMS.chatWidget.href, permission: 'assistants:view' },
-      ],
-    },
-    {
-      label: t('dashboard.sidebar.operations'),
-      items: [
-        { icon: Database, label: t('dashboard.sidebar.inbox'), href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
-        { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
-        { icon: Mail, label: t('dashboard.sidebar.email'), href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
-        { icon: MessageSquare, label: t('dashboard.sidebar.conversations'), href: NAVIGATION_ITEMS.conversations.href, permission: 'whatsapp:view' },
-      ],
-    },
-    {
-      label: t('dashboard.sidebar.monitoring'),
-      items: [
-        { icon: BarChart3, label: t('dashboard.analytics'), href: NAVIGATION_ITEMS.analytics.href, permission: 'analytics:view' },
-        { icon: PhoneCall, label: t('dashboard.sidebar.callbacks'), href: NAVIGATION_ITEMS.callbacks.href, permission: 'campaigns:view' },
-        { icon: Phone, label: t('dashboard.sidebar.callHistory'), href: NAVIGATION_ITEMS.callHistory.href, permission: 'analytics:view' },
-        { icon: MessageCircle, label: t('dashboard.sidebar.chatHistory'), href: NAVIGATION_ITEMS.chatHistory.href, permission: 'analytics:view' },
-      ],
-    },
-    {
-      label: t('dashboard.sidebar.management'),
-      items: [
-        { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: NAVIGATION_ITEMS.integrations.href, permission: 'integrations:view' },
-        { icon: Users, label: t('dashboard.sidebar.team'), href: NAVIGATION_ITEMS.team.href, permission: 'team:view' },
-        { icon: Phone, label: t('dashboard.sidebar.phoneNumbers'), href: NAVIGATION_ITEMS.phoneNumbers.href, permission: 'phone:view' },
-        { icon: CreditCard, label: t('dashboard.subscription'), href: NAVIGATION_ITEMS.subscription.href, permission: 'billing:view' },
-        { icon: Settings, label: t('dashboard.sidebar.account'), href: NAVIGATION_ITEMS.account.href, permission: 'settings:view' },
-      ],
-    },
-  ];
-
-  // Admin-only navigation
-  const isUserAdmin = user?.isAdmin === true;
-  const showAdminNavigation = isUserAdmin || adminAccess.enabled;
-  const ADMIN_NAVIGATION = showAdminNavigation ? [
-    {
-      label: 'Admin',
-      items: [
-        { icon: Shield, label: 'Admin Panel', href: buildAdminHref() },
-        { icon: AlertTriangle, label: 'Red Alert', href: buildAdminHref('/red-alert') },
-        { icon: Users, label: 'Kullanıcılar', href: buildAdminHref('/users') },
-        { icon: Bot, label: 'Asistanlar', href: buildAdminHref('/assistants') },
-        { icon: Phone, label: 'Aramalar', href: buildAdminHref('/calls') },
-        { icon: CreditCard, label: 'Abonelikler', href: buildAdminHref('/subscriptions') },
-        { icon: Database, label: 'Kurumsal', href: buildAdminHref('/enterprise') },
-        { icon: BarChart3, label: 'Audit Log', href: buildAdminHref('/audit-log') },
-      ],
-    },
-  ] : [];
-
   const handleLockedFeatureClick = (featureId) => {
     setSelectedFeatureId(featureId);
     setUpgradeModalOpen(true);
@@ -223,6 +196,36 @@ export default function Sidebar({ user, credits, business }) {
     if (!item.featureId) return VISIBILITY.VISIBLE;
     return getFeatureVisibility(item.featureId, userPlan, userCountry);
   };
+
+  const buildAdminHref = (href) => {
+    if (!adminAccess.enabled || adminAccess.mfaVerified) {
+      return href;
+    }
+
+    return `/dashboard/admin-auth?returnTo=${encodeURIComponent(href)}`;
+  };
+
+  const navigationSections = resolveSidebarSections({
+    canAccess: can,
+    isAdmin: isUserAdmin,
+    adminAccessEnabled: adminAccess.enabled,
+    featureVisibilityResolver: getItemVisibility,
+  }).map((section) => ({
+    ...section,
+    label: t(section.labelKey),
+    items: section.itemKeys.map((itemKey) => {
+      const item = getNavigationItemByKey(itemKey);
+      const isAdminItem = Boolean(ADMIN_NAVIGATION_ITEMS[itemKey]);
+
+      return {
+        key: itemKey,
+        icon: SIDEBAR_ICON_MAP[item.iconKey],
+        label: getNavigationLabel(itemKey, locale),
+        href: isAdminItem ? buildAdminHref(item.href) : item.href,
+        featureId: item.featureId,
+      };
+    }),
+  }));
 
   const toggleSection = (label) => {
     setCollapsedSections((prev) =>
@@ -245,15 +248,6 @@ export default function Sidebar({ user, credits, business }) {
   // Get plan display name from centralized config
   const getPlanDisplay = () => getPlanDisplayName(userPlan, locale);
 
-  const buildAdminHref = (path = '') => {
-    const target = `/dashboard/admin${path}`;
-    if (!adminAccess.enabled || adminAccess.mfaVerified) {
-      return target;
-    }
-
-    return `/dashboard/admin-auth?returnTo=${encodeURIComponent(target)}`;
-  };
-
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       {/* Logo */}
@@ -271,25 +265,16 @@ export default function Sidebar({ user, credits, business }) {
         }}
         className="flex-1 min-h-0 overflow-y-auto py-2 px-3"
       >
-        {[...NAVIGATION, ...ADMIN_NAVIGATION].map((section) => {
+        {navigationSections.map((section) => {
           const sectionLabel = section.label;
           const isCollapsed = collapsedSections.includes(sectionLabel);
-
-          // Filter visible items
-          const visibleItems = section.items.filter((item) => {
-            if (item.permission && !can(item.permission)) return false;
-            const visibility = getItemVisibility(item);
-            return visibility !== VISIBILITY.HIDDEN;
-          });
-
-          if (visibleItems.length === 0) return null;
 
           return (
             <div key={section.label} className="mb-1.5">
               {/* Section header */}
               <button
                 onClick={() => toggleSection(sectionLabel)}
-                className="flex items-center justify-between w-full px-3 py-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-[0.16em] hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
               >
                 <span>{sectionLabel}</span>
                 {isCollapsed ? (
@@ -302,7 +287,7 @@ export default function Sidebar({ user, credits, business }) {
               {/* Section items */}
               {!isCollapsed && (
                 <div className="mt-1 space-y-0.5">
-                  {visibleItems.map((item) => {
+                  {section.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
                     const visibility = getItemVisibility(item);
