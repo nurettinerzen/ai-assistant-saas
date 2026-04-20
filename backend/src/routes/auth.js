@@ -10,7 +10,7 @@ import { safeRedirect } from '../middleware/redirectWhitelist.js';
 import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
 import { validatePasswordPolicy, passwordPolicyMessage } from '../security/passwordPolicy.js';
 import { clearSessionCookie, issueSession } from '../security/sessionToken.js';
-import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
+import { ADMIN_BOOTSTRAP_EMAILS, isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 import { safeCompareStrings } from '../security/constantTime.js';
 import { authRateLimiter, apiRateLimiter } from '../middleware/rateLimiter.js';
 
@@ -21,6 +21,7 @@ const strictRateLimit = authRateLimiter.middleware();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const OOB_TOKEN_TTL_MS = 10 * 60 * 1000;
+const isBootstrapAdminEmail = (email = '') => ADMIN_BOOTSTRAP_EMAILS.includes(String(email || '').toLowerCase());
 
 const AUTH_ME_SUBSCRIPTION_SELECT = {
   id: true,
@@ -429,6 +430,18 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const normalizedEmail = String(user.email || '').toLowerCase();
+    const adminUser = normalizedEmail
+      ? await prisma.adminUser.findUnique({
+          where: { email: normalizedEmail },
+          select: { role: true, isActive: true },
+        })
+      : null;
+    const isAdminUser = adminUser?.isActive === true || isBootstrapAdminEmail(normalizedEmail);
+    const adminRole = adminUser?.isActive === true
+      ? adminUser.role
+      : (isBootstrapAdminEmail(normalizedEmail) ? 'SUPER_ADMIN' : null);
+
     if (user.business) {
       user.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(user.business);
     }
@@ -437,6 +450,8 @@ router.get('/me', authenticateToken, async (req, res) => {
       ...user,
       subscription: user.business?.subscription || null,
       plan: user.business?.subscription?.plan || null,
+      isAdmin: isAdminUser,
+      adminRole,
     });
   } catch (error) {
     console.error('Get user error:', error);

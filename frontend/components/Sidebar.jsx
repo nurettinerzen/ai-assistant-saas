@@ -151,7 +151,7 @@ export default function Sidebar({ user, credits, business }) {
 
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState(null);
-  const isUserAdmin = user?.isAdmin === true;
+  const isUserAdmin = user?.isAdmin === true || Boolean(user?.adminRole);
 
   const userPlan = user?.subscription?.plan || user?.plan || null;
   const userCountry = business?.country || user?.business?.country || 'TR';
