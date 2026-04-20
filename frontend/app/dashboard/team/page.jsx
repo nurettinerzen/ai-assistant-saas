@@ -290,7 +290,7 @@ export default function TeamPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="members" className="space-y-4">
-        <TabsList>
+        <TabsList className="dark:bg-[#081224]/90 dark:border-white/10">
           <TabsTrigger value="members">{t('dashboard.teamPage.tabs.members')} ({members.length})</TabsTrigger>
           {can('team:invite') && (
             <TabsTrigger value="invitations">
@@ -302,7 +302,7 @@ export default function TeamPage() {
         {/* Members Tab */}
         <TabsContent value="members">
           <Card>
-            <CardHeader>
+            <CardHeader className="border-b border-neutral-200 bg-neutral-50/80 dark:border-white/10 dark:bg-[#0B1730]/88">
               <CardTitle>{t('dashboard.teamPage.members.title')}</CardTitle>
               <CardDescription>
                 {t('dashboard.teamPage.members.description')}
@@ -409,7 +409,7 @@ export default function TeamPage() {
         {can('team:invite') && (
           <TabsContent value="invitations">
             <Card>
-              <CardHeader>
+              <CardHeader className="border-b border-neutral-200 bg-neutral-50/80 dark:border-white/10 dark:bg-[#0B1730]/88">
                 <CardTitle>{t('dashboard.teamPage.invitations.title')}</CardTitle>
                 <CardDescription>
                   {t('dashboard.teamPage.invitations.description')}

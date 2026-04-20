@@ -700,7 +700,7 @@ export default function WhatsAppInboxPage() {
         className={`w-full rounded-xl border p-3 text-left transition ${
           isSelected
             ? 'border-emerald-300 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-950/20'
-            : 'border-transparent hover:border-neutral-200 hover:bg-white dark:hover:border-neutral-800 dark:hover:bg-neutral-900'
+            : 'border-transparent hover:border-neutral-200 hover:bg-white dark:hover:border-white/10 dark:hover:bg-[#0B1730]/88'
         }`}
       >
         <div className="flex items-start justify-between gap-3">
@@ -872,7 +872,7 @@ export default function WhatsAppInboxPage() {
               ))}
             </div>
           ) : filteredConversations.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-6 dark:border-white/10 dark:bg-[#081224]/95">
+          <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-6 dark:border-white/10 dark:bg-[#081224]/95">
               <EmptyState
                 icon={MessageSquare}
                 title={t.noConversations}
@@ -1025,7 +1025,7 @@ export default function WhatsAppInboxPage() {
               {sidebarOpen && (
                 <aside className="w-[280px] min-w-[280px] border-l border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#081224]/95">
                   <div className="p-4">
-                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-[#081224]/95">
+                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-[#0B1730]/88">
                       <div className="flex items-center gap-2">
                         <UserCircle2 className="h-4 w-4 text-neutral-400" />
                         <h3 className="font-medium text-neutral-900 dark:text-white">{t.details}</h3>
@@ -1126,7 +1126,7 @@ export default function WhatsAppInboxPage() {
                                         key={chat.id}
                                         type="button"
                                         onClick={() => setSelectedChatId(chat.id)}
-                                        className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left transition hover:border-neutral-300 dark:border-white/10 dark:bg-[#081224]/95 dark:hover:border-cyan-500/30"
+                                        className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left transition hover:border-neutral-300 dark:border-white/10 dark:bg-[#0B1730]/88 dark:hover:border-cyan-500/30 dark:hover:bg-[#102043]"
                                       >
                                         <div className="flex items-center justify-between gap-2">
                                           <div className="truncate text-xs font-medium text-neutral-900 dark:text-white">

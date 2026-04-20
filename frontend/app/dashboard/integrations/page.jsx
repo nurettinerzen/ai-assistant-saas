@@ -80,6 +80,7 @@ import {
   useRefreshWhatsAppConnection,
 } from '@/hooks/useIntegrations';
 import { useWhatsAppEmbeddedSignup } from '@/hooks/useWhatsAppEmbeddedSignup';
+import { cn } from '@/lib/utils';
 
 // Integration logo paths
 const INTEGRATION_LOGOS = {
@@ -115,12 +116,6 @@ const INTEGRATION_LOGOS = {
   },
   OUTLOOK: {
     src: '/assets/integrations/outlook.png',
-    width: 24,
-    height: 24,
-    className: 'h-6 w-6 object-contain',
-  },
-  CUSTOM: {
-    src: '/assets/integrations/crm.png',
     width: 24,
     height: 24,
     className: 'h-6 w-6 object-contain',
@@ -165,6 +160,10 @@ const LockedPlanBadge = ({ text }) => (
 );
 
 const IntegrationLogo = ({ type, className }) => {
+  if (type === 'CUSTOM') {
+    return <Target className={cn('h-6 w-6 text-sky-500 dark:text-cyan-300', className)} />;
+  }
+
   const logo = INTEGRATION_LOGOS[type];
   if (logo) {
     return (
@@ -361,6 +360,7 @@ export default function IntegrationsPage() {
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappForm, setWhatsappForm] = useState({ accessToken: '', phoneNumberId: '', verifyToken: '' });
+  const [whatsappTestModalOpen, setWhatsappTestModalOpen] = useState(false);
   const [whatsappTestForm, setWhatsappTestForm] = useState({ recipientPhone: '', message: '' });
   const [whatsappTestSending, setWhatsappTestSending] = useState(false);
   const [whatsappTestResult, setWhatsappTestResult] = useState(null);
@@ -1087,7 +1087,7 @@ const handleShopifyConnect = async () => {
     const whatsappActionLabel = whatsappEmbeddedSignupState === 'awaiting_completion'
       ? t('dashboard.integrationsPage.whatsappWaitingForMeta')
       : (whatsappNeedsReconnect ? t('dashboard.integrationsPage.whatsappReconnect') : t('dashboard.integrationsPage.connect'));
-    const whatsappRefreshLabel = refreshWhatsAppConnection.isPending
+    const whatsappReconnectLabel = refreshWhatsAppConnection.isPending
       ? t('dashboard.integrationsPage.whatsappRefreshing')
       : (whatsappNeedsReconnect ? t('dashboard.integrationsPage.whatsappReconnect') : t('dashboard.integrationsPage.whatsappRefresh'));
 
@@ -1223,7 +1223,7 @@ const handleShopifyConnect = async () => {
               </p>
             )}
             {complaintStatus?.companyUrl && (
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="break-all text-xs text-neutral-500 dark:text-neutral-400">
                 {marketplaceCopy.companyPage}: <span className="font-medium">{complaintStatus.companyUrl}</span>
               </p>
             )}
@@ -1239,181 +1239,36 @@ const handleShopifyConnect = async () => {
         )}
 
         {isWhatsApp && shouldShowWhatsappDetails && (
-          <div className="space-y-2 mb-4">
-            {whatsappNumberLabel && (
-              <p className="text-xs text-neutral-700 dark:text-neutral-300">
-                {t('dashboard.integrationsPage.whatsappConnectedNumber')}: <span className="font-medium">{whatsappNumberLabel}</span>
-              </p>
-            )}
-            {whatsappStatus?.tokenExpired ? (
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                {t('dashboard.integrationsPage.whatsappTokenExpired')}
-              </p>
-            ) : whatsappExpiryLabel ? (
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {t('dashboard.integrationsPage.whatsappTokenExpires')}: {whatsappExpiryLabel}
-              </p>
-            ) : null}
-            {whatsappEmbeddedSignupState === 'awaiting_completion' && (
-              <p className="text-xs text-blue-700 dark:text-blue-300">
-                {t('dashboard.integrationsPage.whatsappEmbeddedSignupInProgress')}
-              </p>
-            )}
-            {whatsappEmbeddedSignupState === 'error' && whatsappEmbeddedSignupError && (
-              <p className="text-xs text-red-600 dark:text-red-400">
-                {whatsappEmbeddedSignupError?.response?.data?.error || whatsappEmbeddedSignupError?.message}
-              </p>
-            )}
-          </div>
-        )}
-
-        {isWhatsApp && whatsappConnected && !whatsappNeedsReconnect && can('integrations:connect') && (
-          <div className="mb-4 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-[#0B1730]/88 p-4 space-y-4">
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                {t('dashboard.integrationsPage.whatsappTestPanelTitle')}
-              </h4>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2 text-xs text-neutral-600 dark:text-neutral-400 sm:grid-cols-2">
-              {whatsappStatus?.phoneNumberId && (
-                <div className="rounded-lg border border-neutral-200 dark:border-white/10 bg-white/80 dark:bg-[#081224]/75 px-3 py-2">
-                  <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
-                    {t('dashboard.integrationsPage.whatsappPhoneNumberIdLabel')}
-                  </div>
-                  <div className="mt-1 font-medium text-neutral-900 dark:text-white break-all">{whatsappStatus.phoneNumberId}</div>
-                </div>
-              )}
-              {whatsappStatus?.wabaId && (
-                <div className="rounded-lg border border-neutral-200 dark:border-white/10 bg-white/80 dark:bg-[#081224]/75 px-3 py-2">
-                  <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
-                    {t('dashboard.integrationsPage.whatsappBusinessAccountLabel')}
-                  </div>
-                  <div className="mt-1 font-medium text-neutral-900 dark:text-white break-all">{whatsappStatus.wabaId}</div>
-                </div>
-              )}
-            </div>
-
-            {whatsappTestResult?.acceptedByMeta && (
-              <div className="rounded-lg border border-neutral-200 dark:border-white/10 bg-white/80 dark:bg-[#081224]/75 px-3 py-2 text-xs text-neutral-600 dark:text-neutral-300">
-                {t('dashboard.integrationsPage.whatsappTestAcceptedHint')}
-                {whatsappTestResult.templateInfo?.name === 'hello_world' && (
-                  <div className="mt-1 text-neutral-500 dark:text-neutral-400">
-                    {t('dashboard.integrationsPage.whatsappTestTemplateFallbackHint')}
-                  </div>
-                )}
-              </div>
-            )}
-
+          <div className="mb-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-[#0B1730]/88">
             <div className="space-y-2">
-              <Label htmlFor={`whatsapp-test-recipient-${integration.type}`}>
-                {t('dashboard.integrationsPage.whatsappTestRecipientLabel')}
-              </Label>
-              <Input
-                id={`whatsapp-test-recipient-${integration.type}`}
-                type="tel"
-                value={whatsappTestForm.recipientPhone}
-                placeholder={t('dashboard.integrationsPage.whatsappTestRecipientPlaceholder')}
-                onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, recipientPhone: event.target.value }))}
-              />
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                {t('dashboard.integrationsPage.whatsappTestRecipientHint')}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor={`whatsapp-test-message-${integration.type}`}>
-                {t('dashboard.integrationsPage.whatsappTestMessageLabel')}
-              </Label>
-              <Textarea
-                id={`whatsapp-test-message-${integration.type}`}
-                rows={4}
-                value={whatsappTestForm.message}
-                placeholder={t('dashboard.integrationsPage.whatsappTestMessagePlaceholder')}
-                onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, message: event.target.value }))}
-              />
-            </div>
-
-            <Button
-              size="sm"
-              className="w-full"
-              onClick={handleSendWhatsAppTestMessage}
-              disabled={whatsappTestSending}
-            >
-              {whatsappTestSending ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  {t('dashboard.integrationsPage.whatsappTestSending')}
-                </>
-              ) : (
-                t('dashboard.integrationsPage.whatsappTestSendButton')
-              )}
-            </Button>
-
-            {whatsappTestResult && (
-              <div className="rounded-lg border border-neutral-200 dark:border-white/10 bg-white/80 dark:bg-[#081224]/75 px-3 py-3 text-xs text-neutral-700 dark:text-neutral-300 space-y-2">
-                <div className="font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.whatsappTestLastResult')}</div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
-                      {t('dashboard.integrationsPage.whatsappTestSentTo')}
-                    </div>
-                    <div className="mt-1 font-medium text-neutral-900 dark:text-white break-words">{whatsappTestResult.recipientPhone}</div>
-                  </div>
-                  {whatsappTestResult.deliveryMode && (
-                    <div>
-                      <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
-                        {t('dashboard.integrationsPage.whatsappTestDeliveryMode')}
-                      </div>
-                      <div className="mt-1 font-medium text-neutral-900 dark:text-white">
-                        {whatsappTestResult.deliveryMode === 'template' ? t('dashboard.integrationsPage.whatsappTestDeliveryModeTemplate') : t('dashboard.integrationsPage.whatsappTestDeliveryModeText')}
-                      </div>
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
-                      {t('dashboard.integrationsPage.whatsappTestDeliveryStatus')}
-                    </div>
-                    <div className="mt-1 font-medium text-neutral-900 dark:text-white">
-                      {getWhatsAppTestStatusLabel(whatsappTestResult.status)}
-                    </div>
-                  </div>
-                </div>
-                {whatsappTestResult.templateInfo?.name && (
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
-                      {t('dashboard.integrationsPage.whatsappTestTemplateUsed')}
-                    </div>
-                    <div className="mt-1 font-medium text-neutral-900 dark:text-white break-words">
-                      {whatsappTestResult.templateInfo.name}{whatsappTestResult.templateInfo.language ? ` (${whatsappTestResult.templateInfo.language})` : ''}
-                    </div>
-                  </div>
-                )}
-                {whatsappTestResult.messageId && (
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
-                      {t('dashboard.integrationsPage.whatsappTestMessageId')}
-                    </div>
-                    <div className="mt-1 break-all font-medium text-neutral-900 dark:text-white">{whatsappTestResult.messageId}</div>
-                  </div>
-                )}
-                {whatsappTestResult.lastStatusAt && (
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
-                      {t('dashboard.integrationsPage.whatsappTestLastStatusAt')}
-                    </div>
-                    <div className="mt-1 font-medium text-neutral-900 dark:text-white">
-                      {formatWhatsAppTimestamp(whatsappTestResult.lastStatusAt)}
-                    </div>
-                  </div>
-                )}
-                {whatsappTestResult.lastError?.message && (
-                  <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-                    {whatsappTestResult.lastError.message}
-                  </div>
-                )}
+              <div className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 dark:text-cyan-200/55">
+                {t('dashboard.integrationsPage.whatsappConnectedNumber')}
               </div>
-            )}
+              {whatsappNumberLabel && (
+                <p className="text-sm font-semibold text-neutral-900 dark:text-white">
+                  {whatsappNumberLabel}
+                </p>
+              )}
+              {whatsappStatus?.tokenExpired ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  {t('dashboard.integrationsPage.whatsappTokenExpired')}
+                </p>
+              ) : whatsappExpiryLabel ? (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {t('dashboard.integrationsPage.whatsappTokenExpires')}: {whatsappExpiryLabel}
+                </p>
+              ) : null}
+              {whatsappEmbeddedSignupState === 'awaiting_completion' && (
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  {t('dashboard.integrationsPage.whatsappEmbeddedSignupInProgress')}
+                </p>
+              )}
+              {whatsappEmbeddedSignupState === 'error' && whatsappEmbeddedSignupError && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  {whatsappEmbeddedSignupError?.response?.data?.error || whatsappEmbeddedSignupError?.message}
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -1436,11 +1291,23 @@ const handleShopifyConnect = async () => {
                     size="sm"
                     className="flex-1"
                     variant={whatsappConnected && !whatsappNeedsReconnect ? 'outline' : 'default'}
-                    onClick={() => (whatsappConnected && !whatsappNeedsReconnect ? handleWhatsAppRefresh() : handleConnect(integration))}
+                    onClick={() => {
+                      if (whatsappConnected && !whatsappNeedsReconnect) {
+                        setWhatsappTestModalOpen(true);
+                        return;
+                      }
+
+                      if (whatsappNeedsReconnect) {
+                        handleWhatsAppRefresh();
+                        return;
+                      }
+
+                      handleConnect(integration);
+                    }}
                     disabled={disabled || whatsappEmbeddedSignupBusy || refreshWhatsAppConnection.isPending}
                   >
                     {(whatsappEmbeddedSignupBusy || refreshWhatsAppConnection.isPending) && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                    {whatsappConnected && !whatsappNeedsReconnect ? whatsappRefreshLabel : whatsappActionLabel}
+                    {whatsappConnected && !whatsappNeedsReconnect ? t('dashboard.integrationsPage.testIntegration') : (whatsappNeedsReconnect ? whatsappReconnectLabel : whatsappActionLabel)}
                   </Button>
                   {whatsappConnected && (
                     <Button
@@ -1723,6 +1590,97 @@ const handleShopifyConnect = async () => {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={whatsappTestModalOpen} onOpenChange={setWhatsappTestModalOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{t('dashboard.integrationsPage.whatsappTestPanelTitle')}</DialogTitle>
+            <DialogDescription>{t('dashboard.integrationsPage.whatsappTestAcceptedHint')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {whatsappStatus?.displayPhoneNumber && (
+              <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-[#0B1730]/88">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 dark:text-cyan-200/55">
+                  {t('dashboard.integrationsPage.whatsappConnectedNumber')}
+                </div>
+                <div className="mt-1 text-sm font-semibold text-neutral-900 dark:text-white">
+                  {whatsappStatus.displayPhoneNumber}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp-test-recipient">{t('dashboard.integrationsPage.whatsappTestRecipientLabel')}</Label>
+              <Input
+                id="whatsapp-test-recipient"
+                type="tel"
+                value={whatsappTestForm.recipientPhone}
+                placeholder={t('dashboard.integrationsPage.whatsappTestRecipientPlaceholder')}
+                onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, recipientPhone: event.target.value }))}
+              />
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                {t('dashboard.integrationsPage.whatsappTestRecipientHint')}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp-test-message">{t('dashboard.integrationsPage.whatsappTestMessageLabel')}</Label>
+              <Textarea
+                id="whatsapp-test-message"
+                rows={4}
+                value={whatsappTestForm.message}
+                placeholder={t('dashboard.integrationsPage.whatsappTestMessagePlaceholder')}
+                onChange={(event) => setWhatsappTestForm((prev) => ({ ...prev, message: event.target.value }))}
+              />
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                {t('dashboard.integrationsPage.whatsappTestTemplateFallbackHint')}
+              </p>
+            </div>
+
+            {whatsappTestResult && (
+              <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-700 dark:border-white/10 dark:bg-[#0B1730]/88 dark:text-neutral-300">
+                <div className="font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.whatsappTestLastResult')}</div>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
+                      {t('dashboard.integrationsPage.whatsappTestSentTo')}
+                    </div>
+                    <div className="mt-1 break-words font-medium text-neutral-900 dark:text-white">{whatsappTestResult.recipientPhone}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-500">
+                      {t('dashboard.integrationsPage.whatsappTestDeliveryStatus')}
+                    </div>
+                    <div className="mt-1 font-medium text-neutral-900 dark:text-white">
+                      {getWhatsAppTestStatusLabel(whatsappTestResult.status)}
+                    </div>
+                  </div>
+                </div>
+                {whatsappTestResult.lastError?.message && (
+                  <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+                    {whatsappTestResult.lastError.message}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWhatsappTestModalOpen(false)} disabled={whatsappTestSending}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleSendWhatsAppTestMessage} disabled={whatsappTestSending}>
+              {whatsappTestSending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  {t('dashboard.integrationsPage.whatsappTestSending')}
+                </>
+              ) : (
+                t('dashboard.integrationsPage.whatsappTestSendButton')
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Shopify Modal */}
       <Dialog open={shopifyModalOpen} onOpenChange={(open) => { setShopifyModalOpen(open); if (!open) setShopifyLoading(false); }}>

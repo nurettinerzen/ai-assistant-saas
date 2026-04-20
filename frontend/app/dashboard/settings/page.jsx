@@ -99,6 +99,7 @@ export default function SettingsPage() {
   const deleteConfirmationPhrase = locale === 'tr' ? 'hesabımı sil' : 'delete my account';
   const isOwner = profileData?.user?.role === 'OWNER';
   const editableFieldClass = 'dark:border-white/10 dark:bg-[#081224] dark:text-gray-100 dark:placeholder:text-cyan-200/45';
+  const sectionHeaderClass = 'rounded-lg border border-neutral-200/80 bg-neutral-50/80 px-3 py-2 dark:border-white/10 dark:bg-[#0B1730]/88';
 
   // Update local state when data is loaded
   useEffect(() => {
@@ -355,8 +356,8 @@ export default function SettingsPage() {
 
       {/* Profile Section */}
       <div className="bg-white dark:bg-[#081224]/95 rounded-xl border border-neutral-200 dark:border-white/10 p-3 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-2 rounded-lg">
+        <div className={`mb-3 flex items-center gap-2 ${sectionHeaderClass}`}>
+          <div className="rounded-lg p-2">
             <User className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
@@ -434,8 +435,8 @@ export default function SettingsPage() {
       {/* Region & Language Section */}
       {can('settings:edit') && (
       <div className="bg-white dark:bg-[#081224]/95 rounded-xl border border-neutral-200 dark:border-white/10 p-3 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-2 rounded-lg">
+        <div className={`mb-3 flex items-center gap-2 ${sectionHeaderClass}`}>
+          <div className="rounded-lg p-2">
             <Globe className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
@@ -509,8 +510,8 @@ export default function SettingsPage() {
 
       {/* Email Signature Section */}
       <div className="bg-white dark:bg-[#081224]/95 rounded-xl border border-neutral-200 dark:border-white/10 p-3 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-2 rounded-lg">
+        <div className={`mb-3 flex items-center gap-2 ${sectionHeaderClass}`}>
+          <div className="rounded-lg p-2">
             <Mail className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
@@ -602,8 +603,8 @@ export default function SettingsPage() {
 
       {/* Security Section */}
       <div className="bg-white dark:bg-[#081224]/95 rounded-xl border border-neutral-200 dark:border-white/10 p-3 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-2 rounded-lg">
+        <div className={`mb-3 flex items-center gap-2 ${sectionHeaderClass}`}>
+          <div className="rounded-lg p-2">
             <AlertTriangle className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>

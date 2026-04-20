@@ -460,8 +460,8 @@ export default function ChatsPage() {
 
     return {
       wrapperClass: 'bg-gray-50 dark:bg-[#0B1730]/88 dark:border dark:border-white/10',
-      avatarClass: 'bg-gray-200 dark:bg-gray-700',
-      icon: <Bot className="h-3 w-3 text-gray-600 dark:text-gray-400" />,
+      avatarClass: 'bg-gray-200 dark:bg-cyan-500/15',
+      icon: <Bot className="h-3 w-3 text-gray-600 dark:text-cyan-200" />,
       label: t('dashboard.chatsPage.aiAssistantLabel'),
     };
   };
@@ -618,7 +618,7 @@ export default function ChatsPage() {
           {/* Pagination */}
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-white/10">
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 {t('dashboard.chatsPage.showingResults', {
                   from: (pagination.page - 1) * pagination.limit + 1,
                   to: Math.min(pagination.page * pagination.limit, pagination.total),
