@@ -4,7 +4,7 @@
  * Clean, minimal design with grouped sections
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -79,6 +79,7 @@ export default function Sidebar({ user, credits, business }) {
   // Upgrade modal state
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState(null);
+  const isUserAdmin = user?.isAdmin === true;
 
   // Get user's current plan and country
   // Only use actual plan from subscription - don't assume STARTER as default
@@ -118,7 +119,7 @@ export default function Sidebar({ user, credits, business }) {
     {
       label: t('dashboard.sidebar.product'),
       items: [
-        { icon: BookMarked, label: locale === 'tr' ? 'Rehber' : 'Guide', href: NAVIGATION_ITEMS.guides.href, permission: 'assistants:view' },
+        { icon: BookMarked, label: t('dashboard.sidebar.guides'), href: NAVIGATION_ITEMS.guides.href, permission: 'assistants:view' },
         { icon: Bot, label: t('dashboard.assistants'), href: NAVIGATION_ITEMS.assistants.href, permission: 'assistants:view' },
         { icon: BookOpen, label: t('dashboard.knowledgeBase'), href: NAVIGATION_ITEMS.knowledgeBase.href, permission: 'knowledge:view' },
         { icon: MessageSquare, label: t('dashboard.sidebar.chatWidget'), href: NAVIGATION_ITEMS.chatWidget.href, permission: 'assistants:view' },
@@ -130,6 +131,7 @@ export default function Sidebar({ user, credits, business }) {
         { icon: Database, label: t('dashboard.sidebar.inbox'), href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
         { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
         { icon: Mail, label: t('dashboard.sidebar.email'), href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
+        { icon: MessageCircle, label: t('dashboard.sidebar.conversations'), href: NAVIGATION_ITEMS.conversations.href, permission: 'whatsapp:view' },
       ],
     },
     {
@@ -146,6 +148,7 @@ export default function Sidebar({ user, credits, business }) {
       items: [
         { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: NAVIGATION_ITEMS.integrations.href, permission: 'integrations:view' },
         { icon: Users, label: t('dashboard.sidebar.team'), href: NAVIGATION_ITEMS.team.href, permission: 'team:view' },
+        { icon: Phone, label: t('dashboard.sidebar.phoneNumbers'), href: NAVIGATION_ITEMS.phoneNumbers.href, permission: 'phone:view' },
         { icon: CreditCard, label: t('dashboard.subscription'), href: NAVIGATION_ITEMS.subscription.href, permission: 'billing:view' },
         { icon: Settings, label: t('dashboard.sidebar.account'), href: NAVIGATION_ITEMS.account.href, permission: 'settings:view' },
       ],
@@ -153,7 +156,6 @@ export default function Sidebar({ user, credits, business }) {
   ];
 
   // Admin-only navigation
-  const isUserAdmin = user?.isAdmin === true;
   const ADMIN_NAVIGATION = isUserAdmin ? [
     {
       label: 'Admin',
@@ -236,7 +238,7 @@ export default function Sidebar({ user, credits, business }) {
               {/* Section header */}
               <button
                 onClick={() => toggleSection(sectionLabel)}
-                className="flex items-center justify-between w-full px-3 py-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-[0.16em] hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
               >
                 <span>{sectionLabel}</span>
                 {isCollapsed ? (
