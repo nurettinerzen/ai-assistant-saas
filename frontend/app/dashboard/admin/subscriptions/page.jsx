@@ -47,7 +47,7 @@ import {
 } from '@/components/ui/dialog';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { PLAN_COLORS } from '@/lib/planConfig';
+import { getPlanDisplayName, normalizePlan, PLAN_COLORS } from '@/lib/planConfig';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 
@@ -68,25 +68,50 @@ export default function AdminSubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
 
+  const normalizeStatus = useCallback((status) => {
+    const normalized = String(status || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+    if (normalized === 'cancelled') return 'canceled';
+    if (normalized === 'pending') return 'pending_payment';
+
+    return normalized;
+  }, []);
+
+  const getStatusLabel = useCallback((status) => {
+    const normalizedStatus = normalizeStatus(status);
+
+    const labels = {
+      active: t('dashboard.adminSubscriptionsPage.statusActive'),
+      trialing: t('dashboard.adminSubscriptionsPage.statusTrialing'),
+      past_due: t('dashboard.adminSubscriptionsPage.statusPastDue'),
+      canceled: t('dashboard.adminSubscriptionsPage.statusCanceled'),
+      unpaid: t('dashboard.adminSubscriptionsPage.statusUnpaid'),
+      pending_payment: t('dashboard.adminSubscriptionsPage.statusPendingPayment'),
+    };
+
+    return labels[normalizedStatus] || status || '-';
+  }, [normalizeStatus, t]);
+
+  const getPlanLabel = useCallback((plan) => {
+    return getPlanDisplayName(normalizePlan(plan), locale);
+  }, [locale]);
+
   // Filters
   const [search, setSearch] = useState(() => searchParams.get('search') || '');
-  const [planFilter, setPlanFilter] = useState(() => searchParams.get('plan') || 'ALL');
-  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'ALL');
+  const [planFilter, setPlanFilter] = useState(() => {
+    const initialPlan = searchParams.get('plan');
+    return initialPlan ? normalizePlan(initialPlan) : 'ALL';
+  });
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const initialStatus = searchParams.get('status');
+    return initialStatus ? normalizeStatus(initialStatus) : 'ALL';
+  });
   const [lifecycleFilter, setLifecycleFilter] = useState(() => searchParams.get('lifecycle') || 'ALL');
 
   // Edit modal
   const [editModal, setEditModal] = useState({ open: false, subscription: null });
   const [editData, setEditData] = useState({ plan: '', status: '', minutesIncluded: '' });
   const [actionLoading, setActionLoading] = useState(false);
-
-  const statusLabels = {
-    active: t('dashboard.adminSubscriptionsPage.statusActive'),
-    trialing: t('dashboard.adminSubscriptionsPage.statusTrialing'),
-    past_due: t('dashboard.adminSubscriptionsPage.statusPastDue'),
-    canceled: t('dashboard.adminSubscriptionsPage.statusCanceled'),
-    unpaid: t('dashboard.adminSubscriptionsPage.statusUnpaid'),
-    pending_payment: t('dashboard.adminSubscriptionsPage.statusPendingPayment'),
-  };
 
   const lifecycleLabels = useMemo(() => ({
     ACTIVE: isTr ? 'Aktif Abonelik' : 'Active Subscription',
@@ -157,8 +182,8 @@ export default function AdminSubscriptionsPage() {
   const openEditModal = (subscription) => {
     setEditModal({ open: true, subscription });
     setEditData({
-      plan: subscription.plan || '',
-      status: subscription.status || '',
+      plan: normalizePlan(subscription.plan),
+      status: normalizeStatus(subscription.status),
       minutesIncluded: subscription.minutesIncluded?.toString() || '',
     });
   };
@@ -315,8 +340,8 @@ export default function AdminSubscriptionsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge className={PLAN_COLORS[sub.plan] || PLAN_COLORS.FREE}>
-                      {sub.plan}
+                    <Badge className={PLAN_COLORS[normalizePlan(sub.plan)] || PLAN_COLORS.FREE}>
+                      {getPlanLabel(sub.plan)}
                     </Badge>
                     {sub.subscriptionLifecycle && (
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -325,10 +350,10 @@ export default function AdminSubscriptionsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge className={STATUS_COLORS[sub.status] || STATUS_COLORS.active}>
-                      {statusLabels[sub.status] || sub.status}
+                    <Badge className={STATUS_COLORS[normalizeStatus(sub.status)] || STATUS_COLORS.active}>
+                      {getStatusLabel(sub.status)}
                     </Badge>
-                    {sub.status === 'past_due' && (
+                    {normalizeStatus(sub.status) === 'past_due' && (
                       <AlertTriangle className="inline-block w-4 h-4 ml-2 text-red-500" />
                     )}
                   </td>
@@ -432,11 +457,11 @@ export default function AdminSubscriptionsPage() {
                   <SelectValue placeholder={t('dashboard.adminSubscriptionsPage.selectPlan')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="FREE">Free</SelectItem>
-                  <SelectItem value="TRIAL">Trial</SelectItem>
-                  <SelectItem value="PAYG">PAYG</SelectItem>
-                  <SelectItem value="STARTER">Starter</SelectItem>
-                  <SelectItem value="PRO">Pro</SelectItem>
+                  <SelectItem value="FREE">{getPlanLabel('FREE')}</SelectItem>
+                  <SelectItem value="TRIAL">{getPlanLabel('TRIAL')}</SelectItem>
+                  <SelectItem value="PAYG">{getPlanLabel('PAYG')}</SelectItem>
+                  <SelectItem value="STARTER">{getPlanLabel('STARTER')}</SelectItem>
+                  <SelectItem value="PRO">{getPlanLabel('PRO')}</SelectItem>
                   <SelectItem value="ENTERPRISE">{copy.planLabels.ENTERPRISE}</SelectItem>
                 </SelectContent>
               </Select>
