@@ -154,7 +154,7 @@ const INTEGRATION_LOGOS = {
 };
 
 const CARD_ICON_WRAPPER_CLASS = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-[#0B1730]/88';
-const STANDARD_CARD_CLASS = 'flex h-full min-h-[16rem] flex-col rounded-xl border p-6 transition-shadow';
+const STANDARD_CARD_CLASS = 'flex h-full min-h-[15rem] flex-col rounded-xl border p-6 transition-shadow';
 
 const LockedPlanBadge = ({ text }) => (
   <div tabIndex={0} className="group relative inline-flex outline-none">
@@ -1171,7 +1171,7 @@ const handleShopifyConnect = async () => {
         <p className="min-h-10 text-sm text-neutral-600 dark:text-neutral-400 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
 
         {(isTrendyol || isHepsiburada) && isEffectivelyConnected && (
-          <div className="mb-4 space-y-1">
+          <div className="mb-2 space-y-1">
             {marketplaceIdentifier && (
               <p className="text-xs text-neutral-700 dark:text-neutral-300">
                 {isTrendyol ? marketplaceCopy.sellerId : marketplaceCopy.merchantId}: <span className="font-medium">{marketplaceIdentifier}</span>
@@ -1236,7 +1236,7 @@ const handleShopifyConnect = async () => {
         )}
 
         {isWhatsApp && shouldShowWhatsappDetails && (
-          <div className="mb-3 space-y-1.5">
+          <div className="mb-2 space-y-1">
             <div className="flex items-center justify-between gap-2 text-xs text-neutral-600 dark:text-neutral-300">
               <span className="shrink-0 text-neutral-500 dark:text-cyan-200/55">
                 {t('dashboard.integrationsPage.whatsappConnectedNumber')}:
@@ -1265,7 +1265,7 @@ const handleShopifyConnect = async () => {
           </div>
         )}
 
-        <div className="mt-auto flex flex-wrap gap-2 pt-2">
+        <div className="mt-1 flex flex-wrap gap-2 pt-1">
           {isLocked ? (
             <Button
               size="sm"
@@ -1347,7 +1347,7 @@ const handleShopifyConnect = async () => {
           )}
         </div>
 
-        {isWhatsApp && !isLocked && isWhatsAppManualFallbackEnabled && can('integrations:connect') && (
+        {isWhatsApp && !isLocked && !shouldShowWhatsappDetails && !whatsappNeedsReconnect && isWhatsAppManualFallbackEnabled && can('integrations:connect') && (
           <Button
             variant="ghost"
             size="sm"
