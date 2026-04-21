@@ -123,7 +123,19 @@ export function getDashboardMessageBubbleClass(dark, tone = 'assistant', classNa
 
 export function getDashboardTableHeaderClass(dark, className) {
   return cn(
-    dark ? '!bg-[#0B1730]/88 border-b border-white/10' : 'bg-slate-50/80 border-b border-slate-200',
+    dark
+      ? '!bg-[#0B1730]/88 border-b border-white/10 [&_th]:!bg-[#0B1730]/88'
+      : 'bg-slate-50/80 border-b border-slate-200 [&_th]:bg-slate-50/80',
+    className
+  );
+}
+
+export function getDashboardProgressTrackClass(dark, className) {
+  return cn(
+    'overflow-hidden rounded-full',
+    dark
+      ? 'border border-white/10 !bg-[#0B1730]/88'
+      : 'border border-slate-200 bg-slate-200/80',
     className
   );
 }
