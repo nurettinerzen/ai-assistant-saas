@@ -25,7 +25,7 @@ import Image from 'next/image';
 import EmptyState from '@/components/EmptyState';
 import {
   Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2, CreditCard, Zap,
-  MessageSquare, Target, Cloud, Calendar, CalendarDays, Smartphone,
+  Target, Cloud, Calendar, CalendarDays, Smartphone,
   ShoppingCart, Utensils, Scissors, Stethoscope, Package, Mail, Hash,
   Wallet, Inbox, RefreshCw, Lock, Info, AlertTriangle
 } from 'lucide-react';
@@ -154,7 +154,7 @@ const INTEGRATION_LOGOS = {
 };
 
 const CARD_ICON_WRAPPER_CLASS = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-[#0B1730]/88';
-const STANDARD_CARD_CLASS = 'flex h-full flex-col rounded-xl border p-6 transition-shadow';
+const STANDARD_CARD_CLASS = 'flex h-full min-h-[18rem] flex-col rounded-xl border p-6 transition-shadow';
 
 const LockedPlanBadge = ({ text }) => (
   <div tabIndex={0} className="group relative inline-flex outline-none">
@@ -1096,7 +1096,6 @@ const handleShopifyConnect = async () => {
     const whatsappNumberLabel = shouldShowWhatsappDetails
       ? (whatsappStatus?.displayPhoneNumber || whatsappStatus?.phoneNumberId || null)
       : null;
-    const whatsappExpiryLabel = formatWhatsAppTimestamp(whatsappStatus?.tokenExpiresAt);
     const marketplaceIdentifier = isTrendyol
       ? marketplaceStatus?.sellerId
       : isHepsiburada
@@ -1238,35 +1237,28 @@ const handleShopifyConnect = async () => {
 
         {isWhatsApp && shouldShowWhatsappDetails && (
           <div className="mb-4 space-y-2">
-            <div className="flex items-start justify-between gap-3 rounded-lg px-1">
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 dark:text-cyan-200/55">
-                  {t('dashboard.integrationsPage.whatsappConnectedNumber')}
-                </div>
-                {whatsappNumberLabel && (
-                  <p className="mt-1 truncate text-sm font-medium text-neutral-900 dark:text-white">
-                    {whatsappNumberLabel}
-                  </p>
-                )}
-              </div>
-              {whatsappStatus?.tokenExpired ? (
-                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                  {t('dashboard.integrationsPage.whatsappTokenExpired')}
-                </span>
-              ) : whatsappExpiryLabel ? (
-                <span className="shrink-0 text-[11px] text-neutral-500 dark:text-neutral-400">
-                  {whatsappExpiryLabel}
-                </span>
-              ) : null}
+            <div className="grid grid-cols-12 items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
+              <span className="col-span-5 lowercase text-neutral-500 dark:text-cyan-200/55">
+                {t('dashboard.integrationsPage.whatsappConnectedNumber')}:
+              </span>
+              <span className="col-span-7 truncate text-right font-medium text-neutral-900 dark:text-white">
+                {whatsappNumberLabel}
+              </span>
             </div>
 
+            {whatsappStatus?.tokenExpired && (
+              <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                {t('dashboard.integrationsPage.whatsappTokenExpired')}
+              </span>
+            )}
+
             {whatsappEmbeddedSignupState === 'awaiting_completion' && (
-              <p className="px-1 text-xs text-blue-700 dark:text-blue-300">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
                 {t('dashboard.integrationsPage.whatsappEmbeddedSignupInProgress')}
               </p>
             )}
             {whatsappEmbeddedSignupState === 'error' && whatsappEmbeddedSignupError && (
-              <p className="px-1 text-xs text-red-600 dark:text-red-400">
+              <p className="text-xs text-red-600 dark:text-red-400">
                 {whatsappEmbeddedSignupError?.response?.data?.error || whatsappEmbeddedSignupError?.message}
               </p>
             )}
@@ -1331,7 +1323,6 @@ const handleShopifyConnect = async () => {
                 className="flex-1"
                 onClick={() => { window.location.href = '/dashboard/marketplace-qa'; }}
               >
-                <MessageSquare className="mr-2 h-4 w-4" />
                 {t('dashboard.integrationsPage.manage')}
               </Button>
               {can('integrations:connect') && (

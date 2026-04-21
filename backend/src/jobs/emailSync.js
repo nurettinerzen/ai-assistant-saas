@@ -12,6 +12,18 @@ import emailAggregator from '../services/email-aggregator.js';
 import { createPairForOutbound } from '../services/email-pair-incremental.js';
 import { createOutlookPairForOutbound } from '../services/outlook-pair-incremental.js';
 
+async function threadHasInboundMessage(threadId) {
+  const inboundMessage = await prisma.emailMessage.findFirst({
+    where: {
+      threadId,
+      direction: 'INBOUND'
+    },
+    select: { id: true }
+  });
+
+  return Boolean(inboundMessage);
+}
+
 /**
  * Sync emails for a single business
  * Only syncs emails - NO automatic draft generation
@@ -48,9 +60,9 @@ async function syncBusinessEmails(integration) {
       if (isNew) {
         processedCount++;
 
-        // For OUTBOUND messages (sent by user), mark thread as REPLIED
-        // This handles the case when user replies via external email app
-        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED') {
+        // Only mark as replied when the thread actually contains an inbound customer message.
+        // This keeps outbound-only sent items from surfacing as "Yanıtlandı" in the inbox UI.
+        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED' && await threadHasInboundMessage(thread.id)) {
           await prisma.emailThread.update({
             where: { id: thread.id },
             data: { status: 'REPLIED' }
