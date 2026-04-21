@@ -154,7 +154,7 @@ const INTEGRATION_LOGOS = {
 };
 
 const CARD_ICON_WRAPPER_CLASS = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-[#0B1730]/88';
-const STANDARD_CARD_CLASS = 'flex h-full min-h-[300px] flex-col rounded-xl border p-6 transition-shadow';
+const STANDARD_CARD_CLASS = 'flex h-full flex-col rounded-xl border p-6 transition-shadow';
 
 const LockedPlanBadge = ({ text }) => (
   <div tabIndex={0} className="group relative inline-flex outline-none">
@@ -1135,12 +1135,12 @@ const handleShopifyConnect = async () => {
             </div>
             <div className="min-h-10 flex items-center">
               <div className="flex flex-wrap items-center gap-2">
+                <h3 className={`font-semibold ${disabled ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>{integration.name}</h3>
                 {isMarketplaceBeta && (
                   <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs border border-amber-200 dark:border-amber-800/40">
                     {marketplaceCopy.beta}
                   </Badge>
                 )}
-                <h3 className={`font-semibold ${disabled ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>{integration.name}</h3>
                 {isLocked && (
                   <LockedPlanBadge text={t('dashboard.integrationsPage.requiresProPlan')} />
                 )}
@@ -1172,22 +1172,17 @@ const handleShopifyConnect = async () => {
         <p className="min-h-10 text-sm text-neutral-600 dark:text-neutral-400 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
 
         {(isTrendyol || isHepsiburada) && isEffectivelyConnected && (
-          <div className="mb-4 min-h-[52px] space-y-2">
+          <div className="mb-4 space-y-1">
             {marketplaceIdentifier && (
               <p className="text-xs text-neutral-700 dark:text-neutral-300">
                 {isTrendyol ? marketplaceCopy.sellerId : marketplaceCopy.merchantId}: <span className="font-medium">{marketplaceIdentifier}</span>
-              </p>
-            )}
-            {marketplaceStatus?.lastSync && (
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {marketplaceCopy.lastSync}: {formatWhatsAppTimestamp(marketplaceStatus.lastSync)}
               </p>
             )}
           </div>
         )}
 
         {isAmazon && isEffectivelyConnected && (
-          <div className="mb-4 min-h-[52px] space-y-2">
+          <div className="mb-4 space-y-1">
             {marketplaceIdentifier && (
               <p className="text-xs text-neutral-700 dark:text-neutral-300">
                 {marketplaceCopy.sellingPartnerId}: <span className="font-medium">{marketplaceIdentifier}</span>
@@ -1222,7 +1217,7 @@ const handleShopifyConnect = async () => {
         )}
 
         {isSikayetvar && isEffectivelyConnected && (
-          <div className="mb-4 min-h-[52px] space-y-2">
+          <div className="mb-4 space-y-1">
             {complaintIdentifier && (
               <p className="text-xs text-neutral-700 dark:text-neutral-300">
                 {marketplaceCopy.company}: <span className="font-medium">{complaintIdentifier}</span>
@@ -1337,10 +1332,7 @@ const handleShopifyConnect = async () => {
                 onClick={() => { window.location.href = '/dashboard/marketplace-qa'; }}
               >
                 <MessageSquare className="mr-2 h-4 w-4" />
-                {marketplaceCopy.marketplacePanelCta}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleTest(integration)}>
-                {t('dashboard.integrationsPage.testIntegration')}
+                {t('dashboard.integrationsPage.manage')}
               </Button>
               {can('integrations:connect') && (
                 <Button variant="outline" size="sm" onClick={() => handleDisconnect(integration)}>

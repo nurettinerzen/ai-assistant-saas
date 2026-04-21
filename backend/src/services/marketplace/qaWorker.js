@@ -33,6 +33,17 @@ function normalizeRuntimeCredentials(integration, businessLanguage) {
   return decryptMarketplaceCredentials(integration.credentials, businessLanguage);
 }
 
+function shouldRetryQuestionGeneration(questionRecord) {
+  if (!questionRecord) return false;
+
+  return (
+    [MARKETPLACE_QUESTION_STATUS.PENDING, MARKETPLACE_QUESTION_STATUS.ERROR].includes(questionRecord.status)
+    && !questionRecord.generatedAnswer
+    && !questionRecord.finalAnswer
+    && !isExpired(questionRecord.expiresAt)
+  );
+}
+
 async function createMarketplaceQuestionRecord({
   businessId,
   platform,
@@ -83,12 +94,18 @@ async function generateAndPersistAnswer({
     qaSettings,
   });
 
+  const nextData = {
+    generatedAnswer: generated.answer,
+    errorMessage: null,
+  };
+
+  if (questionRecord.status === MARKETPLACE_QUESTION_STATUS.ERROR) {
+    nextData.status = MARKETPLACE_QUESTION_STATUS.PENDING;
+  }
+
   return prisma.marketplaceQuestion.update({
     where: { id: questionRecord.id },
-    data: {
-      generatedAnswer: generated.answer,
-      errorMessage: null,
-    },
+    data: nextData,
   });
 }
 
@@ -141,6 +158,7 @@ export async function processMarketplaceQuestions(options = {}) {
     fetched: 0,
     created: 0,
     generated: 0,
+    retried: 0,
     skippedExisting: 0,
     expired: 0,
     autoPosted: 0,
@@ -207,11 +225,65 @@ export async function processMarketplaceQuestions(options = {}) {
                 platform: integration.type,
                 externalId: { in: externalIds },
               },
-              select: { externalId: true },
+              select: {
+                id: true,
+                businessId: true,
+                platform: true,
+                externalId: true,
+                questionText: true,
+                productName: true,
+                generatedAnswer: true,
+                finalAnswer: true,
+                status: true,
+                answerMode: true,
+                expiresAt: true,
+              },
             })
           : [];
 
         const existingIdSet = new Set(existingQuestions.map((item) => item.externalId));
+        const existingQuestionMap = new Map(
+          existingQuestions.map((item) => [item.externalId, item])
+        );
+        const retryableExistingQuestions = remoteQuestions
+          .map((question) => existingQuestionMap.get(question.externalId))
+          .filter(shouldRetryQuestionGeneration)
+          .slice(0, remainingCapacity);
+
+        for (const existingQuestion of retryableExistingQuestions) {
+          try {
+            const updatedQuestion = await generateAndPersistAnswer({
+              questionRecord: existingQuestion,
+              qaSettings,
+            });
+            summary.generated += 1;
+            summary.retried += 1;
+
+            try {
+              const autoPostResult = await autoPostIfAllowed({
+                questionRecord: updatedQuestion,
+                qaSettings,
+              });
+
+              if (autoPostResult.autoPosted) {
+                summary.autoPosted += 1;
+              }
+            } catch (postError) {
+              summary.errors += 1;
+              const message = isModerationError(postError)
+                ? `Pazaryeri moderasyon reddi: ${postError.message}`
+                : postError.message;
+              await markQuestionAsError(existingQuestion.id, message);
+            }
+          } catch (existingQuestionError) {
+            summary.errors += 1;
+            await markQuestionAsError(existingQuestion.id, existingQuestionError.message);
+          }
+
+          remainingCapacity -= 1;
+          await delay(1000);
+        }
+
         const newQuestions = remoteQuestions
           .filter((question) => !existingIdSet.has(question.externalId))
           .slice(0, remainingCapacity);

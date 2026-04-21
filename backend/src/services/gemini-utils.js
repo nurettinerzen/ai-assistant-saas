@@ -85,6 +85,20 @@ export function getGeminiClient() {
 
 export { getGeminiApiKeyDiagnostics, hasGeminiApiKey };
 
+export function isGeminiGenerationFailure(error) {
+  const message = String(error?.message || '').toLowerCase();
+  const code = String(error?.code || '').toUpperCase();
+
+  return (
+    code === 'API_KEY_INVALID'
+    || message.includes('googlegenerativeai')
+    || message.includes('generativelanguage.googleapis.com')
+    || message.includes('api key not valid')
+    || message.includes('api_key_invalid')
+    || message.includes('models/')
+  );
+}
+
 /**
  * Convert tool definitions (OpenAI format) to Gemini function declarations
  * @param {Array} tools - Array of tool definitions in OpenAI format

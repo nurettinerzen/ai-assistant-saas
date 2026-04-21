@@ -1,6 +1,6 @@
 import prisma from '../../prismaClient.js';
 import { buildBusinessIdentity } from '../businessIdentity.js';
-import { getGeminiModel, hasGeminiApiKey } from '../gemini-utils.js';
+import { getGeminiModel, hasGeminiApiKey, isGeminiGenerationFailure } from '../gemini-utils.js';
 import { retrieveKB } from '../kbRetrieval.js';
 import { truncateMarketplaceAnswer } from './qaShared.js';
 
@@ -130,18 +130,34 @@ export async function generateMarketplaceAnswer({
     maxOutputTokens: 500,
   });
 
-  const result = await model.generateContent(prompt);
-  const rawAnswer = result.response.text() || '';
-  const answer = truncateMarketplaceAnswer(rawAnswer, MAX_MARKETPLACE_ANSWER_LENGTH)
-    || truncateMarketplaceAnswer(getFallbackAnswer(language, productName), MAX_MARKETPLACE_ANSWER_LENGTH);
+  try {
+    const result = await model.generateContent(prompt);
+    const rawAnswer = result.response.text() || '';
+    const answer = truncateMarketplaceAnswer(rawAnswer, MAX_MARKETPLACE_ANSWER_LENGTH)
+      || truncateMarketplaceAnswer(getFallbackAnswer(language, productName), MAX_MARKETPLACE_ANSWER_LENGTH);
 
-  return {
-    answer,
-    kbSourcesUsed: kbResult.queriesUsed || [],
-    kbConfidence: kbResult.kbConfidence,
-    model: MARKETPLACE_QA_MODEL,
-    platform,
-  };
+    return {
+      answer,
+      kbSourcesUsed: kbResult.queriesUsed || [],
+      kbConfidence: kbResult.kbConfidence,
+      model: MARKETPLACE_QA_MODEL,
+      platform,
+    };
+  } catch (error) {
+    if (!isGeminiGenerationFailure(error)) {
+      throw error;
+    }
+
+    console.warn('Marketplace QA Gemini generation failed, using fallback answer:', error.message);
+
+    return {
+      answer: truncateMarketplaceAnswer(getFallbackAnswer(language, productName), MAX_MARKETPLACE_ANSWER_LENGTH),
+      kbSourcesUsed: kbResult.queriesUsed || [],
+      kbConfidence: kbResult.kbConfidence,
+      model: 'fallback-gemini-error',
+      platform,
+    };
+  }
 }
 
 export default generateMarketplaceAnswer;
