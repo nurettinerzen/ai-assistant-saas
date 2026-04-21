@@ -35,8 +35,10 @@ import {
 } from '@/lib/batch-calls';
 import { cn } from '@/lib/utils';
 import {
+  getDashboardBadgeClass,
   getDashboardDividerClass,
   getDashboardPanelClass,
+  getDashboardProgressTrackClass,
   getDashboardRowHoverClass,
   getDashboardTableHeaderClass
 } from '@/components/dashboard/dashboardSurfaceTheme';
@@ -44,27 +46,27 @@ import {
 const STATUS_CONFIG = {
   PENDING: {
     labelKey: 'dashboard.batchCallDetailPage.status.pending',
-    color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400',
+    tone: 'amber',
     icon: Clock
   },
   IN_PROGRESS: {
     labelKey: 'dashboard.batchCallDetailPage.status.inProgress',
-    color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400',
+    tone: 'blue',
     icon: Loader2
   },
   COMPLETED: {
     labelKey: 'dashboard.batchCallDetailPage.status.completed',
-    color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400',
+    tone: 'emerald',
     icon: CheckCircle2
   },
   FAILED: {
     labelKey: 'dashboard.batchCallDetailPage.status.failed',
-    color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400',
+    tone: 'rose',
     icon: XCircle
   },
   CANCELLED: {
     labelKey: 'dashboard.batchCallDetailPage.status.cancelled',
-    color: 'bg-neutral-100 dark:bg-white/8 text-neutral-800 dark:text-neutral-300',
+    tone: 'neutral',
     icon: Pause
   }
 };
@@ -250,7 +252,16 @@ export default function BatchCallDetailPage() {
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{displayName}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge className={`${statusConfig.color} flex items-center gap-1`}>
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'flex items-center gap-1',
+                  statusConfig.tone === 'neutral'
+                    ? getDashboardBadgeClass(dark, 'neutral', dark ? '!bg-[#0B1730]/88 !text-slate-300' : '')
+                    : getDashboardBadgeClass(dark, statusConfig.tone),
+                  'border dark:border-white/10'
+                )}
+              >
                 <StatusIcon className={`h-3 w-3 ${batchCall.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
                 {t(statusConfig.labelKey)}
               </Badge>
@@ -327,7 +338,7 @@ export default function BatchCallDetailPage() {
       </div>
 
       {/* Progress Bar */}
-      <div className="bg-white dark:bg-[#081224]/95 rounded-xl border border-neutral-200 dark:border-white/10 p-4 shadow-sm">
+      <div className={getDashboardPanelClass(dark, 'p-4')}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {t('dashboard.batchCallDetailPage.progress')}
@@ -336,7 +347,7 @@ export default function BatchCallDetailPage() {
             {batchCall.completedCalls} / {batchCall.totalRecipients} ({progress}%)
           </span>
         </div>
-        <div className="w-full h-3 bg-neutral-200 dark:bg-[#0B1730]/88 rounded-full overflow-hidden">
+        <div className={getDashboardProgressTrackClass(dark, 'h-3 w-full')}>
           <div
             className="h-full bg-primary-600 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
