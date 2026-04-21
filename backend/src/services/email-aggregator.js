@@ -8,6 +8,45 @@ import gmailService from './gmail.js';
 import outlookService from './outlook.js';
 
 class EmailAggregatorService {
+  async normalizeOutboundOnlyRepliedThreads(businessId, threadId = null) {
+    const repliedThreads = await prisma.emailThread.findMany({
+      where: {
+        businessId,
+        status: 'REPLIED',
+        ...(threadId ? { id: threadId } : {})
+      },
+      select: { id: true }
+    });
+
+    if (repliedThreads.length === 0) {
+      return [];
+    }
+
+    const repliedThreadIds = repliedThreads.map((thread) => thread.id);
+    const inboundMessages = await prisma.emailMessage.findMany({
+      where: {
+        threadId: { in: repliedThreadIds },
+        direction: 'INBOUND'
+      },
+      select: { threadId: true },
+      distinct: ['threadId']
+    });
+
+    const inboundThreadIds = new Set(inboundMessages.map((message) => message.threadId));
+    const staleThreadIds = repliedThreadIds.filter((id) => !inboundThreadIds.has(id));
+
+    if (staleThreadIds.length === 0) {
+      return [];
+    }
+
+    await prisma.emailThread.updateMany({
+      where: { id: { in: staleThreadIds } },
+      data: { status: 'NEW' }
+    });
+
+    return staleThreadIds;
+  }
+
   /**
    * Get the connected email provider for a business
    */
@@ -302,6 +341,8 @@ async disconnect(businessId) {
   async getThreadsFromDb(businessId, options = {}) {
     const { status, limit = 20, offset = 0, search } = options;
 
+    await this.normalizeOutboundOnlyRepliedThreads(businessId);
+
     const where = { businessId };
     if (status) {
       where.status = status;
@@ -341,6 +382,8 @@ async disconnect(businessId) {
    * Get thread from database with all messages
    */
   async getThreadFromDb(businessId, threadId) {
+    await this.normalizeOutboundOnlyRepliedThreads(businessId, threadId);
+
     const thread = await prisma.emailThread.findFirst({
       where: {
         businessId,

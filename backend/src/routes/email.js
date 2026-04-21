@@ -259,6 +259,18 @@ function deriveAdminDraftVerificationState(tools = []) {
   return 'none';
 }
 
+async function threadHasInboundMessage(threadId) {
+  const inboundMessage = await prisma.emailMessage.findFirst({
+    where: {
+      threadId,
+      direction: 'INBOUND'
+    },
+    select: { id: true }
+  });
+
+  return Boolean(inboundMessage);
+}
+
 function queueAdminDraftTrace({
   req,
   threadId,
@@ -1639,8 +1651,9 @@ router.post('/sync', authenticateToken, async (req, res) => {
       if (isNew) {
         processedCount++;
 
-        // For OUTBOUND messages (sent by user via external app), mark thread as REPLIED
-        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED') {
+        // Only mark as replied when the thread actually contains an inbound customer message.
+        // This prevents outbound-only sent items from looking like answered inbox threads.
+        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED' && await threadHasInboundMessage(thread.id)) {
           await prisma.emailThread.update({
             where: { id: thread.id },
             data: { status: 'REPLIED' }
@@ -1749,8 +1762,8 @@ router.get('/sync/stream', authenticateToken, async (req, res) => {
       if (isNew) {
         processedCount++;
 
-        // For OUTBOUND messages (sent by user via external app), mark thread as REPLIED
-        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED') {
+        // Only mark as replied when the thread actually contains an inbound customer message.
+        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED' && await threadHasInboundMessage(thread.id)) {
           await prisma.emailThread.update({
             where: { id: thread.id },
             data: { status: 'REPLIED' }
@@ -1834,6 +1847,8 @@ router.get('/sync/stream', authenticateToken, async (req, res) => {
  */
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
+    await emailAggregator.normalizeOutboundOnlyRepliedThreads(req.businessId);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
