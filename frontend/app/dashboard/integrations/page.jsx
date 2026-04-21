@@ -154,7 +154,7 @@ const INTEGRATION_LOGOS = {
 };
 
 const CARD_ICON_WRAPPER_CLASS = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-[#0B1730]/88';
-const STANDARD_CARD_CLASS = 'flex h-full min-h-[15rem] flex-col rounded-xl border p-6 transition-shadow';
+const STANDARD_CARD_CLASS = 'flex h-full min-h-[14rem] flex-col rounded-xl border p-6 transition-shadow';
 
 const LockedPlanBadge = ({ text }) => (
   <div tabIndex={0} className="group relative inline-flex outline-none">
@@ -1265,7 +1265,7 @@ const handleShopifyConnect = async () => {
           </div>
         )}
 
-        <div className="mt-1 flex flex-wrap gap-2 pt-1">
+        <div className="mt-auto flex flex-wrap gap-2 pt-2">
           {isLocked ? (
             <Button
               size="sm"
