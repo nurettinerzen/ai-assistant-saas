@@ -1,32 +1,48 @@
-import OpenAI from 'openai';
 import prisma from '../../prismaClient.js';
-import { buildBusinessIdentity } from '../businessIdentity.js';
-import { getGeminiModel, hasGeminiApiKey, isGeminiGenerationFailure } from '../gemini-utils.js';
-import { retrieveKB } from '../kbRetrieval.js';
 import { truncateMarketplaceAnswer } from './qaShared.js';
-import { buildMarketplaceProductContextBlock, resolveMarketplaceProductContext } from './productContextService.js';
+import { resolveMarketplaceProductContext } from './productContextService.js';
 
-const MARKETPLACE_QA_MODEL = process.env.MARKETPLACE_QA_MODEL || 'gemini-2.5-flash';
-const MARKETPLACE_QA_OPENAI_MODEL = process.env.MARKETPLACE_QA_OPENAI_MODEL || 'gpt-4o-mini';
 const MAX_MARKETPLACE_ANSWER_LENGTH = 2000;
 const QUESTION_STOPWORDS = new Set([
-  'acaba', 'ama', 'bir', 'bu', 'da', 'de', 'diye', 'en', 'gibi', 'icin', 'için', 'ile', 'ilemi', 'ilemi',
-  'mı', 'mi', 'mu', 'mü', 'muhtemel', 'nasil', 'nasıl', 'olan', 'olarak', 'sadece', 'seklinde', 'şeklinde',
-  'var', 'yapar', 'yaparmi', 'yaparmi', 'uyumlu', 'uyumlu_mu', 've', 'veya', 'ya', 'yani'
+  'acaba',
+  'ama',
+  'bir',
+  'bu',
+  'cok',
+  'çok',
+  'da',
+  'de',
+  'diye',
+  'en',
+  'gibi',
+  'hangi',
+  'icin',
+  'için',
+  'ile',
+  'ise',
+  'mı',
+  'mi',
+  'mu',
+  'mü',
+  'muhtemel',
+  'nasil',
+  'nasıl',
+  'olan',
+  'olarak',
+  'sadece',
+  'seklinde',
+  'şeklinde',
+  'size',
+  'soru',
+  'soruyorum',
+  'urun',
+  'ürün',
+  'var',
+  've',
+  'veya',
+  'ya',
+  'yani'
 ]);
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
-
-function getLanguageLabel(language) {
-  const normalized = String(language || 'tr').trim().toLowerCase();
-  switch (normalized) {
-    case 'en':
-      return 'English';
-    case 'de':
-      return 'Deutsch';
-    default:
-      return 'Türkçe';
-  }
-}
 
 function normalizeForSearch(value) {
   return String(value || '')
@@ -36,144 +52,257 @@ function normalizeForSearch(value) {
     .trim();
 }
 
-function extractQuestionKeywords(questionText) {
-  return normalizeForSearch(questionText)
+function tokenize(value) {
+  return normalizeForSearch(value)
     .split(' ')
     .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function extractQuestionKeywords(questionText) {
+  return tokenize(questionText)
     .filter((token) => token.length >= 3 && !QUESTION_STOPWORDS.has(token));
 }
 
-function scoreFactAgainstQuestion(fact, keywords) {
-  const normalizedFact = normalizeForSearch(fact);
-  if (!normalizedFact || keywords.length === 0) {
+function parseAttributeLine(text) {
+  const normalized = String(text || '').trim();
+  if (!normalized.includes(':')) {
+    return null;
+  }
+
+  const [rawLabel, ...rawValueParts] = normalized.split(':');
+  const label = String(rawLabel || '').trim();
+  const value = rawValueParts.join(':').trim();
+
+  if (!label || !value) {
+    return null;
+  }
+
+  return { label, value };
+}
+
+function buildEvidenceEntries(productContext) {
+  if (!productContext) {
+    return [];
+  }
+
+  const entries = [];
+  const pushEntry = (kind, text, extra = {}) => {
+    const normalizedText = String(text || '').trim();
+    if (!normalizedText) return;
+
+    entries.push({
+      kind,
+      text: normalizedText,
+      tokens: tokenize(normalizedText),
+      ...extra,
+    });
+  };
+
+  if (productContext.brand) {
+    pushEntry('brand', `Marka: ${productContext.brand}`, {
+      label: 'Marka',
+      value: productContext.brand,
+    });
+  }
+
+  if (productContext.categoryName) {
+    pushEntry('category', `Kategori: ${productContext.categoryName}`, {
+      label: 'Kategori',
+      value: productContext.categoryName,
+    });
+  }
+
+  if (productContext.title) {
+    pushEntry('title', `Ürün adı: ${productContext.title}`, {
+      label: 'Ürün adı',
+      value: productContext.title,
+    });
+  }
+
+  if (productContext.description) {
+    const descriptionSentences = String(productContext.description)
+      .split(/[\n.!?]+/g)
+      .map((sentence) => sentence.trim())
+      .filter((sentence) => sentence.length >= 8)
+      .slice(0, 6);
+
+    for (const sentence of descriptionSentences) {
+      pushEntry('description', sentence);
+    }
+  }
+
+  for (const fact of productContext.facts || []) {
+    const parsed = parseAttributeLine(fact);
+    pushEntry('fact', fact, parsed || {});
+  }
+
+  return entries;
+}
+
+function keywordMatchesEntry(keyword, entryTokens = []) {
+  if (!keyword || entryTokens.length === 0) {
+    return false;
+  }
+
+  return entryTokens.some((entryToken) => {
+    if (!entryToken) return false;
+    if (entryToken === keyword) return true;
+    if (entryToken.length >= 4 && keyword.startsWith(entryToken)) return true;
+    if (keyword.length >= 4 && entryToken.startsWith(keyword)) return true;
+    return false;
+  });
+}
+
+function scoreEvidenceEntry(entry, keywords) {
+  if (!entry || keywords.length === 0) {
     return 0;
   }
 
   let score = 0;
+  let matchedKeywordCount = 0;
+
   for (const keyword of keywords) {
-    if (normalizedFact.includes(keyword)) {
-      score += keyword.length >= 5 ? 2 : 1;
+    let matchedThisKeyword = false;
+
+    if (keywordMatchesEntry(keyword, entry.tokens)) {
+      score += keyword.length >= 5 ? 3 : 2;
+      matchedThisKeyword = true;
     }
+
+    if (entry.label && keywordMatchesEntry(keyword, tokenize(entry.label))) {
+      score += 2;
+      matchedThisKeyword = true;
+    }
+
+    if (entry.value && keywordMatchesEntry(keyword, tokenize(entry.value))) {
+      score += 1;
+      matchedThisKeyword = true;
+    }
+
+    if (matchedThisKeyword) {
+      matchedKeywordCount += 1;
+    }
+  }
+
+  if (matchedKeywordCount === 0) {
+    return 0;
+  }
+
+  switch (entry.kind) {
+    case 'fact':
+      score += 3;
+      break;
+    case 'brand':
+    case 'category':
+      score += 2;
+      break;
+    case 'description':
+      score += 1;
+      break;
+    default:
+      break;
   }
 
   return score;
 }
 
-function buildFactBasedFallback(language, productName, questionText, productContext) {
-  const facts = productContext?.facts || [];
+export function findRelevantProductEvidence(questionText, productContext) {
   const keywords = extractQuestionKeywords(questionText);
-
-  if (facts.length === 0 || keywords.length === 0) {
-    return null;
+  if (keywords.length === 0) {
+    return [];
   }
 
-  const topMatches = facts
-    .map((fact) => ({ fact, score: scoreFactAgainstQuestion(fact, keywords) }))
-    .filter((item) => item.score > 0)
+  return buildEvidenceEntries(productContext)
+    .map((entry) => ({
+      ...entry,
+      score: scoreEvidenceEntry(entry, keywords),
+    }))
+    .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 2)
-    .map((item) => item.fact);
-
-  if (topMatches.length === 0) {
-    return null;
-  }
-
-  const productLabel = productName ? `"${productName}"` : 'ürün';
-
-  if (language === 'en') {
-    return `For ${productLabel}, the product details show: ${topMatches.join(' | ')}. Based on the listed specifications, this is the closest matching information for your question.`;
-  }
-
-  if (language === 'de') {
-    return `Fuer ${productLabel} zeigen die Produktinformationen Folgendes: ${topMatches.join(' | ')}. Das ist die passendste Information zu Ihrer Frage.`;
-  }
-
-  return `${productLabel} için ürün bilgilerinde şu detaylar görünüyor: ${topMatches.join(' | ')}. Sorunuzla ilgili en yakın bilgi bu şekilde listelenmiş.`;
+    .slice(0, 3);
 }
 
-function getFallbackAnswer(language, productName, questionText, productContext) {
+function getSafeNoEvidenceAnswer(language, productName) {
   const normalized = String(language || 'tr').trim().toLowerCase();
   const productLabel = productName ? `"${productName}"` : 'ürün';
-  const factBasedFallback = buildFactBasedFallback(normalized, productName, questionText, productContext);
-
-  if (factBasedFallback) {
-    return factBasedFallback;
-  }
 
   if (normalized === 'en') {
-    return `Thank you for your question about ${productLabel}. We are reviewing the details and will share a clear answer shortly.`;
+    return `I cannot verify this detail for ${productLabel} from the current product data. Please review the product record before sending a final reply.`;
   }
 
   if (normalized === 'de') {
-    return `Vielen Dank fuer Ihre Frage zu ${productLabel}. Wir pruefen die Details und melden uns in Kuerze mit einer klaren Antwort.`;
+    return `Ich kann dieses Detail fuer ${productLabel} mit den aktuellen Produktdaten nicht verifizieren. Bitte pruefen Sie den Produkteintrag vor dem Versenden.`;
   }
 
-  return `${productLabel} ile ilgili sorunuz için teşekkür ederiz. Detayları kontrol edip size kısa ve net bir yanıt paylaşacağız.`;
+  return `${productLabel} için bu detayı mevcut ürün verisinden doğrulayamıyorum. Yanıtı göndermeden önce ürün kaydını kontrol etmeniz iyi olur.`;
 }
 
-function buildPrompt({
-  businessName,
-  businessType,
+function formatSingleEvidenceAnswer(language, productName, evidence) {
+  const normalized = String(language || 'tr').trim().toLowerCase();
+  const productLabel = productName ? `"${productName}"` : 'Ürün';
+
+  if (evidence?.label && evidence?.value) {
+    if (normalized === 'en') {
+      return `According to the current product data for ${productLabel}, ${evidence.label.toLowerCase()} is listed as "${evidence.value}".`;
+    }
+
+    if (normalized === 'de') {
+      return `Laut den aktuellen Produktdaten fuer ${productLabel} ist ${evidence.label.toLowerCase()} als "${evidence.value}" angegeben.`;
+    }
+
+    return `${productLabel} için ürün bilgilerinde ${evidence.label.toLocaleLowerCase('tr-TR')} "${evidence.value}" olarak görünüyor.`;
+  }
+
+  if (normalized === 'en') {
+    return `According to the current product data for ${productLabel}, this information appears as: ${evidence.text}`;
+  }
+
+  if (normalized === 'de') {
+    return `Laut den aktuellen Produktdaten fuer ${productLabel} erscheint diese Information wie folgt: ${evidence.text}`;
+  }
+
+  return `${productLabel} için ürün bilgilerinde şu ifade yer alıyor: ${evidence.text}`;
+}
+
+function formatMultipleEvidenceAnswer(language, productName, evidences) {
+  const normalized = String(language || 'tr').trim().toLowerCase();
+  const productLabel = productName ? `"${productName}"` : 'ürün';
+  const compactEvidence = evidences.map((entry) => {
+    if (entry.label && entry.value) {
+      return `${entry.label}: ${entry.value}`;
+    }
+    return entry.text;
+  });
+
+  if (normalized === 'en') {
+    return `For ${productLabel}, the current product data shows these relevant details: ${compactEvidence.join(' | ')}.`;
+  }
+
+  if (normalized === 'de') {
+    return `Fuer ${productLabel} zeigen die aktuellen Produktdaten folgende passende Details: ${compactEvidence.join(' | ')}.`;
+  }
+
+  return `${productLabel} için ürün bilgilerinde sorunuzla ilgili şu detaylar görünüyor: ${compactEvidence.join(' | ')}.`;
+}
+
+export function buildGroundedMarketplaceAnswer({
   language,
   productName,
-  productContextBlock,
   questionText,
-  kbContext,
-  toneInstructions,
-  identitySummary,
+  productContext,
 }) {
-  const languageLabel = getLanguageLabel(language);
-  const safeToneInstructions = String(toneInstructions || '').trim();
+  const relevantEvidence = findRelevantProductEvidence(questionText, productContext);
 
-  return `
-SISTEM TALIMATLARI:
-Sen ${businessName} adina pazaryeri musteri sorularini yanitlayan bir asistansin.
-Kisa, profesyonel, net ve dogru cevaplar ver.
-Mutlaka ${languageLabel} dilinde yaz.
-Yaniti ${MAX_MARKETPLACE_ANSWER_LENGTH} karakterin altinda tut.
-Urun ozelligi, stok, kargo, iade veya garanti konusunda bilgi kesin degilse uydurma; netlestirici ve guvenli bir cevap ver.
-Ic sistemlerden, kaynak adlarindan, "AI", "bilgi bankasi", "dokuman" gibi ifadelerden bahsetme.
-Eger kullanisli bir bilgi yoksa nazik bir sekilde sinirli bilgiyle cevap ver; bos bir yanit verme.
-Elindeki urun baglami soruyu yanitlamak icin yeterliyse dogrudan somut cevap ver. Gereksiz sekilde "detaylari kontrol edip donecegiz" gibi oyalayici cevap yazma.
-${safeToneInstructions ? `Ton tercihi: ${safeToneInstructions}` : ''}
-
-ISLETME BAGLAMI:
-- Isletme adi: ${businessName}
-- Sektor: ${businessType || 'OTHER'}
-- Kisa kimlik ozeti: ${identitySummary || 'Belirtilmedi'}
-- Urun adi: ${productName || 'Belirtilmedi'}
-
-${productContextBlock}
-
-${kbContext || 'BILGI BANKASI: Ilgili kayit bulunamadi.'}
-
-KULLANICI SORUSU:
-${questionText}
-
-Yanit:
-`;
-}
-
-async function generateWithOpenAi(prompt) {
-  if (!openai) {
-    return null;
+  if (relevantEvidence.length === 0) {
+    return getSafeNoEvidenceAnswer(language, productName);
   }
 
-  try {
-    const response = await openai.chat.completions.create({
-      model: MARKETPLACE_QA_OPENAI_MODEL,
-      temperature: 0.35,
-      max_tokens: 500,
-      messages: [
-        { role: 'user', content: prompt },
-      ],
-    });
-
-    return response.choices?.[0]?.message?.content || '';
-  } catch (error) {
-    console.warn('Marketplace QA OpenAI fallback failed:', error.message);
-    return null;
+  if (relevantEvidence.length === 1) {
+    return formatSingleEvidenceAnswer(language, productName, relevantEvidence[0]);
   }
+
+  return formatMultipleEvidenceAnswer(language, productName, relevantEvidence);
 }
 
 export async function generateMarketplaceAnswer({
@@ -188,13 +317,7 @@ export async function generateMarketplaceAnswer({
     where: { id: businessId },
     select: {
       id: true,
-      name: true,
-      businessType: true,
       language: true,
-      timezone: true,
-      identitySummary: true,
-      aliases: true,
-      channelConfig: true,
     },
   });
 
@@ -209,87 +332,24 @@ export async function generateMarketplaceAnswer({
     productBarcode,
     productName,
   });
-  const kbQuery = [productName, productBarcode, questionText].filter(Boolean).join(' ').trim() || questionText;
-  const kbResult = await retrieveKB(businessId, kbQuery);
-  const identity = await buildBusinessIdentity({ business });
-  const prompt = buildPrompt({
-    businessName: identity.businessName || business.name || 'Business',
-    businessType: business.businessType,
-    language,
-    productName,
-    productContextBlock: buildMarketplaceProductContextBlock(productContext),
-    questionText,
-    kbContext: kbResult.context,
-    toneInstructions: qaSettings.toneInstructions,
-    identitySummary: identity.identitySummary || business.identitySummary,
-  });
 
-  if (!hasGeminiApiKey()) {
-    const openAiAnswer = await generateWithOpenAi(prompt);
-    if (openAiAnswer) {
-      return {
-        answer: truncateMarketplaceAnswer(openAiAnswer, MAX_MARKETPLACE_ANSWER_LENGTH),
-        kbSourcesUsed: kbResult.queriesUsed || [],
-        model: MARKETPLACE_QA_OPENAI_MODEL,
-        platform,
-        kbConfidence: kbResult.kbConfidence,
-      };
-    }
+  const answer = truncateMarketplaceAnswer(
+    buildGroundedMarketplaceAnswer({
+      language,
+      productName,
+      questionText,
+      productContext,
+    }),
+    MAX_MARKETPLACE_ANSWER_LENGTH
+  );
 
-    return {
-      answer: truncateMarketplaceAnswer(getFallbackAnswer(language, productName, questionText, productContext), MAX_MARKETPLACE_ANSWER_LENGTH),
-      kbSourcesUsed: kbResult.queriesUsed || [],
-      model: 'fallback-no-gemini-key',
-      platform,
-      kbConfidence: kbResult.kbConfidence,
-    };
-  }
-
-  const model = getGeminiModel({
-    model: MARKETPLACE_QA_MODEL,
-    temperature: 0.35,
-    maxOutputTokens: 500,
-  });
-
-  try {
-    const result = await model.generateContent(prompt);
-    const rawAnswer = result.response.text() || '';
-    const answer = truncateMarketplaceAnswer(rawAnswer, MAX_MARKETPLACE_ANSWER_LENGTH)
-      || truncateMarketplaceAnswer(getFallbackAnswer(language, productName, questionText, productContext), MAX_MARKETPLACE_ANSWER_LENGTH);
-
-    return {
-      answer,
-      kbSourcesUsed: kbResult.queriesUsed || [],
-      kbConfidence: kbResult.kbConfidence,
-      model: MARKETPLACE_QA_MODEL,
-      platform,
-    };
-  } catch (error) {
-    if (!isGeminiGenerationFailure(error)) {
-      throw error;
-    }
-
-    console.warn('Marketplace QA Gemini generation failed, using fallback answer:', error.message);
-
-    const openAiAnswer = await generateWithOpenAi(prompt);
-    if (openAiAnswer) {
-      return {
-        answer: truncateMarketplaceAnswer(openAiAnswer, MAX_MARKETPLACE_ANSWER_LENGTH),
-        kbSourcesUsed: kbResult.queriesUsed || [],
-        kbConfidence: kbResult.kbConfidence,
-        model: MARKETPLACE_QA_OPENAI_MODEL,
-        platform,
-      };
-    }
-
-    return {
-      answer: truncateMarketplaceAnswer(getFallbackAnswer(language, productName, questionText, productContext), MAX_MARKETPLACE_ANSWER_LENGTH),
-      kbSourcesUsed: kbResult.queriesUsed || [],
-      kbConfidence: kbResult.kbConfidence,
-      model: 'fallback-gemini-error',
-      platform,
-    };
-  }
+  return {
+    answer,
+    kbSourcesUsed: [],
+    kbConfidence: null,
+    model: productContext ? 'product-evidence-grounded' : 'product-evidence-missing',
+    platform,
+  };
 }
 
 export default generateMarketplaceAnswer;
