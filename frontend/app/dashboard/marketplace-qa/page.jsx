@@ -184,6 +184,26 @@ function formatDate(value, locale) {
   });
 }
 
+function getDisplayErrorMessage(errorMessage, locale) {
+  if (!errorMessage) return '';
+
+  const normalized = String(errorMessage).toLowerCase();
+  const isProviderError = (
+    normalized.includes('googlegenerativeai')
+    || normalized.includes('generativelanguage.googleapis.com')
+    || normalized.includes('api key not valid')
+    || normalized.includes('api_key_invalid')
+  );
+
+  if (isProviderError) {
+    return locale === 'tr'
+      ? 'AI cevabi olusturulamadi. Lutfen yeniden senkronize edin veya cevabi manuel duzenleyin.'
+      : 'The AI answer could not be generated. Please run sync again or edit the answer manually.';
+  }
+
+  return errorMessage;
+}
+
 function MarketplaceStatCard({ title, value, hint }) {
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
@@ -193,6 +213,8 @@ function MarketplaceStatCard({ title, value, hint }) {
     </div>
   );
 }
+
+const syncButtonClassName = 'disabled:opacity-100 disabled:cursor-wait';
 
 function MarketplaceQuestionCard({ item, onApprove, onEdit, onReject, loading, copy, locale }) {
   const STATUS_META = getStatusMeta(copy);
@@ -249,7 +271,7 @@ function MarketplaceQuestionCard({ item, onApprove, onEdit, onReject, loading, c
 
             {item.errorMessage && (
               <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
-                {item.errorMessage}
+                {getDisplayErrorMessage(item.errorMessage, locale)}
               </div>
             )}
           </div>
@@ -414,7 +436,15 @@ export default function MarketplaceQaPage() {
       const response = await syncQuestions.mutateAsync();
       const created = response.data?.result?.created || 0;
       const fetched = response.data?.result?.fetched || 0;
-      toast.success(`${copy.toasts.syncSuccess}${fetched || created ? ` (${fetched} çekildi, ${created} yeni)` : ''}`);
+      const retried = response.data?.result?.retried || 0;
+      const syncSummary = [
+        fetched ? (locale === 'tr' ? `${fetched} çekildi` : `${fetched} fetched`) : null,
+        created ? (locale === 'tr' ? `${created} yeni` : `${created} new`) : null,
+        retried ? (locale === 'tr' ? `${retried} düzeltildi` : `${retried} retried`) : null,
+      ]
+        .filter(Boolean)
+        .join(', ');
+      toast.success(`${copy.toasts.syncSuccess}${syncSummary ? ` (${syncSummary})` : ''}`);
     } catch (error) {
       toast.error(error.response?.data?.error || copy.toasts.syncError);
     }
@@ -464,7 +494,7 @@ export default function MarketplaceQaPage() {
             </div>
           </div>
 
-          <Button onClick={handleSync} disabled={syncQuestions.isPending}>
+          <Button className={syncButtonClassName} onClick={handleSync} disabled={syncQuestions.isPending}>
             {syncQuestions.isPending ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -618,7 +648,7 @@ export default function MarketplaceQaPage() {
             <p>{copy.states.empty}</p>
             <Button
               variant="outline"
-              className="mt-4"
+              className={`mt-4 ${syncButtonClassName}`}
               onClick={handleSync}
               disabled={syncQuestions.isPending}
             >
