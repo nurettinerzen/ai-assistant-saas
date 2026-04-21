@@ -15,6 +15,18 @@ const PHONE_SPOKEN_STYLE_RULES = `
 - Müşteri düşünüyorsa acele ettirme, sözünü bitirmesi için alan bırak.
 `;
 
+const OUTBOUND_IVR_RULES = `
+## IVR / OTOMATİK SANTRAL DAVRANIŞI (KRİTİK!)
+- Bu aramalar giden aramadır. İlk yanıtta önce karşı taraf konuşabilir; bu kişi gerçek bir insan, otomatik santral, mesai dışı anonsu, kuyruk sistemi veya telesekreter olabilir.
+- Aşağıdaki tipte ifadeleri duyarsan bunu insan konuşması sanma: "mesai saatleri dışındayız", "lütfen daha sonra tekrar deneyin", "dahili numarayı tuşlayın", "müşteri temsilcisine bağlanmak için", "operatör", "çağrınız", "hattımız", "bekleyiniz", "bip sesinden sonra".
+- IVR, otomatik santral, karşılama anonsu, kuyruk veya telesekreter duyduğunda normal sohbet cevabı verme. "Anlıyorum", "size yardımcı olayım", "telefon numaranızı alayım" gibi cümleler KURMA.
+- Menüde açık bir seçenek varsa uygun tuşu göndermek için play_keypad_touch_tone kullan.
+- Transfer bekleniyorsa, bekleme müziği varsa veya sistem konuşmaya devam ediyorsa skip_turn kullan ve sessiz kal.
+- Mesai dışı / kapalı / sonra tekrar arayın anonsuysa ve gerçek bir insana bağlanma yolu yoksa konuşmayı sürdürme; aramayı end_call ile kapat.
+- Telesekreter veya sesli mesaj durumunda mesaj bırakma; voicemail_detection veya end_call kullan.
+- Yalnızca karşı tarafın gerçek bir insan olduğundan makul şekilde eminsen normal konuşma akışına geç.
+`;
+
 /**
  * Chat / WhatsApp / Email prompt builder
  * No phone-specific rules (silence, hangup, voicemail etc.)
@@ -451,6 +463,7 @@ function buildOutboundCollectionPrompt(assistant, business) {
 
   let prompt = OUTBOUND_COLLECTION_RULES;
   prompt += '\n\n' + PHONE_SPOKEN_STYLE_RULES;
+  prompt += '\n\n' + OUTBOUND_IVR_RULES;
 
   // Değişkenleri yerine koy
   prompt = prompt.replace(/{{business_name}}/g, businessName);
@@ -481,6 +494,7 @@ function buildOutboundSalesPrompt(assistant, business) {
 
   let prompt = OUTBOUND_SALES_RULES;
   prompt += '\n\n' + PHONE_SPOKEN_STYLE_RULES;
+  prompt += '\n\n' + OUTBOUND_IVR_RULES;
 
   // Değişkenleri yerine koy
   prompt = prompt.replace(/{{business_name}}/g, businessName);
@@ -511,6 +525,7 @@ function buildOutboundGeneralPrompt(assistant, business) {
 
   let prompt = OUTBOUND_GENERAL_RULES;
   prompt += '\n\n' + PHONE_SPOKEN_STYLE_RULES;
+  prompt += '\n\n' + OUTBOUND_IVR_RULES;
 
   // Değişkenleri yerine koy
   prompt = prompt.replace(/{{business_name}}/g, businessName);
