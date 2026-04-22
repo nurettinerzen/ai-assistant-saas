@@ -47,6 +47,7 @@ import {
   getDashboardSelectContentClass,
   getDashboardSelectTriggerClass,
   getDashboardSkeletonClass,
+  getDashboardTableHeadCellClass,
   getDashboardTableHeaderClass,
 } from '@/components/dashboard/dashboardSurfaceTheme';
 
@@ -466,13 +467,13 @@ export default function CallsPage() {
           <Table>
             <TableHeader className={getDashboardTableHeaderClass(dark)}>
               <TableRow className={cn(dark ? 'border-white/10' : 'border-gray-200', 'hover:bg-transparent')}>
-                <TableHead>{t('dashboard.callsPage.dateTime')}</TableHead>
-                <TableHead>{t('dashboard.callsPage.duration')}</TableHead>
-                <TableHead>{t('dashboard.callsPage.direction')}</TableHead>
-                <TableHead>{t('dashboard.callsPage.status')}</TableHead>
-                <TableHead>{t('dashboard.callsPage.endReason')}</TableHead>
-                <TableHead>{t('dashboard.callsPage.phoneNumber')}</TableHead>
-                <TableHead className="text-right">{t('dashboard.callsPage.actions')}</TableHead>
+                <TableHead className={getDashboardTableHeadCellClass(dark)}>{t('dashboard.callsPage.dateTime')}</TableHead>
+                <TableHead className={getDashboardTableHeadCellClass(dark)}>{t('dashboard.callsPage.duration')}</TableHead>
+                <TableHead className={getDashboardTableHeadCellClass(dark)}>{t('dashboard.callsPage.direction')}</TableHead>
+                <TableHead className={getDashboardTableHeadCellClass(dark)}>{t('dashboard.callsPage.status')}</TableHead>
+                <TableHead className={getDashboardTableHeadCellClass(dark)}>{t('dashboard.callsPage.endReason')}</TableHead>
+                <TableHead className={getDashboardTableHeadCellClass(dark)}>{t('dashboard.callsPage.phoneNumber')}</TableHead>
+                <TableHead className={getDashboardTableHeadCellClass(dark, 'text-right')}>{t('dashboard.callsPage.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

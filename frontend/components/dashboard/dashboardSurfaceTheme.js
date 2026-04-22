@@ -130,6 +130,13 @@ export function getDashboardTableHeaderClass(dark, className) {
   );
 }
 
+export function getDashboardTableHeadCellClass(dark, className) {
+  return cn(
+    dark ? '!bg-[#0B1730]/88' : 'bg-slate-50/80',
+    className
+  );
+}
+
 export function getDashboardProgressTrackClass(dark, className) {
   return cn(
     'overflow-hidden rounded-full',
