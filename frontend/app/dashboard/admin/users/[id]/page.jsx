@@ -60,6 +60,45 @@ function getRegionalPlanDefaults(plan, country = 'TR') {
     || REGIONAL_PRICING.TR.plans.FREE;
 }
 
+function toEditableNumber(value, fallback = '') {
+  if (value === null || value === undefined || value === '') return fallback;
+  return String(value);
+}
+
+function parseIntegerOrFallback(value, fallback = 0) {
+  if (value === '' || value === null || value === undefined) return fallback;
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseFloatOrFallback(value, fallback = 0) {
+  if (value === '' || value === null || value === undefined) return fallback;
+  const parsed = Number.parseFloat(String(value).replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function sanitizeIntegerInput(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return String(Number.parseInt(digits, 10));
+}
+
+function sanitizeDecimalInput(value) {
+  const normalized = String(value || '').replace(',', '.').replace(/[^\d.]/g, '');
+  if (!normalized) return '';
+
+  const [integerRaw = '', ...decimalParts] = normalized.split('.');
+  const integerDigits = integerRaw.replace(/\D/g, '');
+  const integerPart = integerDigits ? String(Number.parseInt(integerDigits, 10)) : '0';
+
+  if (decimalParts.length === 0) {
+    return integerPart;
+  }
+
+  const decimalPart = decimalParts.join('').replace(/\D/g, '');
+  return `${integerPart}.${decimalPart}`;
+}
+
 
 export default function AdminUserDetailPage() {
   const router = useRouter();
@@ -78,13 +117,13 @@ export default function AdminUserDetailPage() {
   // Edit form
   const [editForm, setEditForm] = useState({
     plan: '',
-    minutesUsed: 0,
-    balance: 0,
-    minutesLimit: 0,
+    minutesUsed: '',
+    balance: '',
+    minutesLimit: '',
     writtenInteractionsLimit: '',
-    concurrentLimit: 0,
-    assistantsLimit: 0,
-    enterprisePrice: null,
+    concurrentLimit: '',
+    assistantsLimit: '',
+    enterprisePrice: '',
     enterpriseNotes: '',
     phoneInboundEnabled: false,
   });
@@ -103,13 +142,13 @@ export default function AdminUserDetailPage() {
 
       setEditForm({
         plan: subscription?.plan || 'FREE',
-        minutesUsed: subscription?.minutesUsed || 0,
-        balance: subscription?.balance || 0,
-        minutesLimit: subscription?.minutesLimit ?? planDefaults.minutes ?? 0,
-        writtenInteractionsLimit: subscription?.enterpriseSupportInteractions ?? '',
-        concurrentLimit: subscription?.concurrentLimit ?? planDefaults.concurrent ?? 0,
-        assistantsLimit: subscription?.assistantsLimit ?? planDefaults.assistants ?? 0,
-        enterprisePrice: subscription?.enterprisePrice || null,
+        minutesUsed: toEditableNumber(subscription?.minutesUsed ?? 0, '0'),
+        balance: toEditableNumber(subscription?.balance ?? 0, '0'),
+        minutesLimit: toEditableNumber(subscription?.minutesLimit ?? planDefaults.minutes ?? 0, '0'),
+        writtenInteractionsLimit: toEditableNumber(subscription?.enterpriseSupportInteractions, ''),
+        concurrentLimit: toEditableNumber(subscription?.concurrentLimit ?? planDefaults.concurrent ?? 0, '0'),
+        assistantsLimit: toEditableNumber(subscription?.assistantsLimit ?? planDefaults.assistants ?? 0, '0'),
+        enterprisePrice: toEditableNumber(subscription?.enterprisePrice, ''),
         enterpriseNotes: subscription?.enterpriseNotes || '',
         phoneInboundEnabled: response.data.business?.phoneInboundEnabled || false,
       });
@@ -130,18 +169,20 @@ export default function AdminUserDetailPage() {
   const handleSaveEdit = async () => {
     setActionLoading(true);
     try {
+      const savePlanDefaults = getRegionalPlanDefaults(editForm.plan || 'FREE', user.business?.country || 'TR');
+
       await apiClient.admin.updateUser(userId, {
         plan: editForm.plan,
-        minutesUsed: editForm.minutesUsed,
-        balance: editForm.balance,
-        minutesLimit: editForm.minutesLimit,
-        concurrentLimit: editForm.concurrentLimit,
-        assistantsLimit: editForm.assistantsLimit,
+        minutesUsed: parseIntegerOrFallback(editForm.minutesUsed, 0),
+        balance: parseFloatOrFallback(editForm.balance, 0),
+        minutesLimit: parseIntegerOrFallback(editForm.minutesLimit, Number(savePlanDefaults.minutes ?? 0)),
+        concurrentLimit: parseIntegerOrFallback(editForm.concurrentLimit, Number(savePlanDefaults.concurrent ?? 0)),
+        assistantsLimit: parseIntegerOrFallback(editForm.assistantsLimit, Number(savePlanDefaults.assistants ?? 0)),
         enterpriseSupportInteractions: editForm.writtenInteractionsLimit === ''
           ? null
-          : Number(editForm.writtenInteractionsLimit),
+          : parseIntegerOrFallback(editForm.writtenInteractionsLimit, Number(savePlanDefaults.writtenInteractions ?? 0)),
         enterprisePrice: editForm.plan === 'ENTERPRISE'
-          ? (editForm.enterprisePrice === null || editForm.enterprisePrice === '' ? null : Number(editForm.enterprisePrice))
+          ? (editForm.enterprisePrice === '' ? null : parseFloatOrFallback(editForm.enterprisePrice, 0))
           : undefined,
         enterpriseNotes: editForm.plan === 'ENTERPRISE' ? editForm.enterpriseNotes : '',
         phoneInboundEnabled: editForm.phoneInboundEnabled,
@@ -234,6 +275,9 @@ export default function AdminUserDetailPage() {
     const nextDefaults = getRegionalPlanDefaults(value, user.business?.country || 'TR');
 
     setEditForm((prev) => {
+      const previousMinutes = parseIntegerOrFallback(prev.minutesLimit, null);
+      const previousConcurrent = parseIntegerOrFallback(prev.concurrentLimit, null);
+      const previousAssistants = parseIntegerOrFallback(prev.assistantsLimit, null);
       const nextWritten = (
         prev.writtenInteractionsLimit === ''
         || Number(prev.writtenInteractionsLimit) === Number(previousDefaults.writtenInteractions ?? 0)
@@ -244,14 +288,14 @@ export default function AdminUserDetailPage() {
       return {
         ...prev,
         plan: value,
-        minutesLimit: Number(prev.minutesLimit) === Number(previousDefaults.minutes ?? 0)
-          ? Number(nextDefaults.minutes ?? 0)
+        minutesLimit: prev.minutesLimit === '' || previousMinutes === Number(previousDefaults.minutes ?? 0)
+          ? toEditableNumber(nextDefaults.minutes ?? 0, '0')
           : prev.minutesLimit,
-        concurrentLimit: Number(prev.concurrentLimit) === Number(previousDefaults.concurrent ?? 0)
-          ? Number(nextDefaults.concurrent ?? 0)
+        concurrentLimit: prev.concurrentLimit === '' || previousConcurrent === Number(previousDefaults.concurrent ?? 0)
+          ? toEditableNumber(nextDefaults.concurrent ?? 0, '0')
           : prev.concurrentLimit,
-        assistantsLimit: Number(prev.assistantsLimit) === Number(previousDefaults.assistants ?? 0)
-          ? Number(nextDefaults.assistants ?? 0)
+        assistantsLimit: prev.assistantsLimit === '' || previousAssistants === Number(previousDefaults.assistants ?? 0)
+          ? toEditableNumber(nextDefaults.assistants ?? 0, '0')
           : prev.assistantsLimit,
         writtenInteractionsLimit: nextWritten,
       };
@@ -561,20 +605,21 @@ export default function AdminUserDetailPage() {
               <div>
                 <Label>Kullanılan Dakika</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="mt-1"
                   value={editForm.minutesUsed}
-                  onChange={(e) => setEditForm({ ...editForm, minutesUsed: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setEditForm({ ...editForm, minutesUsed: sanitizeIntegerInput(e.target.value) })}
                 />
               </div>
               <div>
                 <Label>Bakiye (TL)</Label>
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   className="mt-1"
                   value={editForm.balance}
-                  onChange={(e) => setEditForm({ ...editForm, balance: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setEditForm({ ...editForm, balance: sanitizeDecimalInput(e.target.value) })}
                 />
               </div>
             </div>
@@ -589,21 +634,23 @@ export default function AdminUserDetailPage() {
                 <div>
                   <Label>Dakika Limiti</Label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     className="mt-1"
                     value={editForm.minutesLimit}
-                    onChange={(e) => setEditForm({ ...editForm, minutesLimit: parseInt(e.target.value, 10) || 0 })}
+                    onChange={(e) => setEditForm({ ...editForm, minutesLimit: sanitizeIntegerInput(e.target.value) })}
                   />
                   <p className="mt-1 text-xs text-gray-500">Plan varsayılanı: {Number(editPlanDefaults.minutes ?? 0)} dk</p>
                 </div>
                 <div>
                   <Label>Yazılı Etkileşim Limiti</Label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     className="mt-1"
                     value={editForm.writtenInteractionsLimit}
                     placeholder={String(editPlanDefaults.writtenInteractions ?? 0)}
-                    onChange={(e) => setEditForm({ ...editForm, writtenInteractionsLimit: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, writtenInteractionsLimit: sanitizeIntegerInput(e.target.value) })}
                   />
                   <p className="mt-1 text-xs text-gray-500">
                     Boş = plan varsayılanı ({Number(editPlanDefaults.writtenInteractions ?? 0).toLocaleString('tr-TR')})
@@ -614,20 +661,22 @@ export default function AdminUserDetailPage() {
                 <div>
                   <Label>Eşzamanlı Çağrı Limiti</Label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     className="mt-1"
                     value={editForm.concurrentLimit}
-                    onChange={(e) => setEditForm({ ...editForm, concurrentLimit: parseInt(e.target.value, 10) || 0 })}
+                    onChange={(e) => setEditForm({ ...editForm, concurrentLimit: sanitizeIntegerInput(e.target.value) })}
                   />
                   <p className="mt-1 text-xs text-gray-500">Plan varsayılanı: {Number(editPlanDefaults.concurrent ?? 0)}</p>
                 </div>
                 <div>
                   <Label>Asistan Limiti</Label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     className="mt-1"
                     value={editForm.assistantsLimit}
-                    onChange={(e) => setEditForm({ ...editForm, assistantsLimit: parseInt(e.target.value, 10) || 0 })}
+                    onChange={(e) => setEditForm({ ...editForm, assistantsLimit: sanitizeIntegerInput(e.target.value) })}
                   />
                   <p className="mt-1 text-xs text-gray-500">Plan varsayılanı: {Number(editPlanDefaults.assistants ?? 0)}</p>
                 </div>
@@ -652,10 +701,11 @@ export default function AdminUserDetailPage() {
                   <div>
                     <Label>Kurumsal Fiyat (TL/ay)</Label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className="mt-1"
-                      value={editForm.enterprisePrice || ''}
-                      onChange={(e) => setEditForm({ ...editForm, enterprisePrice: parseFloat(e.target.value) || null })}
+                      value={editForm.enterprisePrice}
+                      onChange={(e) => setEditForm({ ...editForm, enterprisePrice: sanitizeDecimalInput(e.target.value) })}
                     />
                   </div>
                 </div>
