@@ -39,13 +39,13 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "object-src 'none'",
   `frame-ancestors ${frameAncestors}`,
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://static.iyzipay.com https://sandbox-static.iyzipay.com https://connect.facebook.net https://*.facebook.net https://*.facebook.com https://*.fbcdn.net",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://tagassistant.google.com https://static.iyzipay.com https://sandbox-static.iyzipay.com https://connect.facebook.net https://*.facebook.net https://*.facebook.com https://*.fbcdn.net",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "font-src 'self' data: https:",
   `connect-src ${Array.from(connectSrcValues).join(' ')}`,
-  "frame-src 'self' https://accounts.google.com https://*.google.com https://*.iyzipay.com https://www.facebook.com https://web.facebook.com https://*.facebook.com",
+  "frame-src 'self' https://accounts.google.com https://*.google.com https://www.googletagmanager.com https://tagassistant.google.com https://*.iyzipay.com https://www.facebook.com https://web.facebook.com https://*.facebook.com",
   "form-action 'self' https:",
 ].join('; ');
 
