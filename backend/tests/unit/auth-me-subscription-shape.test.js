@@ -32,7 +32,8 @@ jest.unstable_mockModule('../../src/services/emailService.js', () => ({
   sendVerificationEmail: jest.fn(),
   sendEmailChangeVerification: jest.fn(),
   sendPasswordResetEmail: jest.fn(),
-  sendAdminMfaCodeEmail: jest.fn()
+  sendAdminMfaCodeEmail: jest.fn(),
+  sendNewSignupNotificationEmail: jest.fn()
 }));
 
 jest.unstable_mockModule('../../src/middleware/oauthState.js', () => ({

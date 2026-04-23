@@ -4,7 +4,13 @@ import crypto from 'crypto';
 import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { requireRecentAuth } from '../middleware/reauth.js';
-import { sendVerificationEmail, sendEmailChangeVerification, sendPasswordResetEmail, sendAdminMfaCodeEmail } from '../services/emailService.js';
+import {
+  sendVerificationEmail,
+  sendEmailChangeVerification,
+  sendPasswordResetEmail,
+  sendAdminMfaCodeEmail,
+  sendNewSignupNotificationEmail
+} from '../services/emailService.js';
 import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
 import { safeRedirect } from '../middleware/redirectWhitelist.js';
 import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
@@ -131,6 +137,43 @@ const createAndSendVerificationEmail = async (userId, email, businessName) => {
   return token;
 };
 
+const sendPostSignupEmails = async ({
+  userId,
+  email,
+  businessName,
+  userName = null,
+  businessType = null,
+  country = 'TR',
+  plan = 'TRIAL',
+  source = 'register'
+}) => {
+  const tasks = [
+    {
+      label: 'verification email',
+      promise: createAndSendVerificationEmail(userId, email, businessName)
+    },
+    {
+      label: 'signup notification email',
+      promise: sendNewSignupNotificationEmail({
+        userName,
+        email,
+        businessName,
+        businessType,
+        country,
+        plan,
+        source
+      })
+    }
+  ];
+
+  const results = await Promise.allSettled(tasks.map((task) => task.promise));
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      console.error(`Failed to send ${tasks[index].label}:`, result.reason);
+    }
+  });
+};
+
 // Register - Creates Business, Owner User, and Free Subscription
 router.post('/register', strictRateLimit, async (req, res) => {
   try {
@@ -208,13 +251,16 @@ router.post('/register', strictRateLimit, async (req, res) => {
 
     const token = issueSession(res, result.user);
 
-    // Send verification email
-    try {
-      await createAndSendVerificationEmail(result.user.id, result.user.email, result.business.name);
-    } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
-      // Don't fail registration if email fails
-    }
+    await sendPostSignupEmails({
+      userId: result.user.id,
+      email: result.user.email,
+      businessName: result.business.name,
+      userName: result.user.name || null,
+      businessType: result.business.businessType || req.body.businessType || null,
+      country: result.business.country || req.body.country?.toUpperCase() || 'TR',
+      plan: result.subscription?.plan || 'TRIAL',
+      source: 'register'
+    });
 
     res.status(201).json({
       message: 'Registration successful',
@@ -335,12 +381,16 @@ router.post("/signup", strictRateLimit, async (req, res) => {
     });
     const token = issueSession(res, result.user);
 
-    // Send verification email
-    try {
-      await createAndSendVerificationEmail(result.user.id, result.user.email, result.business.name);
-    } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
-    }
+    await sendPostSignupEmails({
+      userId: result.user.id,
+      email: result.user.email,
+      businessName: result.business.name,
+      userName: result.user.name || fullName || null,
+      businessType: result.business.businessType || null,
+      country: result.business.country || 'TR',
+      plan: 'TRIAL',
+      source: 'signup'
+    });
 
     res.status(201).json({
       token,

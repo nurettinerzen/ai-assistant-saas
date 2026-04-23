@@ -13,6 +13,9 @@ import runtimeConfig from '../config/runtime.js';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Telyx.AI <notifications@telyx.ai>';
 const SELF_SEND_FROM_EMAIL = process.env.SELF_SEND_FROM_EMAIL || 'Telyx.AI Notifications <notifications@telyx.ai>';
+const INTERNAL_SIGNUP_NOTIFICATION_EMAIL = process.env.SIGNUP_NOTIFICATION_EMAIL
+  || process.env.PUBLIC_CONTACT_OWNER_EMAIL
+  || 'info@telyx.ai';
 const FRONTEND_URL = runtimeConfig.frontendUrl;
 const SITE_URL = runtimeConfig.siteUrl;
 
@@ -1242,6 +1245,90 @@ export const sendContactNotificationEmail = async ({ name, email, company, phone
   return sendEmail('info@telyx.ai', subject, html);
 };
 
+/**
+ * 24. New Signup Notification (to admin)
+ */
+export const sendNewSignupNotificationEmail = async ({
+  userName,
+  email,
+  businessName,
+  businessType,
+  country,
+  plan = 'TRIAL',
+  source = 'register'
+}) => {
+  const safeUserName = userName ? escapeHtml(userName) : '';
+  const safeEmail = sanitizeEmailAddress(email) || 'invalid@email';
+  const safeBusinessName = businessName ? escapeHtml(businessName) : '';
+  const safeBusinessType = businessType ? escapeHtml(businessType) : '';
+  const safeCountry = country ? escapeHtml(country) : 'TR';
+  const safePlan = plan ? escapeHtml(plan) : 'TRIAL';
+  const safeSource = source ? escapeHtml(source) : 'register';
+  const signedAt = new Date().toLocaleString('tr-TR');
+  const subject = `Yeni Kullanici Kaydi: ${sanitizeHeaderValue(email || businessName || 'Unknown')}`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #111827; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ffffff;">Yeni Kullanici Kaydi</h1>
+        </div>
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
+          <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 0 0 24px 0; border: 1px solid #e5e7eb;">
+            ${safeUserName ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Ad Soyad</span><br>
+              <strong>${safeUserName}</strong>
+            </div>` : ''}
+            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">E-posta</span><br>
+              <strong><a href="mailto:${safeEmail}" style="color: #667eea;">${safeEmail}</a></strong>
+            </div>
+            ${safeBusinessName ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Isletme</span><br>
+              <strong>${safeBusinessName}</strong>
+            </div>` : ''}
+            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Plan</span><br>
+              <strong>${safePlan}</strong>
+            </div>
+            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Ulke</span><br>
+              <strong>${safeCountry}</strong>
+            </div>
+            ${safeBusinessType ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Isletme Turu</span><br>
+              <strong>${safeBusinessType}</strong>
+            </div>` : ''}
+            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Kaynak</span><br>
+              <strong>${safeSource}</strong>
+            </div>
+            <div style="padding: 12px 0;">
+              <span style="color: #6b7280; font-size: 14px;">Kayit Zamani</span><br>
+              <strong>${escapeHtml(signedAt)}</strong>
+            </div>
+          </div>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/admin/users" style="display: inline-block; padding: 12px 32px; background-color: #111827; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">Admin Paneli Ac</a>
+          </p>
+        </div>
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
+          <p style="margin: 0;">Telyx.AI Signup Notification</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(INTERNAL_SIGNUP_NOTIFICATION_EMAIL, subject, html);
+};
+
 export const sendAdminMfaCodeEmail = async (email, code, expiresAt) => {
   const safeCode = escapeHtml(code || '');
   const expiryLabel = expiresAt instanceof Date ? expiresAt.toLocaleString('en-US', { hour12: false }) : '';
@@ -1298,5 +1385,6 @@ export default {
   sendTeamInvitationEmail,
   sendWaitlistNotificationEmail,
   sendContactNotificationEmail,
+  sendNewSignupNotificationEmail,
   sendAdminMfaCodeEmail
 };
