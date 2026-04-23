@@ -63,7 +63,7 @@ export const config = {
   },
   resend: {
     apiKey: process.env.RESEND_API_KEY,
-    fromEmail: process.env.EMAIL_FROM || 'Telyx.AI <info@telyx.ai>',
+    fromEmail: process.env.EMAIL_FROM || 'Telyx.AI <notifications@telyx.ai>',
   },
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID,

@@ -11,7 +11,8 @@ import { sanitizeEmailAddress, sanitizeHeaderValue, escapeHtml } from '../utils/
 import runtimeConfig from '../config/runtime.js';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Telyx.AI <info@telyx.ai>';
+const FROM_EMAIL = process.env.EMAIL_FROM || 'Telyx.AI <notifications@telyx.ai>';
+const SELF_SEND_FROM_EMAIL = process.env.SELF_SEND_FROM_EMAIL || 'Telyx.AI Notifications <notifications@telyx.ai>';
 const FRONTEND_URL = runtimeConfig.frontendUrl;
 const SITE_URL = runtimeConfig.siteUrl;
 
@@ -26,18 +27,37 @@ if (RESEND_API_KEY) {
 /**
  * Send email helper
  */
+const extractEmailAddress = (value = '') => {
+  const sanitized = sanitizeHeaderValue(value);
+  const match = sanitized.match(/<([^>]+)>/);
+  return sanitizeEmailAddress(match?.[1] || sanitized);
+};
+
+const resolveFromEmail = (safeTo) => {
+  const safeFrom = sanitizeHeaderValue(FROM_EMAIL);
+  const fromAddress = extractEmailAddress(FROM_EMAIL);
+  const selfSendFromAddress = extractEmailAddress(SELF_SEND_FROM_EMAIL);
+
+  if (fromAddress && fromAddress === safeTo && selfSendFromAddress && selfSendFromAddress !== safeTo) {
+    return sanitizeHeaderValue(SELF_SEND_FROM_EMAIL);
+  }
+
+  return safeFrom;
+};
+
 const sendEmail = async (to, subject, html) => {
   const safeTo = sanitizeEmailAddress(to);
   const safeSubject = sanitizeHeaderValue(subject);
-  const safeFrom = sanitizeHeaderValue(FROM_EMAIL);
 
   if (!safeTo) {
     console.error('[EMAIL] Invalid recipient:', JSON.stringify(to), 'type:', typeof to, 'safeTo:', JSON.stringify(safeTo));
     throw new Error('Invalid recipient email');
   }
 
+  const safeFrom = resolveFromEmail(safeTo);
+
   if (!resend) {
-    console.log(`📧 [EMAIL PREVIEW] To: ${safeTo}, Subject: ${safeSubject}`);
+    console.log(`📧 [EMAIL PREVIEW] From: ${safeFrom}, To: ${safeTo}, Subject: ${safeSubject}`);
     console.log(html);
     return { sent: false, reason: 'no_api_key' };
   }
