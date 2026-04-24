@@ -109,6 +109,7 @@ export default function AdminUsersPage() {
     deleteConfirm: isTr ? 'kullanıcısını silmek istediğinize emin misiniz?' : 'Are you sure you want to delete this user?',
     deleteSuccess: isTr ? 'Kullanıcı silindi' : 'User deleted',
     deleteFailed: isTr ? 'Kullanıcı silinemedi' : 'Failed to delete user',
+    joinedAt: isTr ? 'Üyelik' : 'Joined',
     periodEnd: isTr ? 'Dönem Sonu' : 'Period End',
     assistantCallSummary: (assistants, calls) => isTr ? `${assistants} asistan, ${calls} arama` : `${assistants} assistants, ${calls} calls`,
     detail: isTr ? 'Detay' : 'Details',
@@ -305,6 +306,9 @@ export default function AdminUsersPage() {
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">{user.name || '-'}</p>
                       <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {copy.joinedAt}: {formatDate(user.createdAt)}
+                      </p>
                     </div>
                   </td>
                   <td className="px-4 py-3">

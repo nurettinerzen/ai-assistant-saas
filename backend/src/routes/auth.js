@@ -953,6 +953,19 @@ router.post('/google', async (req, res) => {
 
     const token = issueSession(res, user);
 
+    if (isNewUser) {
+      await sendPostSignupEmails({
+        userId: user.id,
+        email: user.email,
+        businessName: user.business?.name || name || 'My Business',
+        userName: user.name || name || null,
+        businessType: user.business?.businessType || null,
+        country: user.business?.country || 'TR',
+        plan: user.business?.subscription?.plan || 'TRIAL',
+        source: 'google_oauth'
+      });
+    }
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
@@ -1157,6 +1170,19 @@ router.post('/google/code', async (req, res) => {
     }
 
     const token = issueSession(res, user);
+
+    if (isNewUser) {
+      await sendPostSignupEmails({
+        userId: user.id,
+        email: user.email,
+        businessName: user.business?.name || name || 'My Business',
+        userName: user.name || name || null,
+        businessType: user.business?.businessType || null,
+        country: user.business?.country || 'TR',
+        plan: user.business?.subscription?.plan || 'TRIAL',
+        source: 'google_oauth'
+      });
+    }
 
     const { password: _, ...userWithoutPassword } = user;
 
