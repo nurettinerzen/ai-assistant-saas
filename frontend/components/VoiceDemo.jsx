@@ -109,6 +109,13 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
       const conversation = await Conversation.startSession({
         ...sessionConfig,
         workletPaths: getElevenLabsWorkletPaths(),
+        overrides: previewFirstMessage
+          ? {
+              agent: {
+                firstMessage: previewFirstMessage,
+              },
+            }
+          : undefined,
         onConnect: () => {
           setIsCallActive(true);
           setIsConnecting(false);
