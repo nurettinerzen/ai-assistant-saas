@@ -51,6 +51,11 @@ const formatRemainingSeconds = (seconds) => {
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 };
 
+const sendWebSocketMessage = (ws, payload) => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify(payload));
+};
+
 export default function VoiceDemo({
   assistantId,
   previewAccessToken = '',
@@ -203,10 +208,9 @@ export default function VoiceDemo({
           const result = String(reader.result || '');
           const base64 = result.includes(',') ? result.split(',')[1] : '';
           if (base64) {
-            ws.send(JSON.stringify({
-              type: 'audio',
-              audio: base64
-            }));
+            sendWebSocketMessage(ws, {
+              user_audio_chunk: base64
+            });
           }
         };
         reader.readAsDataURL(event.data);
@@ -378,6 +382,14 @@ export default function VoiceDemo({
           setCallStatus(t('onboarding.voiceDemo.callStatus.started'));
 
           try {
+            sendWebSocketMessage(ws, {
+              type: 'conversation_initiation_client_data'
+            });
+
+            // Let the agent deliver its configured opening before we start streaming
+            // microphone audio. This avoids background noise immediately hijacking
+            // the turn and restores the expected "assistant speaks first" behavior.
+            await new Promise((resolve) => window.setTimeout(resolve, 350));
             await startMicrophoneCapture(ws);
           } catch (error) {
             console.error('Preview microphone capture failed:', error);
@@ -397,8 +409,30 @@ export default function VoiceDemo({
               });
             }
 
-            if (data?.type === 'audio' && data?.audio) {
-              await playAudio(data.audio);
+            if (data?.type === 'ping' && data?.ping_event?.event_id) {
+              const pingDelay = Number(data?.ping_event?.ping_ms) || 0;
+              window.setTimeout(() => {
+                sendWebSocketMessage(ws, {
+                  type: 'pong',
+                  event_id: data.ping_event.event_id,
+                });
+              }, Math.max(0, pingDelay));
+              return;
+            }
+
+            if (data?.type === 'audio' && data?.audio_event?.audio_base_64) {
+              setIsSpeaking(true);
+              await playAudio(data.audio_event.audio_base_64);
+              return;
+            }
+
+            if (data?.type === 'agent_response' || data?.type === 'agent_response_correction') {
+              setIsSpeaking(true);
+              return;
+            }
+
+            if (data?.type === 'interruption' || data?.type === 'user_transcript') {
+              setIsSpeaking(false);
               return;
             }
 
@@ -591,7 +625,7 @@ export default function VoiceDemo({
           : t('onboarding.voiceDemo.createAssistantFirst')}
       </p>
 
-      {isPreviewMode && (
+      {isPreviewMode && isCallActive && remainingSeconds <= 60 && (
         <div
           className={`mt-5 flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-xs sm:text-sm ${
             isDark
@@ -599,9 +633,9 @@ export default function VoiceDemo({
               : 'border-[#d7e2f0] bg-[#f7f9fc] text-[#52637d]'
           }`}
         >
-          <span>Demo süresi en fazla 10 dakikadır. Süre dolunca görüşme otomatik kapanır.</span>
+          <span>Son 1 dakikadasınız. Görüşme süre dolunca otomatik kapanacak.</span>
           <span className={`ml-4 rounded-full px-3 py-1 font-semibold ${isDark ? 'bg-[#091529] text-white' : 'bg-white text-[#051752]'}`}>
-            {formatRemainingSeconds(isCallActive ? remainingSeconds : effectivePreviewDurationSeconds)}
+            {formatRemainingSeconds(remainingSeconds)}
           </span>
         </div>
       )}
