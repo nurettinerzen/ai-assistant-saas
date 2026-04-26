@@ -86,6 +86,25 @@ export default function VoiceDemo({
     // preview sessions. We keep this hook for symmetry and future cleanup needs.
   }, []);
 
+  // Explicit lifecycle end ONLY (user clicked Bitir, 10-min timeout, modal closed).
+  // Never call from onDisconnect / pagehide / unmount — those would close the
+  // preview session prematurely on transient disconnects and burn the token.
+  const reportPreviewSessionEnd = useCallback(async (reason) => {
+    if (!isPreviewMode || !previewAccessToken || !BACKEND_URL) return;
+    try {
+      await fetch(`${BACKEND_URL}/api/leads/preview/session/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          previewAccessToken,
+          reason: reason || 'user_ended'
+        })
+      });
+    } catch (error) {
+      console.error('Failed to report preview session end:', error);
+    }
+  }, [isPreviewMode, previewAccessToken]);
+
   const registerPreviewConversation = useCallback(async (conversationId) => {
     const normalizedConversationId = String(conversationId || '').trim();
     if (!isPreviewMode || !previewAccessToken || !normalizedConversationId || previewConversationRegisteredRef.current || !BACKEND_URL) {

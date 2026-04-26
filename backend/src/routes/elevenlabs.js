@@ -246,6 +246,29 @@ function extractConversationMetadata(event = {}) {
   };
 }
 
+/**
+ * Detect whether this 11Labs webhook event represents an actual phone call (Twilio/SIP)
+ * versus a web/SDK signed-url session (e.g. lead preview demos).
+ *
+ * Phone calls always carry `event.metadata.phone_call` with at least one of
+ * call_type / from_number / to_number / call_sid / caller_id populated.
+ * Web/SDK sessions don't ship phone_call metadata, so we use that as the
+ * authoritative signal to skip phone-only gates (inbound enable, capacity slot,
+ * CallLog creation, outbound V1).
+ */
+function isPhoneCallEvent(event = {}) {
+  const phoneCall = event?.metadata?.phone_call;
+  if (!phoneCall || typeof phoneCall !== 'object') return false;
+  return Boolean(
+    phoneCall.call_type ||
+    phoneCall.from_number ||
+    phoneCall.to_number ||
+    phoneCall.call_sid ||
+    phoneCall.caller_id ||
+    phoneCall.external_number
+  );
+}
+
 async function getActiveCallSession(callId) {
   if (!callId) return null;
   return prisma.activeCallSession.findUnique({
@@ -595,18 +618,25 @@ router.post('/webhook', async (req, res) => {
               'inbound'
             );
 
-            // INBOUND GATE: Don't serve prompt overrides for blocked inbound calls
-            const inboundEnabled = await isPhoneInboundEnabledForBusiness({
-              business: assistant.business,
-              businessId: assistant.business.id
-            });
+            // Phone-only gates: only apply to actual phone calls (Twilio/SIP).
+            // Web/SDK signed-url sessions (lead preview demos) must bypass
+            // phone-inbound gate and outbound-V1 routing.
+            const isPhoneCall = isPhoneCallEvent(event);
 
-            if (sessionDirection === 'inbound' && !inboundEnabled) {
-              console.log(`[INBOUND_BLOCKED] agent_response/initiation blocked, conversationId=${conversationId}`);
-              return res.status(200).json({});
+            if (isPhoneCall) {
+              // INBOUND GATE: Don't serve prompt overrides for blocked inbound calls
+              const inboundEnabled = await isPhoneInboundEnabledForBusiness({
+                business: assistant.business,
+                businessId: assistant.business.id
+              });
+
+              if (sessionDirection === 'inbound' && !inboundEnabled) {
+                console.log(`[INBOUND_BLOCKED] agent_response/initiation blocked, conversationId=${conversationId}`);
+                return res.status(200).json({});
+              }
             }
 
-            const outboundV1Enabled = shouldUsePhoneOutboundV1({
+            const outboundV1Enabled = isPhoneCall && shouldUsePhoneOutboundV1({
               businessId: assistant.business.id,
               direction: sessionDirection,
               assistant
@@ -1156,6 +1186,26 @@ async function handleConversationStarted(event) {
   try {
     const conversationId = event.conversation_id;
     const agentId = event.agent_id;
+
+    if (!conversationId) {
+      console.warn('⚠️ No conversation ID in conversation.started event');
+      return {
+        branch: 'missing_conversation_id'
+      };
+    }
+
+    // 🔒 LEAD PREVIEW / WEB SESSION GUARD
+    // Web/SDK signed-url sessions (lead demo previews) do not go through the
+    // phone pipeline. They have their own lifecycle in LeadPreviewSession and
+    // must NOT trigger phone-inbound gate, concurrent-slot acquisition, or a
+    // phone CallLog. Detect by absence of phone_call metadata.
+    if (!isPhoneCallEvent(event)) {
+      console.log(`[CONVERSATION_STARTED] non-phone session, skipping phone pipeline. conversationId=${conversationId}, agentId=${agentId}`);
+      return {
+        branch: 'non_phone_session'
+      };
+    }
+
     const eventMetadata = extractConversationMetadata(event);
     const callerPhone = eventMetadata.external_number || eventMetadata.caller_phone || event.caller_phone || 'Unknown';
 
@@ -1166,13 +1216,6 @@ async function handleConversationStarted(event) {
       eventMetadata.direction ||
       'inbound'
     );
-
-    if (!conversationId) {
-      console.warn('⚠️ No conversation ID in conversation.started event');
-      return {
-        branch: 'missing_conversation_id'
-      };
-    }
 
     // Find business by agent ID
     const assistant = await prisma.assistant.findFirst({
