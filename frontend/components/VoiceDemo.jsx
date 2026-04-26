@@ -73,9 +73,14 @@ export default function VoiceDemo({
   const previewConversationRegisteredRef = useRef(false);
   const previewConversationIdRef = useRef('');
   const pendingEndReasonRef = useRef('user_ended');
+  const isCallActiveRef = useRef(false);
   const isDark = resolvedTheme === 'dark';
   const isPreviewMode = Boolean(previewAccessToken);
   const effectivePreviewDurationSeconds = previewMaxDurationSeconds || DEFAULT_PREVIEW_DURATION_SECONDS;
+
+  useEffect(() => {
+    isCallActiveRef.current = isCallActive;
+  }, [isCallActive]);
 
   useEffect(() => {
     if (!isPreviewMode) return;
@@ -208,16 +213,16 @@ export default function VoiceDemo({
     }
 
     const handlePageHide = () => {
-      reportPreviewSessionEnd(isCallActive ? 'page_unload' : 'page_refresh', { beacon: true });
+      reportPreviewSessionEnd(isCallActiveRef.current ? 'page_unload' : 'page_refresh', { beacon: true });
     };
 
     window.addEventListener('pagehide', handlePageHide);
 
     return () => {
       window.removeEventListener('pagehide', handlePageHide);
-      reportPreviewSessionEnd(isCallActive ? 'page_unload' : 'component_unmount', { beacon: true });
+      reportPreviewSessionEnd(isCallActiveRef.current ? 'component_unmount_active' : 'component_unmount_idle', { beacon: true });
     };
-  }, [isCallActive, isPreviewMode, reportPreviewSessionEnd]);
+  }, [isPreviewMode, reportPreviewSessionEnd]);
 
   const startCall = async () => {
     try {
