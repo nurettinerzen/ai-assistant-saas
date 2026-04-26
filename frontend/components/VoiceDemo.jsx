@@ -22,7 +22,7 @@ const getElevenLabsWorkletPaths = () => {
   };
 };
 
-export default function VoiceDemo({ assistantId, previewFirstMessage = '', onClose }) {
+export default function VoiceDemo({ assistantId, previewFirstMessage = '', previewAssistantName = '', onClose }) {
   const { t } = useLanguage();
   const { resolvedTheme } = useTheme();
   const [isCallActive, setIsCallActive] = useState(false);
@@ -38,7 +38,7 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', onClo
         'Bu oturum bir Telyx demo önizlemesidir.',
         'İlk konuşmayı sen başlat.',
         `İlk cümlen tam olarak şu olsun: "${previewFirstMessage}"`,
-        'Biri adını sorarsa "Ben demo asistanıyım." de.',
+        `Biri adını sorarsa "Ben ${previewAssistantName || 'Telyx asistanıyım'}." de.`,
         'Marka adını söylerken "Teliks" de. İlk hecedeki e sesini kısa söyle, "Tee" gibi uzatma.',
         'Klasik destek açılışı olan "Merhaba, size nasıl yardımcı olabilirim?" cümlesini kullanma.',
       ].join(' ')
@@ -78,7 +78,7 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', onClo
       let sessionConfig = null;
 
       try {
-        const signedUrlEndpoint = `${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}`;
+        const signedUrlEndpoint = `${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}?preview=1`;
         console.log('🔗 Fetching signed URL from:', signedUrlEndpoint);
         const response = await fetch(signedUrlEndpoint);
 
@@ -98,7 +98,7 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', onClo
       } catch (signedUrlError) {
         console.warn('⚠️ Signed URL flow failed, falling back to WebRTC token:', signedUrlError.message);
 
-        const tokenUrl = `${BACKEND_URL}/api/elevenlabs/conversation-token/${assistantId}`;
+        const tokenUrl = `${BACKEND_URL}/api/elevenlabs/conversation-token/${assistantId}?preview=1`;
         console.log('🎟️ Fetching conversation token from:', tokenUrl);
         const tokenResponse = await fetch(tokenUrl);
 

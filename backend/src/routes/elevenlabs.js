@@ -1993,12 +1993,14 @@ async function loadVoiceAssistantForWebSession(assistantId) {
   });
 }
 
-function validateVoiceAssistantForWebSession(assistant) {
+function validateVoiceAssistantForWebSession(assistant, options = {}) {
+  const allowInactive = options.allowInactive === true;
+
   if (!assistant) {
     return { ok: false, status: 404, body: { error: 'Assistant not found' } };
   }
 
-  if (!assistant.isActive) {
+  if (!assistant.isActive && !allowInactive) {
     return { ok: false, status: 403, body: { error: 'Assistant is inactive' } };
   }
 
@@ -2016,6 +2018,7 @@ function validateVoiceAssistantForWebSession(assistant) {
 router.get('/signed-url/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
+    const allowInactive = String(req.query.preview || '').trim() === '1';
 
     if (!consumeWebSessionRateLimit(req, 'signed-url')) {
       return res.status(429).json({ error: 'Too many requests' });
@@ -2024,7 +2027,7 @@ router.get('/signed-url/:assistantId', async (req, res) => {
     console.log('🔗 Signed URL requested for assistantId:', assistantId);
 
     const assistant = await loadVoiceAssistantForWebSession(assistantId);
-    const validation = validateVoiceAssistantForWebSession(assistant);
+    const validation = validateVoiceAssistantForWebSession(assistant, { allowInactive });
     if (validation) {
       return res.status(validation.status).json(validation.body);
     }
@@ -2044,6 +2047,7 @@ router.get('/signed-url/:assistantId', async (req, res) => {
 router.get('/conversation-token/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
+    const allowInactive = String(req.query.preview || '').trim() === '1';
 
     if (!consumeWebSessionRateLimit(req, 'conversation-token')) {
       return res.status(429).json({ error: 'Too many requests' });
@@ -2052,7 +2056,7 @@ router.get('/conversation-token/:assistantId', async (req, res) => {
     console.log('🎟️ Conversation token requested for assistantId:', assistantId);
 
     const assistant = await loadVoiceAssistantForWebSession(assistantId);
-    const validation = validateVoiceAssistantForWebSession(assistant);
+    const validation = validateVoiceAssistantForWebSession(assistant, { allowInactive });
     if (validation) {
       return res.status(validation.status).json(validation.body);
     }

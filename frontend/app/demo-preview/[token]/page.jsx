@@ -128,12 +128,15 @@ export default function DemoPreviewPage({ params }) {
                   <span className={`font-medium ${isDark ? 'text-white' : 'text-[#051752]'}`}>
                     Asistan hazır:
                   </span>{' '}
-                  <strong className={isDark ? 'text-white' : 'text-[#051752]'}>Demo</strong>
+                  <strong className={isDark ? 'text-white' : 'text-[#051752]'}>
+                    {preview?.previewDisplayName || preview?.previewAssistantName || 'Asistan'}
+                  </strong>
                 </div>
 
                 <VoiceDemo
                   assistantId={preview.previewAssistantId}
                   previewFirstMessage={preview.previewFirstMessage || ''}
+                  previewAssistantName={preview?.previewDisplayName || preview?.previewAssistantName || 'Asistan'}
                 />
               </div>
             ) : (

@@ -88,6 +88,7 @@ async function resolveLeadPreviewAssistant(lead) {
     process.env.PUBLIC_CONTACT_OWNER_EMAIL ||
     ''
   ).trim();
+  const preferredAgentId = String(process.env.LEAD_PREVIEW_AGENT_ID || '').trim();
   const preferredAssistantName = String(process.env.LEAD_PREVIEW_ASSISTANT_NAME || '').trim();
 
   let previewBusinessId = null;
@@ -108,6 +109,25 @@ async function resolveLeadPreviewAssistant(lead) {
     previewBusinessId = previewOwner?.businessId || null;
   }
 
+  if (previewBusinessId && preferredAgentId) {
+    return prisma.assistant.findFirst({
+      where: {
+        businessId: previewBusinessId,
+        elevenLabsAgentId: preferredAgentId
+      },
+      orderBy: [
+        { updatedAt: 'desc' },
+        { createdAt: 'desc' }
+      ],
+      select: {
+        id: true,
+        name: true,
+        callDirection: true,
+        isActive: true
+      }
+    });
+  }
+
   if (previewBusinessId && preferredAssistantName) {
     return prisma.assistant.findFirst({
       where: {
@@ -126,7 +146,8 @@ async function resolveLeadPreviewAssistant(lead) {
       select: {
         id: true,
         name: true,
-        callDirection: true
+        callDirection: true,
+        isActive: true
       }
     });
   }
@@ -153,7 +174,8 @@ async function resolveLeadPreviewAssistant(lead) {
       select: {
         id: true,
         name: true,
-        callDirection: true
+        callDirection: true,
+        isActive: true
       }
     });
 
@@ -169,11 +191,19 @@ function buildLeadPreviewUrl(token) {
   return buildFrontendUrl(`/demo-preview/${encodeURIComponent(token)}`);
 }
 
-function getLeadPreviewFirstMessage() {
-  return String(
-    process.env.LEAD_PREVIEW_FIRST_MESSAGE ||
-    'Merhaba, ben Teliks demo asistanıyım. Nasılsınız? Bugün nasılsınız?'
-  ).trim();
+function getLeadPreviewDisplayName(previewAssistant) {
+  const configuredDisplayName = String(process.env.LEAD_PREVIEW_DISPLAY_NAME || '').trim();
+  return configuredDisplayName || previewAssistant?.name || 'Asistan';
+}
+
+function getLeadPreviewFirstMessage(previewAssistant) {
+  const configuredFirstMessage = String(process.env.LEAD_PREVIEW_FIRST_MESSAGE || '').trim();
+  if (configuredFirstMessage) {
+    return configuredFirstMessage;
+  }
+
+  const assistantName = getLeadPreviewDisplayName(previewAssistant);
+  return `Merhaba, ben ${assistantName}. Nasılsınız? Bugün nasılsınız?`;
 }
 
 router.get('/respond/:token', async (req, res) => {
@@ -305,6 +335,8 @@ router.get('/preview/:token', async (req, res) => {
     const refreshedLead = await getLeadByResponseToken(token);
     const previewAssistant = await resolveLeadPreviewAssistant(refreshedLead || lead);
 
+    const previewDisplayName = getLeadPreviewDisplayName(previewAssistant);
+
     return res.json({
       leadName: refreshedLead?.name || lead?.name || null,
       status: refreshedLead?.status || lead?.status || null,
@@ -313,8 +345,8 @@ router.get('/preview/:token', async (req, res) => {
       previewAssistantId: previewAssistant?.id || null,
       previewAssistantName: previewAssistant?.name || null,
       previewAssistantCallDirection: previewAssistant?.callDirection || null,
-      previewDisplayName: 'Demo',
-      previewFirstMessage: getLeadPreviewFirstMessage(),
+      previewDisplayName,
+      previewFirstMessage: getLeadPreviewFirstMessage(previewAssistant),
     });
   } catch (error) {
     console.error('Lead preview error:', error);
