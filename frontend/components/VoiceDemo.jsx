@@ -22,19 +22,19 @@ const getElevenLabsWorkletPaths = () => {
   };
 };
 
-const isSafariBrowser = () => {
-  if (typeof window === 'undefined') return false;
-  const ua = window.navigator.userAgent || '';
-  return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|SamsungBrowser/i.test(ua);
-};
-
 const describeError = (error, fallback = 'Bilinmeyen hata') => {
   if (!error) return fallback;
   if (typeof error === 'string') return error;
+  if (typeof CloseEvent !== 'undefined' && error instanceof CloseEvent) {
+    return `Bağlantı beklenmedik şekilde kapandı (${error.code || 'n/a'})`;
+  }
   if (error.message && String(error.message).trim()) return error.message;
   if (error.error && String(error.error).trim()) return error.error;
   if (error.response?.data?.error && String(error.response.data.error).trim()) {
     return error.response.data.error;
+  }
+  if (error.type === 'close' && typeof error.code !== 'undefined') {
+    return `Bağlantı beklenmedik şekilde kapandı (${error.code || 'n/a'})`;
   }
   try {
     return JSON.stringify(error);
@@ -96,55 +96,25 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
       const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       permissionStream.getTracks().forEach((track) => track.stop());
 
-      let sessionConfig = null;
+      const tokenUrl = `${BACKEND_URL}/api/elevenlabs/conversation-token/${assistantId}?preview=1`;
+      console.log('🎟️ Fetching conversation token from:', tokenUrl);
+      const tokenResponse = await fetch(tokenUrl);
 
-      const preferSignedUrl = isSafariBrowser();
-
-      if (!preferSignedUrl) {
-        try {
-          const tokenUrl = `${BACKEND_URL}/api/elevenlabs/conversation-token/${assistantId}?preview=1`;
-          console.log('🎟️ Fetching conversation token from:', tokenUrl);
-          const tokenResponse = await fetch(tokenUrl);
-
-          if (!tokenResponse.ok) {
-            const errorData = await tokenResponse.json().catch(() => ({}));
-            throw new Error(errorData.error || `Conversation token request failed (${tokenResponse.status})`);
-          }
-
-          const { conversationToken } = await tokenResponse.json();
-          if (!conversationToken) {
-            throw new Error('Conversation token is empty');
-          }
-
-          sessionConfig = {
-            conversationToken,
-            connectionType: 'webrtc'
-          };
-          console.log('✅ Got conversation token for preview WebRTC session');
-        } catch (tokenError) {
-          console.warn('⚠️ Conversation token flow failed, falling back to signed URL:', tokenError.message);
-        }
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Conversation token request failed (${tokenResponse.status})`);
       }
 
-      if (!sessionConfig) {
-        const signedUrlEndpoint = `${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}?preview=1`;
-        console.log('🔗 Fetching signed URL from:', signedUrlEndpoint);
-        const response = await fetch(signedUrlEndpoint);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('❌ Signed URL error:', response.status, errorData);
-          throw new Error(errorData.error || `Signed URL request failed (${response.status})`);
-        }
-
-        const { signedUrl } = await response.json();
-        if (!signedUrl) {
-          throw new Error('Signed URL is empty');
-        }
-
-        sessionConfig = { signedUrl };
-        console.log(`✅ Got signed URL for ${preferSignedUrl ? 'Safari preview session' : 'fallback preview session'}`);
+      const { conversationToken } = await tokenResponse.json();
+      if (!conversationToken) {
+        throw new Error('Conversation token is empty');
       }
+
+      const sessionConfig = {
+        conversationToken,
+        connectionType: 'webrtc'
+      };
+      console.log('✅ Got conversation token for preview WebRTC session');
 
       // Start conversation using official SDK
       const conversation = await Conversation.startSession({
@@ -158,17 +128,8 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
                 },
                 firstMessage: previewFirstMessage,
               },
-              client: {
-                source: 'telyx_lead_preview',
-                version: '1.0.0',
-              },
             }
-          : {
-              client: {
-                source: 'telyx_lead_preview',
-                version: '1.0.0',
-              },
-            },
+          : undefined,
         onConnect: () => {
           setIsCallActive(true);
           setIsConnecting(false);
