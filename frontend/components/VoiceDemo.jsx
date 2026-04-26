@@ -54,17 +54,6 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
   const conversationRef = useRef(null);
   const isDark = resolvedTheme === 'dark';
 
-  const previewPromptOverride = previewFirstMessage
-    ? [
-        'Bu oturum bir Telyx demo önizlemesidir.',
-        'İlk konuşmayı sen başlat.',
-        `İlk cümlen tam olarak şu olsun: "${previewFirstMessage}"`,
-        `Biri adını sorarsa "Ben ${previewAssistantName || 'Telyx asistanıyım'}." de.`,
-        'Marka adını söylerken "Teliks" de. İlk hecedeki e sesini kısa söyle, "Tee" gibi uzatma.',
-        'Klasik destek açılışı olan "Merhaba, size nasıl yardımcı olabilirim?" cümlesini kullanma.',
-      ].join(' ')
-    : '';
-
   const endCall = useCallback(async () => {
     if (conversationRef.current) {
       try {
@@ -120,16 +109,6 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
       const conversation = await Conversation.startSession({
         ...sessionConfig,
         workletPaths: getElevenLabsWorkletPaths(),
-        overrides: previewFirstMessage
-          ? {
-              agent: {
-                prompt: {
-                  prompt: previewPromptOverride,
-                },
-                firstMessage: previewFirstMessage,
-              },
-            }
-          : undefined,
         onConnect: () => {
           setIsCallActive(true);
           setIsConnecting(false);
