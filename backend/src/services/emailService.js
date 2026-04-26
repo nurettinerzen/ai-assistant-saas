@@ -1388,10 +1388,29 @@ export const sendLeadAutoResponseEmail = async (lead) => {
     </html>
   `;
 
-  return sendEmail(safeTo, subject, html, {
-    from: LEAD_AUTORESPONSE_FROM_EMAIL,
-    replyTo: LEAD_AUTORESPONSE_REPLY_TO
-  });
+  try {
+    return await sendEmail(safeTo, subject, html, {
+      from: LEAD_AUTORESPONSE_FROM_EMAIL,
+      replyTo: LEAD_AUTORESPONSE_REPLY_TO
+    });
+  } catch (error) {
+    const fallbackFrom = resolveFromEmail(safeTo);
+    const preferredFrom = sanitizeHeaderValue(LEAD_AUTORESPONSE_FROM_EMAIL);
+
+    if (!fallbackFrom || fallbackFrom === preferredFrom) {
+      throw error;
+    }
+
+    console.warn(
+      '⚠️ Lead autoresponse preferred sender failed, retrying with verified fallback sender:',
+      error.message
+    );
+
+    return sendEmail(safeTo, subject, html, {
+      from: fallbackFrom,
+      replyTo: LEAD_AUTORESPONSE_REPLY_TO
+    });
+  }
 };
 
 /**
