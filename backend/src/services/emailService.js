@@ -1292,7 +1292,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
     <html lang="tr">
       <body style="margin:0;padding:0;background:#eef3f9;font-family:'Google Sans','Segoe UI',Arial,Helvetica,sans-serif;color:#0c1843;-webkit-font-smoothing:antialiased;">
         <div style="display:none;font-size:1px;color:#eef3f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
-          Telyx başvurunuzu aldık. Uygunsanız yapay zeka asistanımız size kısa bir demo araması yapabilir.
+          Telyx başvurunuzu aldık. Uygunsanız demo talebi bırakmanız yeterli.
         </div>
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef3f9;padding:32px 0;">
           <tr>
@@ -1308,7 +1308,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
                 </tr>
                 <tr>
                   <td style="padding:28px 36px 0 36px;">
-                    <h1 style="margin:0 0 14px 0;font-size:34px;font-weight:800;line-height:1.16;letter-spacing:-0.03em;color:#051752;">
+                    <h1 style="margin:0 0 14px 0;font-size:32px;font-weight:800;line-height:1.18;letter-spacing:-0.03em;color:#051752;">
                       ${safeName ? `Merhaba ${safeName},` : 'Merhaba,'}
                     </h1>
                     <p style="margin:0 0 14px 0;font-size:20px;line-height:1.55;color:#52637d;">
@@ -1318,7 +1318,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
                       Telyx, telefon, WhatsApp, web chat ve e-posta kanallarındaki müşteri iletişimini tek merkezde toplar ve AI destekli yanıtlarla operasyon yükünüzü azaltır.
                     </p>
                     <p style="margin:0;font-size:16px;line-height:1.72;color:#42526b;">
-                      Uygunsanız yapay zeka asistanımız size Telyx'in işletmenizde nasıl çalışacağını 5-10 dakikada telefon aramasıyla anlatabilir. Aşağıdaki butona basmanız yeterli.
+                      Telyx'in işletmenizde nasıl çalıştığını görmek için aşağıdaki butonla demo talebi bırakabilirsiniz. Talebiniz bize ulaştıktan sonra demo sürecinizi başlatırız.
                     </p>
                   </td>
                 </tr>
@@ -1343,9 +1343,9 @@ export const sendLeadAutoResponseEmail = async (lead) => {
                           <img src="${avatarUrl}" alt="Nurettin Erzen" width="70" height="70" style="display:block;width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid #ffffff;box-shadow:0 6px 18px rgba(8,18,36,0.12);">
                         </td>
                         <td style="vertical-align:top;">
-                          <div style="font-size:11px;color:#66758f;font-weight:700;letter-spacing:0.04em;">Sevgiler,</div>
-                          <div style="margin-top:4px;font-size:32px;font-weight:800;letter-spacing:-0.02em;color:#051752;">Nurettin Erzen</div>
-                          <div style="margin-top:2px;font-size:16px;line-height:1.6;color:#66758f;">Kurucu · <a href="${sanitizeHeaderValue(SITE_URL)}" style="color:#66758f;text-decoration:none;">telyx.ai</a></div>
+                          <div style="font-size:14px;line-height:1.5;color:#66758f;font-weight:700;">Sevgiler,</div>
+                          <div style="margin-top:6px;font-size:22px;line-height:1.3;font-weight:800;letter-spacing:-0.02em;color:#051752;">Nurettin Erzen</div>
+                          <div style="margin-top:2px;font-size:14px;line-height:1.6;color:#66758f;">Kurucu · <a href="${sanitizeHeaderValue(SITE_URL)}" style="color:#66758f;text-decoration:none;">telyx.ai</a></div>
                         </td>
                       </tr>
                     </table>

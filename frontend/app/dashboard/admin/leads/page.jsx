@@ -38,7 +38,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import VoiceDemo from '@/components/VoiceDemo';
 
 const STATUS_STYLES = {
   NEW: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200',
@@ -150,10 +149,6 @@ function getLeadCopy(locale) {
       cta: isTr ? 'CTA Yanıtı' : 'CTA Response',
       callbackQueued: isTr ? 'Callback Kuyruğunda' : 'Callback Queued',
       callbackCalled: isTr ? 'Arama Başlatıldı' : 'Call Started',
-      previewTitle: isTr ? 'AI Demo Önizleme' : 'AI Demo Preview',
-      previewDescription: isTr ? 'Gerçek telefon araması başlatmadan, panel içinden asistan demo akışını test edin.' : 'Test the assistant demo flow from the panel without starting a real phone call.',
-      previewOpen: isTr ? 'Önizlemeyi Aç' : 'Open Preview',
-      previewUnavailable: isTr ? 'Bu lead için kullanılabilir bir voice asistan bulunamadı.' : 'No voice assistant is available for this lead.',
     },
     toasts: {
       loadFailed: isTr ? 'Leadler yüklenemedi.' : 'Failed to load leads.',
@@ -227,7 +222,6 @@ export default function AdminLeadsPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showVoicePreview, setShowVoicePreview] = useState(false);
   const [formState, setFormState] = useState({
     status: 'NEW',
     temperature: 'COLD',
@@ -769,29 +763,6 @@ export default function AdminLeadsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 p-4 dark:border-white/10 space-y-3">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{copy.detail.previewTitle}</div>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{copy.detail.previewDescription}</p>
-                  </div>
-
-                  {selectedLead.previewAssistantId ? (
-                    <>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {selectedLead.previewAssistantName || 'Voice Assistant'}
-                      </div>
-                      {!showVoicePreview ? (
-                        <Button type="button" variant="outline" onClick={() => setShowVoicePreview(true)}>
-                          {copy.detail.previewOpen}
-                        </Button>
-                      ) : (
-                        <VoiceDemo assistantId={selectedLead.previewAssistantId} onClose={() => setShowVoicePreview(false)} />
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{copy.detail.previewUnavailable}</p>
-                  )}
-                </div>
               </section>
             </div>
           )}

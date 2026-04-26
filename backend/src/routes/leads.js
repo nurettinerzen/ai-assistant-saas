@@ -4,13 +4,12 @@ import { authenticateToken } from '../middleware/auth.js';
 import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 import { createLead, getLeadByResponseToken, getLeadConstants, handleLeadCtaResponse } from '../services/leadService.js';
 import {
-  createLeadPreviewSession,
   finishLeadPreviewSession,
   registerLeadPreviewConversation,
   LEAD_PREVIEW_MAX_DURATION_SECONDS,
   LeadPreviewError
 } from '../services/leadPreviewService.js';
-import { buildFrontendUrl } from '../config/runtime.js';
+import { buildSiteUrl } from '../config/runtime.js';
 
 const router = express.Router();
 const {
@@ -57,6 +56,7 @@ function buildResponseHtml({
   message,
   accent = '#006FEB',
 }) {
+  const logoUrl = buildSiteUrl('/assets/telyx-logo-email-horizontal.png');
   return `
     <!DOCTYPE html>
     <html lang="tr">
@@ -65,19 +65,37 @@ function buildResponseHtml({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${title}</title>
       </head>
-      <body style="margin:0;padding:0;background:#f4f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:40px 16px;">
+      <body style="margin:0;padding:0;background:#eef3f9;font-family:'Google Sans','Segoe UI',Arial,Helvetica,sans-serif;color:#051752;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef3f9;padding:32px 16px;">
           <tr>
             <td align="center">
-              <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:18px;overflow:hidden;">
+              <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:22px;overflow:hidden;box-shadow:0 12px 40px rgba(8,18,36,0.08);">
                 <tr>
-                  <td style="background:linear-gradient(135deg,#051752,${accent});padding:30px 32px;color:#ffffff;">
-                    <h1 style="margin:0;font-size:24px;">${title}</h1>
+                  <td style="background:linear-gradient(90deg,#00c3e6 0%,#245ce5 100%);height:6px;font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td style="padding:34px 36px 0 36px;">
+                    <img src="${logoUrl}" alt="Telyx" height="42" style="display:block;height:42px;width:auto;border:0;outline:none;text-decoration:none;">
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:32px;">
-                    <p style="margin:0;font-size:16px;line-height:1.7;">${message}</p>
+                  <td style="padding:28px 36px 0 36px;">
+                    <h1 style="margin:0 0 14px 0;font-size:34px;font-weight:800;line-height:1.16;letter-spacing:-0.03em;color:#051752;">${title}</h1>
+                    <p style="margin:0;font-size:16px;line-height:1.72;color:#42526b;">${message}</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:28px 36px 24px 36px;">
+                    <div style="display:inline-block;padding:10px 18px;border-radius:999px;background:${accent === '#ef4444' ? '#fef2f2' : accent === '#64748b' ? '#f1f5f9' : '#ecfdf5'};color:${accent === '#ef4444' ? '#b91c1c' : accent === '#64748b' ? '#475569' : '#047857'};font-size:13px;font-weight:700;">
+                      ${accent === '#ef4444' ? 'İşlem tamamlanamadı' : accent === '#64748b' ? 'Talebiniz not edildi' : 'Talebiniz alındı'}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 36px 24px 36px;background:#ffffff;font-size:11px;line-height:1.65;color:#8a97ac;text-align:center;">
+                    <div style="border-top:1px solid #e8eef6;padding-top:18px;">
+                      <a href="${buildSiteUrl('/')}" style="color:#52637d;text-decoration:none;font-weight:700;">telyx.ai</a>
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -87,130 +105,6 @@ function buildResponseHtml({
       </body>
     </html>
   `;
-}
-
-async function resolveLeadPreviewAssistant(lead) {
-  const configuredOwnerEmail = String(
-    process.env.LEAD_PREVIEW_OWNER_EMAIL ||
-    process.env.PUBLIC_CONTACT_OWNER_EMAIL ||
-    ''
-  ).trim();
-  const preferredAgentId = String(process.env.LEAD_PREVIEW_AGENT_ID || '').trim();
-  const preferredAssistantName = String(process.env.LEAD_PREVIEW_ASSISTANT_NAME || '').trim();
-
-  let previewBusinessId = null;
-
-  if (configuredOwnerEmail) {
-    const previewOwner = await prisma.user.findFirst({
-      where: {
-        email: {
-          equals: configuredOwnerEmail,
-          mode: 'insensitive'
-        }
-      },
-      select: {
-        businessId: true
-      }
-    });
-
-    previewBusinessId = previewOwner?.businessId || null;
-  }
-
-  if (previewBusinessId && preferredAgentId) {
-    return prisma.assistant.findFirst({
-      where: {
-        businessId: previewBusinessId,
-        elevenLabsAgentId: preferredAgentId
-      },
-      orderBy: [
-        { updatedAt: 'desc' },
-        { createdAt: 'desc' }
-      ],
-      select: {
-        id: true,
-        name: true,
-        callDirection: true,
-        isActive: true
-      }
-    });
-  }
-
-  if (previewBusinessId && preferredAssistantName) {
-    return prisma.assistant.findFirst({
-      where: {
-        businessId: previewBusinessId,
-        isActive: true,
-        elevenLabsAgentId: { not: null },
-        name: {
-          equals: preferredAssistantName,
-          mode: 'insensitive'
-        }
-      },
-      orderBy: [
-        { updatedAt: 'desc' },
-        { createdAt: 'desc' }
-      ],
-      select: {
-        id: true,
-        name: true,
-        callDirection: true,
-        isActive: true
-      }
-    });
-  }
-
-  const candidateBusinessIds = [...new Set(
-    [previewBusinessId, lead?.businessId].filter(Boolean)
-  )];
-
-  if (candidateBusinessIds.length === 0) {
-    return null;
-  }
-
-  for (const businessId of candidateBusinessIds) {
-    const assistant = await prisma.assistant.findFirst({
-      where: {
-        businessId,
-        isActive: true,
-        elevenLabsAgentId: { not: null }
-      },
-      orderBy: [
-        { updatedAt: 'desc' },
-        { createdAt: 'desc' }
-      ],
-      select: {
-        id: true,
-        name: true,
-        callDirection: true,
-        isActive: true
-      }
-    });
-
-    if (assistant) {
-      return assistant;
-    }
-  }
-
-  return null;
-}
-
-function buildLeadPreviewUrl(token) {
-  return buildFrontendUrl(`/demo-preview/${encodeURIComponent(token)}`);
-}
-
-function getLeadPreviewDisplayName(previewAssistant) {
-  const configuredDisplayName = String(process.env.LEAD_PREVIEW_DISPLAY_NAME || '').trim();
-  return configuredDisplayName || previewAssistant?.name || 'Asistan';
-}
-
-function getLeadPreviewFirstMessage(previewAssistant) {
-  const configuredFirstMessage = String(process.env.LEAD_PREVIEW_FIRST_MESSAGE || '').trim();
-  if (configuredFirstMessage) {
-    return configuredFirstMessage;
-  }
-
-  const assistantName = getLeadPreviewDisplayName(previewAssistant);
-  return `Merhaba, ben ${assistantName}. Nasılsınız? Bugün nasılsınız?`;
 }
 
 function handleLeadPreviewError(res, error, fallbackMessage, responseMessage = 'Failed to prepare lead preview') {
@@ -336,51 +230,29 @@ router.post('/ingest/meta', async (req, res) => {
 router.get('/preview/:token', async (req, res) => {
   try {
     const { token } = req.params;
-    const activate = String(req.query.activate || '').trim() === '1';
-
     const existingLead = await getLeadByResponseToken(token);
     if (!existingLead) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
-    let lead = existingLead;
-    let actionTaken = null;
-
-    if (activate) {
-      const result = await handleLeadCtaResponse(token, 'yes');
-      if (!result.success) {
-        return res.status(400).json({ error: 'Failed to activate lead preview' });
-      }
-      lead = result.lead || existingLead;
-      actionTaken = result.actionTaken || null;
+    const result = await handleLeadCtaResponse(token, 'yes');
+    if (!result.success) {
+      return res.status(400).json({ error: 'Demo talebi işlenemedi' });
     }
 
-    const refreshedLead = await getLeadByResponseToken(token);
-    const previewAssistant = await resolveLeadPreviewAssistant(refreshedLead || lead);
-    const effectiveLead = refreshedLead || lead;
-    const previewDisplayName = getLeadPreviewDisplayName(previewAssistant);
-    let previewAccessToken = null;
-
-    if (activate && previewAssistant?.id && effectiveLead?.id) {
-      const previewSession = await createLeadPreviewSession({
-        leadId: effectiveLead.id,
-        assistantId: previewAssistant.id
-      });
-      previewAccessToken = previewSession.previewAccessToken;
-    }
+    const effectiveLead = result.lead || existingLead;
+    const message = result.alreadyProcessed
+      ? 'Demo talebiniz daha önce alınmıştı. Ekibimiz bu kayıt üzerinden sizinle iletişime geçecek.'
+      : 'Demo talebiniz bize ulaştı. Ekibimiz bu kayıt üzerinden sizinle en kısa sürede iletişime geçecek.';
 
     return res.json({
+      mode: 'request_received',
+      title: 'Demo talebinizi aldık',
+      message,
       leadName: effectiveLead?.name || null,
       status: effectiveLead?.status || null,
       ctaResponse: effectiveLead?.ctaResponse || null,
-      actionTaken,
-      previewAssistantId: previewAssistant?.id || null,
-      previewAssistantName: previewAssistant?.name || null,
-      previewAssistantCallDirection: previewAssistant?.callDirection || null,
-      previewDisplayName,
-      previewFirstMessage: getLeadPreviewFirstMessage(previewAssistant),
-      previewAccessToken,
-      previewMaxDurationSeconds: LEAD_PREVIEW_MAX_DURATION_SECONDS,
+      actionTaken: result.actionTaken || (result.alreadyProcessed ? 'already_requested' : 'demo_requested'),
     });
   } catch (error) {
     return handleLeadPreviewError(res, error, 'Lead preview error:', 'Failed to prepare lead preview');
@@ -557,13 +429,8 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
-    const previewAssistant = await resolveLeadPreviewAssistant(lead);
-
     res.json({
       ...lead,
-      previewAssistantId: previewAssistant?.id || null,
-      previewAssistantName: previewAssistant?.name || null,
-      previewAssistantCallDirection: previewAssistant?.callDirection || null,
     });
   } catch (error) {
     console.error('Lead detail error:', error);

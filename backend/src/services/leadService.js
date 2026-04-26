@@ -407,7 +407,7 @@ export async function handleLeadCtaResponse(responseToken, action) {
         success: true,
         lead: queuedLead,
         alreadyProcessed: false,
-        actionTaken: 'preview_queued',
+        actionTaken: 'callback_queued',
         callbackId: callbackResult.callback.id
       };
     }
@@ -429,7 +429,7 @@ export async function handleLeadCtaResponse(responseToken, action) {
     success: true,
     lead: updatedLead,
     alreadyProcessed: false,
-    actionTaken: 'preview_requested'
+    actionTaken: 'demo_requested'
   };
 }
 
