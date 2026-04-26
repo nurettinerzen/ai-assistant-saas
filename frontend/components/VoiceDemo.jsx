@@ -81,37 +81,6 @@ export default function VoiceDemo({
     setRemainingSeconds(effectivePreviewDurationSeconds);
   }, [effectivePreviewDurationSeconds, isPreviewMode]);
 
-  const reportPreviewSessionEnd = useCallback(async (reason, { beacon = false } = {}) => {
-    if (!isPreviewMode || !previewAccessToken || !BACKEND_URL) {
-      return;
-    }
-
-    const payload = JSON.stringify({
-      previewAccessToken,
-      reason,
-      conversationId: previewConversationIdRef.current || undefined
-    });
-
-    if (beacon && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const blob = new Blob([payload], { type: 'application/json' });
-      navigator.sendBeacon(`${BACKEND_URL}/api/leads/preview/session/end`, blob);
-      return;
-    }
-
-    try {
-      await fetch(`${BACKEND_URL}/api/leads/preview/session/end`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: payload,
-        keepalive: true,
-      });
-    } catch (error) {
-      console.error('Failed to close preview session:', error);
-    }
-  }, [isPreviewMode, previewAccessToken]);
-
   const stopMediaResources = useCallback(() => {
     // ElevenLabs SDK manages its own audio resources for signed-url websocket
     // preview sessions. We keep this hook for symmetry and future cleanup needs.
@@ -145,7 +114,7 @@ export default function VoiceDemo({
     } catch (error) {
       console.error('Failed to register preview conversation:', error);
     }
-  }, [isPreviewMode, previewAccessToken, reportPreviewSessionEnd]);
+  }, [isPreviewMode, previewAccessToken]);
 
   const endCall = useCallback(async ({ reason = 'user_ended', finalStatus = '' } = {}) => {
     pendingEndReasonRef.current = reason;
@@ -170,7 +139,7 @@ export default function VoiceDemo({
     setIsSpeaking(false);
     setCallStartedAt(null);
     setCallStatus(finalStatus || t('onboarding.voiceDemo.callStatus.ended'));
-  }, [isPreviewMode, reportPreviewSessionEnd, stopMediaResources, t]);
+  }, [isPreviewMode, stopMediaResources, t]);
 
   useEffect(() => {
     if (!isPreviewMode || !callStartedAt || !isCallActive) {
@@ -256,13 +225,6 @@ export default function VoiceDemo({
             setIsSpeaking(false);
             setIsConnecting(false);
             setCallStartedAt(null);
-
-            if (
-              isPreviewMode &&
-              ['timeout', 'user_ended', 'manual_end', 'page_unload'].includes(pendingEndReasonRef.current)
-            ) {
-              await reportPreviewSessionEnd(pendingEndReasonRef.current || 'disconnect');
-            }
 
             setCallStatus(
               pendingEndReasonRef.current === 'timeout'
@@ -352,16 +314,9 @@ export default function VoiceDemo({
           setIsConnecting(false);
           setCallStartedAt(null);
 
-            if (
-              isPreviewMode &&
-              ['timeout', 'user_ended', 'manual_end', 'page_unload'].includes(pendingEndReasonRef.current)
-            ) {
-              await reportPreviewSessionEnd(pendingEndReasonRef.current || 'disconnect');
-            }
-
-          setCallStatus(
-            pendingEndReasonRef.current === 'timeout'
-              ? '10 dakikalık demo süresi doldu. Görüşme kapatıldı.'
+            setCallStatus(
+              pendingEndReasonRef.current === 'timeout'
+                ? '10 dakikalık demo süresi doldu. Görüşme kapatıldı.'
               : t('onboarding.voiceDemo.callStatus.ended')
           );
         },
