@@ -36,6 +36,13 @@ import {
   containsChildSafetyViolation,
   logContentSafetyViolation
 } from '../utils/content-safety.js';
+import {
+  getLeadPreviewPromptGuard,
+  markLeadPreviewCredentialIssued,
+  terminateLeadPreviewConversation,
+  finishLeadPreviewSession,
+  LeadPreviewError
+} from '../services/leadPreviewService.js';
 import { isPhoneInboundEnabledForBusiness } from '../services/phoneInboundGate.js';
 import runtimeConfig from '../config/runtime.js';
 import { safeCompareHex } from '../security/constantTime.js';
@@ -556,6 +563,31 @@ router.post('/webhook', async (req, res) => {
           });
 
           if (assistant && assistant.business) {
+            const previewGuard = await getLeadPreviewPromptGuard({
+              conversationId,
+              assistantName: assistant.name
+            });
+
+            if (previewGuard?.shouldTerminate) {
+              terminateLeadPreviewConversation({
+                conversationId,
+                reason: previewGuard.endReason || 'timeout'
+              }).catch((terminateError) => {
+                console.error(`❌ Preview termination failed for ${conversationId}:`, terminateError.message);
+              });
+
+              return res.json({
+                prompt_override: previewGuard.promptOverride
+              });
+            }
+
+            if (previewGuard?.promptOverride) {
+              const dynamicContext = getDynamicDateTimeContext(assistant.business);
+              return res.json({
+                prompt_override: `${previewGuard.promptOverride}\n\n${dynamicContext}`
+              });
+            }
+
             const activeSession = await getActiveCallSession(conversationId);
             const sessionDirection = normalizeDirection(
               activeSession?.direction ||
@@ -1410,6 +1442,10 @@ async function handleConversationEnded(event) {
           where: { callId: conversationId },
           data: { status: 'completed', updatedAt: new Date() }
         });
+        await finishLeadPreviewSession({
+          conversationId,
+          reason: 'conversation_ended'
+        });
         return;
       }
     }
@@ -1428,6 +1464,10 @@ async function handleConversationEnded(event) {
 
     if (!assistant) {
       console.warn(`⚠️ No assistant found for agent ${agentId}`);
+      await finishLeadPreviewSession({
+        conversationId,
+        reason: 'conversation_ended'
+      });
       return;
     }
 
@@ -1643,6 +1683,11 @@ async function handleConversationEnded(event) {
         // Continue anyway - cleanup cron will handle it
       }
     }
+
+    await finishLeadPreviewSession({
+      conversationId,
+      reason: endReason || 'conversation_ended'
+    });
 
   } catch (error) {
     console.error('❌ Error handling conversation ended:', error);
@@ -2015,10 +2060,31 @@ function validateVoiceAssistantForWebSession(assistant, options = {}) {
   return null;
 }
 
+function getLeadPreviewAccessTokenFromRequest(req) {
+  return String(
+    req.headers['x-lead-preview-access'] ||
+    req.query.previewAccessToken ||
+    ''
+  ).trim();
+}
+
+function handleLeadPreviewRouteError(res, error, label) {
+  if (error instanceof LeadPreviewError) {
+    return res.status(error.statusCode || 400).json({
+      error: error.message,
+      code: error.code || 'lead_preview_error'
+    });
+  }
+
+  console.error(label, error.response?.data || error.message);
+  return res.status(500).json({ error: error.message || 'Preview session error' });
+}
+
 router.get('/signed-url/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
-    const allowInactive = String(req.query.preview || '').trim() === '1';
+    const isPreview = String(req.query.preview || '').trim() === '1';
+    const allowInactive = isPreview;
 
     if (!consumeWebSessionRateLimit(req, 'signed-url')) {
       return res.status(429).json({ error: 'Too many requests' });
@@ -2032,22 +2098,33 @@ router.get('/signed-url/:assistantId', async (req, res) => {
       return res.status(validation.status).json(validation.body);
     }
 
+    let previewSession = null;
+    if (isPreview) {
+      previewSession = await markLeadPreviewCredentialIssued({
+        previewAccessToken: getLeadPreviewAccessTokenFromRequest(req),
+        assistantId
+      });
+    }
+
     console.log('🔑 Getting signed URL from 11Labs for agent:', assistant.elevenLabsAgentId);
     const result = await elevenLabsService.getSignedUrl(assistant.elevenLabsAgentId);
 
     // 11Labs returns { signed_url: "wss://..." }
     console.log('✅ Signed URL obtained successfully');
-    res.json({ signedUrl: result.signed_url });
+    res.json({
+      signedUrl: result.signed_url,
+      participantName: previewSession?.lead?.name || null
+    });
   } catch (error) {
-    console.error('❌ Error getting signed URL:', error.response?.data || error.message);
-    res.status(500).json({ error: error.message });
+    return handleLeadPreviewRouteError(res, error, '❌ Error getting signed URL:');
   }
 });
 
 router.get('/conversation-token/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
-    const allowInactive = String(req.query.preview || '').trim() === '1';
+    const isPreview = String(req.query.preview || '').trim() === '1';
+    const allowInactive = isPreview;
 
     if (!consumeWebSessionRateLimit(req, 'conversation-token')) {
       return res.status(429).json({ error: 'Too many requests' });
@@ -2061,7 +2138,15 @@ router.get('/conversation-token/:assistantId', async (req, res) => {
       return res.status(validation.status).json(validation.body);
     }
 
-    const participantName = String(req.query.participantName || '').trim() || undefined;
+    let previewSession = null;
+    if (isPreview) {
+      previewSession = await markLeadPreviewCredentialIssued({
+        previewAccessToken: getLeadPreviewAccessTokenFromRequest(req),
+        assistantId
+      });
+    }
+
+    const participantName = previewSession?.lead?.name || String(req.query.participantName || '').trim() || undefined;
     const environment = runtimeConfig.isBetaApp ? 'staging' : 'production';
 
     console.log('🔑 Getting WebRTC token from 11Labs for agent:', assistant.elevenLabsAgentId);
@@ -2071,10 +2156,12 @@ router.get('/conversation-token/:assistantId', async (req, res) => {
     });
 
     console.log('✅ Conversation token obtained successfully');
-    res.json({ conversationToken: result.token });
+    res.json({
+      conversationToken: result.token,
+      participantName: participantName || null
+    });
   } catch (error) {
-    console.error('❌ Error getting conversation token:', error.response?.data || error.message);
-    res.status(500).json({ error: error.message });
+    return handleLeadPreviewRouteError(res, error, '❌ Error getting conversation token:');
   }
 });
 

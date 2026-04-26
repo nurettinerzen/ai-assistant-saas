@@ -3,6 +3,13 @@ import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 import { createLead, getLeadByResponseToken, getLeadConstants, handleLeadCtaResponse } from '../services/leadService.js';
+import {
+  createLeadPreviewSession,
+  finishLeadPreviewSession,
+  registerLeadPreviewConversation,
+  LEAD_PREVIEW_MAX_DURATION_SECONDS,
+  LeadPreviewError
+} from '../services/leadPreviewService.js';
 import { buildFrontendUrl } from '../config/runtime.js';
 
 const router = express.Router();
@@ -206,6 +213,18 @@ function getLeadPreviewFirstMessage(previewAssistant) {
   return `Merhaba, ben ${assistantName}. Nasılsınız? Bugün nasılsınız?`;
 }
 
+function handleLeadPreviewError(res, error, fallbackMessage, responseMessage = 'Failed to prepare lead preview') {
+  if (error instanceof LeadPreviewError) {
+    return res.status(error.statusCode || 400).json({
+      error: error.message,
+      code: error.code || 'lead_preview_error'
+    });
+  }
+
+  console.error(fallbackMessage, error);
+  return res.status(500).json({ error: responseMessage });
+}
+
 router.get('/respond/:token', async (req, res) => {
   try {
     const { token } = req.params;
@@ -334,23 +353,70 @@ router.get('/preview/:token', async (req, res) => {
 
     const refreshedLead = await getLeadByResponseToken(token);
     const previewAssistant = await resolveLeadPreviewAssistant(refreshedLead || lead);
-
+    const effectiveLead = refreshedLead || lead;
     const previewDisplayName = getLeadPreviewDisplayName(previewAssistant);
+    let previewAccessToken = null;
+
+    if (activate && previewAssistant?.id && effectiveLead?.id) {
+      const previewSession = await createLeadPreviewSession({
+        leadId: effectiveLead.id,
+        assistantId: previewAssistant.id
+      });
+      previewAccessToken = previewSession.previewAccessToken;
+    }
 
     return res.json({
-      leadName: refreshedLead?.name || lead?.name || null,
-      status: refreshedLead?.status || lead?.status || null,
-      ctaResponse: refreshedLead?.ctaResponse || lead?.ctaResponse || null,
+      leadName: effectiveLead?.name || null,
+      status: effectiveLead?.status || null,
+      ctaResponse: effectiveLead?.ctaResponse || null,
       actionTaken,
       previewAssistantId: previewAssistant?.id || null,
       previewAssistantName: previewAssistant?.name || null,
       previewAssistantCallDirection: previewAssistant?.callDirection || null,
       previewDisplayName,
       previewFirstMessage: getLeadPreviewFirstMessage(previewAssistant),
+      previewAccessToken,
+      previewMaxDurationSeconds: LEAD_PREVIEW_MAX_DURATION_SECONDS,
     });
   } catch (error) {
-    console.error('Lead preview error:', error);
-    return res.status(500).json({ error: 'Failed to prepare lead preview' });
+    return handleLeadPreviewError(res, error, 'Lead preview error:', 'Failed to prepare lead preview');
+  }
+});
+
+router.post('/preview/session/connect', async (req, res) => {
+  try {
+    const { previewAccessToken, conversationId } = req.body || {};
+    const session = await registerLeadPreviewConversation({
+      previewAccessToken,
+      conversationId
+    });
+
+    return res.json({
+      success: true,
+      status: session.status,
+      expiresAt: session.expiresAt,
+      previewMaxDurationSeconds: LEAD_PREVIEW_MAX_DURATION_SECONDS
+    });
+  } catch (error) {
+    return handleLeadPreviewError(res, error, 'Lead preview connect error:', 'Failed to connect lead preview session');
+  }
+});
+
+router.post('/preview/session/end', async (req, res) => {
+  try {
+    const { previewAccessToken, reason } = req.body || {};
+    const session = await finishLeadPreviewSession({
+      previewAccessToken,
+      reason
+    });
+
+    return res.json({
+      success: true,
+      status: session?.status || null,
+      endReason: session?.endReason || null
+    });
+  } catch (error) {
+    return handleLeadPreviewError(res, error, 'Lead preview end error:', 'Failed to close lead preview session');
   }
 });
 
