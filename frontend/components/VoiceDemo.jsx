@@ -6,6 +6,7 @@ import { Conversation } from '@elevenlabs/client';
 import { useTheme } from 'next-themes';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
+const DEFAULT_PREVIEW_DURATION_SECONDS = 10 * 60;
 
 const getElevenLabsWorkletPaths = () => {
   if (typeof window === 'undefined') {
@@ -43,18 +44,110 @@ const describeError = (error, fallback = 'Bilinmeyen hata') => {
   }
 };
 
-export default function VoiceDemo({ assistantId, previewFirstMessage = '', previewAssistantName = '', onClose }) {
+const formatRemainingSeconds = (seconds) => {
+  const safeSeconds = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainder = safeSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+};
+
+export default function VoiceDemo({
+  assistantId,
+  previewAccessToken = '',
+  previewFirstMessage = '',
+  previewMaxDurationSeconds = DEFAULT_PREVIEW_DURATION_SECONDS,
+  previewAssistantName = '',
+  onClose
+}) {
   const { t } = useLanguage();
   const { resolvedTheme } = useTheme();
   const [isCallActive, setIsCallActive] = useState(false);
   const [callStatus, setCallStatus] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [callStartedAt, setCallStartedAt] = useState(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(previewMaxDurationSeconds || DEFAULT_PREVIEW_DURATION_SECONDS);
 
   const conversationRef = useRef(null);
+  const previewSessionEndedRef = useRef(false);
+  const previewConversationRegisteredRef = useRef(false);
+  const previewConversationIdRef = useRef('');
+  const pendingEndReasonRef = useRef('user_ended');
   const isDark = resolvedTheme === 'dark';
+  const isPreviewMode = Boolean(previewAccessToken);
+  const effectivePreviewDurationSeconds = previewMaxDurationSeconds || DEFAULT_PREVIEW_DURATION_SECONDS;
 
-  const endCall = useCallback(async () => {
+  useEffect(() => {
+    if (!isPreviewMode) return;
+    setRemainingSeconds(effectivePreviewDurationSeconds);
+  }, [effectivePreviewDurationSeconds, isPreviewMode]);
+
+  const reportPreviewSessionEnd = useCallback(async (reason, { beacon = false } = {}) => {
+    if (!isPreviewMode || !previewAccessToken || !BACKEND_URL) {
+      return;
+    }
+
+    const payload = JSON.stringify({
+      previewAccessToken,
+      reason,
+      conversationId: previewConversationIdRef.current || undefined
+    });
+
+    if (beacon && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([payload], { type: 'application/json' });
+      navigator.sendBeacon(`${BACKEND_URL}/api/leads/preview/session/end`, blob);
+      return;
+    }
+
+    try {
+      await fetch(`${BACKEND_URL}/api/leads/preview/session/end`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: payload,
+        keepalive: true,
+      });
+    } catch (error) {
+      console.error('Failed to close preview session:', error);
+    }
+  }, [isPreviewMode, previewAccessToken]);
+
+  const registerPreviewConversation = useCallback(async (conversationId) => {
+    const normalizedConversationId = String(conversationId || '').trim();
+    if (!isPreviewMode || !previewAccessToken || !normalizedConversationId || previewConversationRegisteredRef.current || !BACKEND_URL) {
+      return;
+    }
+
+    previewConversationRegisteredRef.current = true;
+    previewConversationIdRef.current = normalizedConversationId;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/leads/preview/session/connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          previewAccessToken,
+          conversationId: normalizedConversationId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Demo oturumu doğrulanamadı.');
+      }
+    } catch (error) {
+      console.error('Failed to register preview conversation:', error);
+      pendingEndReasonRef.current = 'connect_registration_failed';
+      await reportPreviewSessionEnd('connect_registration_failed');
+    }
+  }, [isPreviewMode, previewAccessToken, reportPreviewSessionEnd]);
+
+  const endCall = useCallback(async ({ reason = 'user_ended', finalStatus = '' } = {}) => {
+    pendingEndReasonRef.current = reason;
+
     if (conversationRef.current) {
       try {
         await conversationRef.current.endSession();
@@ -63,31 +156,84 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
       }
       conversationRef.current = null;
     }
+
+    if (isPreviewMode) {
+      await reportPreviewSessionEnd(reason);
+    }
+
     setIsCallActive(false);
+    setIsConnecting(false);
     setIsSpeaking(false);
-    setCallStatus(t('onboarding.voiceDemo.callStatus.ended'));
-  }, [t]);
+    setCallStartedAt(null);
+    setCallStatus(finalStatus || t('onboarding.voiceDemo.callStatus.ended'));
+  }, [isPreviewMode, reportPreviewSessionEnd, t]);
 
   useEffect(() => {
-    return () => {
-      if (conversationRef.current) {
-        endCall();
+    if (!isPreviewMode || !callStartedAt || !isCallActive) {
+      return undefined;
+    }
+
+    const updateCountdown = () => {
+      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - callStartedAt) / 1000));
+      const nextRemaining = Math.max(0, effectivePreviewDurationSeconds - elapsedSeconds);
+      setRemainingSeconds(nextRemaining);
+
+      if (nextRemaining === 0) {
+        pendingEndReasonRef.current = 'timeout';
+        endCall({
+          reason: 'timeout',
+          finalStatus: '10 dakikalık demo süresi doldu. Görüşme kapatıldı.'
+        });
       }
     };
-  }, [endCall]);
+
+    updateCountdown();
+    const intervalId = window.setInterval(updateCountdown, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [callStartedAt, effectivePreviewDurationSeconds, endCall, isCallActive, isPreviewMode]);
+
+  useEffect(() => {
+    if (!isPreviewMode) {
+      return undefined;
+    }
+
+    const handlePageHide = () => {
+      reportPreviewSessionEnd(isCallActive ? 'page_unload' : 'page_refresh', { beacon: true });
+    };
+
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      reportPreviewSessionEnd(isCallActive ? 'page_unload' : 'component_unmount', { beacon: true });
+    };
+  }, [isCallActive, isPreviewMode, reportPreviewSessionEnd]);
 
   const startCall = async () => {
     try {
       console.log('🎯 Starting 11Labs call with assistantId:', assistantId);
       setIsConnecting(true);
       setCallStatus(t('onboarding.voiceDemo.callStatus.starting'));
+      previewSessionEndedRef.current = false;
+      previewConversationRegisteredRef.current = false;
+      previewConversationIdRef.current = '';
+      pendingEndReasonRef.current = 'user_ended';
 
       const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       permissionStream.getTracks().forEach((track) => track.stop());
 
-      const tokenUrl = `${BACKEND_URL}/api/elevenlabs/conversation-token/${assistantId}?preview=1`;
+      const previewHeaders = isPreviewMode
+        ? { 'x-lead-preview-access': previewAccessToken }
+        : undefined;
+
+      const tokenUrl = `${BACKEND_URL}/api/elevenlabs/conversation-token/${assistantId}${isPreviewMode ? '?preview=1' : ''}`;
       console.log('🎟️ Fetching conversation token from:', tokenUrl);
-      const tokenResponse = await fetch(tokenUrl);
+      const tokenResponse = await fetch(tokenUrl, {
+        headers: previewHeaders,
+      });
 
       if (!tokenResponse.ok) {
         const errorData = await tokenResponse.json().catch(() => ({}));
@@ -105,32 +251,58 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
       };
       console.log('✅ Got conversation token for preview WebRTC session');
 
-      // Start conversation using official SDK
+      const nextCallStartedAt = Date.now();
+
       const conversation = await Conversation.startSession({
         ...sessionConfig,
         workletPaths: getElevenLabsWorkletPaths(),
-        overrides: previewFirstMessage
+        overrides: isPreviewMode && previewFirstMessage
           ? {
               agent: {
                 firstMessage: previewFirstMessage,
               },
             }
           : undefined,
-        onConnect: () => {
+        onConnect: async () => {
           setIsCallActive(true);
           setIsConnecting(false);
+          setCallStartedAt(nextCallStartedAt);
+          setRemainingSeconds(effectivePreviewDurationSeconds);
           setCallStatus(t('onboarding.voiceDemo.callStatus.started'));
+
+          if (isPreviewMode) {
+            const conversationId = conversation?.getId?.();
+            if (conversationId) {
+              try {
+                await registerPreviewConversation(conversationId);
+              } catch (error) {
+                console.error('Preview connect registration failed:', error);
+              }
+            }
+          }
         },
-        onDisconnect: () => {
+        onDisconnect: async () => {
           setIsCallActive(false);
           setIsSpeaking(false);
-          setCallStatus(t('onboarding.voiceDemo.callStatus.ended'));
+          setIsConnecting(false);
+          setCallStartedAt(null);
+
+          if (isPreviewMode) {
+            await reportPreviewSessionEnd(pendingEndReasonRef.current || 'disconnect');
+          }
+
+          setCallStatus(
+            pendingEndReasonRef.current === 'timeout'
+              ? '10 dakikalık demo süresi doldu. Görüşme kapatıldı.'
+              : t('onboarding.voiceDemo.callStatus.ended')
+          );
         },
-        onError: (error) => {
+        onError: async (error) => {
           console.error('11Labs error:', error);
           setCallStatus('Bağlantı hatası: ' + describeError(error, 'Bağlantı kurulamadı'));
           setIsCallActive(false);
           setIsConnecting(false);
+          setCallStartedAt(null);
         },
         onModeChange: (mode) => {
           if (mode.mode === 'speaking') {
@@ -147,6 +319,17 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
       });
 
       conversationRef.current = conversation;
+
+      if (isPreviewMode) {
+        const immediateConversationId = conversation?.getId?.();
+        if (immediateConversationId) {
+          previewConversationIdRef.current = immediateConversationId;
+          registerPreviewConversation(immediateConversationId).catch((error) => {
+            console.error('Preview conversation early registration failed:', error);
+          });
+        }
+      }
+
       console.log('✅ Conversation started');
 
     } catch (error) {
@@ -154,6 +337,7 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
       setCallStatus('Bağlantı başlatılamadı: ' + describeError(error, 'Bağlantı kurulamadı'));
       setIsCallActive(false);
       setIsConnecting(false);
+      setCallStartedAt(null);
     }
   };
 
@@ -167,6 +351,10 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
   };
 
   const isErrorStatus = callStatus.toLowerCase().includes('hata') || callStatus.toLowerCase().includes('başlatılamadı');
+  const startDisabled = !assistantId || isConnecting;
+  const startLabel = isConnecting
+    ? 'Bağlanıyor...'
+    : t('onboarding.voiceDemo.startVoiceTest');
 
   return (
     <div
@@ -199,6 +387,21 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
           : t('onboarding.voiceDemo.createAssistantFirst')}
       </p>
 
+      {isPreviewMode && (
+        <div
+          className={`mt-5 flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-xs sm:text-sm ${
+            isDark
+              ? 'border-[#21426f] bg-[#0d1c36] text-[#c6d6ee]'
+              : 'border-[#d7e2f0] bg-[#f7f9fc] text-[#52637d]'
+          }`}
+        >
+          <span>Demo süresi en fazla 10 dakikadır. Süre dolunca görüşme otomatik kapanır.</span>
+          <span className={`ml-4 rounded-full px-3 py-1 font-semibold ${isDark ? 'bg-[#091529] text-white' : 'bg-white text-[#051752]'}`}>
+            {formatRemainingSeconds(isCallActive ? remainingSeconds : effectivePreviewDurationSeconds)}
+          </span>
+        </div>
+      )}
+
       {callStatus && (
         <div
           aria-live="polite"
@@ -220,18 +423,18 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
         {!isCallActive ? (
           <button
             onClick={startCall}
-            disabled={!assistantId || isConnecting}
+            disabled={startDisabled}
             className={`inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition-colors ${
-              assistantId && !isConnecting
+              !startDisabled
                 ? 'bg-[#051752] text-white hover:bg-[#0a245f] dark:bg-[#051752] dark:text-white dark:hover:bg-[#10307c]'
                 : 'cursor-not-allowed bg-[#d7e2f0] text-[#7b8da8] dark:bg-white/10 dark:text-[#7d8da5]'
             }`}
           >
-            {isConnecting ? 'Bağlanıyor...' : t('onboarding.voiceDemo.startVoiceTest')}
+            {startLabel}
           </button>
         ) : (
           <button
-            onClick={endCall}
+            onClick={() => endCall()}
             className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-500"
           >
             {t('onboarding.voiceDemo.endCall')}

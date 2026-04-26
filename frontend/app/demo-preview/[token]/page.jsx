@@ -135,7 +135,9 @@ export default function DemoPreviewPage({ params }) {
 
                 <VoiceDemo
                   assistantId={preview.previewAssistantId}
+                  previewAccessToken={preview.previewAccessToken || ''}
                   previewFirstMessage={preview.previewFirstMessage || ''}
+                  previewMaxDurationSeconds={preview.previewMaxDurationSeconds || 600}
                   previewAssistantName={preview?.previewDisplayName || preview?.previewAssistantName || 'Asistan'}
                 />
               </div>

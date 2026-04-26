@@ -5,8 +5,6 @@ import elevenLabsService from './elevenlabs.js';
 export const LEAD_PREVIEW_MAX_DURATION_SECONDS = 10 * 60;
 const LEAD_PREVIEW_ACCESS_TTL_SECONDS = 60 * 60;
 const LEAD_PREVIEW_TOKEN_TYPE = 'lead_preview_access';
-const MAX_CREDENTIAL_ISSUES = 3;
-
 const previewTerminationTimers = new Map();
 
 function getLeadPreviewSecret() {
@@ -33,22 +31,6 @@ function normalizePreviewReason(reason) {
   const normalized = String(reason || '').trim().toLowerCase();
   if (!normalized) return 'session_closed';
   return normalized.replace(/[^a-z0-9_:-]/g, '_').slice(0, 64) || 'session_closed';
-}
-
-function buildPreviewReuseMessage(status, reason) {
-  if (status === 'EXPIRED' || reason === 'timeout') {
-    return 'Bu demo görüşmesinin 10 dakikalık süresi doldu. Aynı bağlantıyla tekrar bağlanılamaz.';
-  }
-
-  if (reason === 'page_unload' || reason === 'page_refresh') {
-    return 'Bu demo önizlemesi kapatıldı. Sayfa kapandıktan veya yenilendikten sonra yeniden giriş yapılamaz.';
-  }
-
-  if (reason === 'user_ended' || reason === 'manual_end') {
-    return 'Bu demo görüşmesi kullanıcı tarafından sonlandırıldı. Aynı bağlantıyla tekrar bağlanılamaz.';
-  }
-
-  return 'Bu demo bağlantısı zaten kullanıldı. Güvenlik nedeniyle aynı bağlantıyla tekrar bağlanılamaz.';
 }
 
 export class LeadPreviewError extends Error {
@@ -181,9 +163,14 @@ export async function finishLeadPreviewSession({
   return prisma.leadPreviewSession.update({
     where: { id: session.id },
     data: {
-      status: timedOut ? 'EXPIRED' : 'ENDED',
-      endedAt: session.endedAt || now,
-      endReason: normalizedReason
+      status: timedOut ? 'EXPIRED' : 'READY',
+      credentialIssuedAt: timedOut ? session.credentialIssuedAt : null,
+      credentialIssueCount: timedOut ? session.credentialIssueCount : 0,
+      connectedAt: timedOut ? session.connectedAt : null,
+      expiresAt: timedOut ? session.expiresAt : null,
+      endedAt: timedOut ? (session.endedAt || now) : null,
+      endReason: timedOut ? normalizedReason : null,
+      conversationId: timedOut ? session.conversationId : null
     },
     include: {
       lead: {
@@ -225,23 +212,15 @@ async function getAuthorizedLeadPreviewSession(previewAccessToken, assistantId =
   const now = new Date();
   const expiresAt = toDateOrNull(session.expiresAt);
   if (expiresAt && expiresAt.getTime() <= now.getTime() && session.status !== 'EXPIRED' && session.status !== 'ENDED') {
-    const expiredSession = await finishLeadPreviewSession({
+    await finishLeadPreviewSession({
       previewAccessToken,
       reason: 'timeout'
     });
-    throw new LeadPreviewError(
-      buildPreviewReuseMessage(expiredSession?.status || 'EXPIRED', expiredSession?.endReason || 'timeout'),
-      410,
-      'preview_session_expired'
-    );
+    throw new LeadPreviewError('Bu demo görüşmesinin 10 dakikalık süresi doldu.', 410, 'preview_session_expired');
   }
 
-  if (session.status === 'ENDED' || session.status === 'EXPIRED') {
-    throw new LeadPreviewError(
-      buildPreviewReuseMessage(session.status, session.endReason),
-      410,
-      'preview_session_closed'
-    );
+  if (session.status === 'EXPIRED') {
+    throw new LeadPreviewError('Bu demo görüşmesinin 10 dakikalık süresi doldu.', 410, 'preview_session_expired');
   }
 
   return session;
@@ -306,20 +285,20 @@ async function scheduleLeadPreviewTermination(session) {
 }
 
 export async function createLeadPreviewSession({ leadId, assistantId }) {
-  const existingSession = await prisma.leadPreviewSession.findUnique({
-    where: { leadId }
-  });
-
-  if (existingSession) {
-    throw new LeadPreviewError(
-      buildPreviewReuseMessage(existingSession.status, existingSession.endReason),
-      410,
-      'preview_already_used'
-    );
-  }
-
-  const session = await prisma.leadPreviewSession.create({
-    data: {
+  const session = await prisma.leadPreviewSession.upsert({
+    where: { leadId },
+    update: {
+      assistantId,
+      status: 'READY',
+      credentialIssuedAt: null,
+      credentialIssueCount: 0,
+      connectedAt: null,
+      expiresAt: null,
+      endedAt: null,
+      endReason: null,
+      conversationId: null
+    },
+    create: {
       leadId,
       assistantId,
       status: 'READY'
@@ -338,22 +317,6 @@ export async function createLeadPreviewSession({ leadId, assistantId }) {
 
 export async function markLeadPreviewCredentialIssued({ previewAccessToken, assistantId }) {
   const session = await getAuthorizedLeadPreviewSession(previewAccessToken, assistantId);
-
-  if (session.conversationId || session.status === 'ACTIVE') {
-    throw new LeadPreviewError(
-      'Bu demo gorusmesi zaten baslatildi. Tekrar baglanti izni verilmiyor.',
-      410,
-      'preview_already_connected'
-    );
-  }
-
-  if (session.credentialIssueCount >= MAX_CREDENTIAL_ISSUES) {
-    throw new LeadPreviewError(
-      'Bu demo baglantisi icin maksimum baglanti denemesi kullanildi.',
-      429,
-      'preview_issue_limit'
-    );
-  }
 
   return prisma.leadPreviewSession.update({
     where: { id: session.id },
@@ -392,14 +355,6 @@ export async function registerLeadPreviewConversation({ previewAccessToken, conv
   }
 
   const session = await getAuthorizedLeadPreviewSession(previewAccessToken);
-
-  if (session.conversationId && session.conversationId !== normalizedConversationId) {
-    throw new LeadPreviewError(
-      'Bu demo oturumu baska bir gorusmeye baglandi.',
-      409,
-      'preview_conversation_conflict'
-    );
-  }
 
   const now = new Date();
   const expiresAt = session.expiresAt || new Date(now.getTime() + (LEAD_PREVIEW_MAX_DURATION_SECONDS * 1000));
