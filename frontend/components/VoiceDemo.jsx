@@ -269,17 +269,6 @@ export default function VoiceDemo({
           setCallStartedAt(nextCallStartedAt);
           setRemainingSeconds(effectivePreviewDurationSeconds);
           setCallStatus(t('onboarding.voiceDemo.callStatus.started'));
-
-          if (isPreviewMode) {
-            const conversationId = conversation?.getId?.();
-            if (conversationId) {
-              try {
-                await registerPreviewConversation(conversationId);
-              } catch (error) {
-                console.error('Preview connect registration failed:', error);
-              }
-            }
-          }
         },
         onDisconnect: async () => {
           setIsCallActive(false);
