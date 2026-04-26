@@ -322,7 +322,7 @@ export async function markLeadPreviewCredentialIssued({ previewAccessToken, assi
     where: { id: session.id },
     data: {
       status: 'CONNECTING',
-      credentialIssuedAt: session.credentialIssuedAt || new Date(),
+      credentialIssuedAt: new Date(),
       credentialIssueCount: {
         increment: 1
       }

@@ -69,18 +69,12 @@ export default function VoiceDemo({
   const [remainingSeconds, setRemainingSeconds] = useState(previewMaxDurationSeconds || DEFAULT_PREVIEW_DURATION_SECONDS);
 
   const conversationRef = useRef(null);
-  const previewSessionEndedRef = useRef(false);
   const previewConversationRegisteredRef = useRef(false);
   const previewConversationIdRef = useRef('');
-  const pendingEndReasonRef = useRef('user_ended');
-  const isCallActiveRef = useRef(false);
+  const pendingEndReasonRef = useRef('');
   const isDark = resolvedTheme === 'dark';
   const isPreviewMode = Boolean(previewAccessToken);
   const effectivePreviewDurationSeconds = previewMaxDurationSeconds || DEFAULT_PREVIEW_DURATION_SECONDS;
-
-  useEffect(() => {
-    isCallActiveRef.current = isCallActive;
-  }, [isCallActive]);
 
   useEffect(() => {
     if (!isPreviewMode) return;
@@ -150,8 +144,6 @@ export default function VoiceDemo({
       }
     } catch (error) {
       console.error('Failed to register preview conversation:', error);
-      pendingEndReasonRef.current = 'connect_registration_failed';
-      await reportPreviewSessionEnd('connect_registration_failed');
     }
   }, [isPreviewMode, previewAccessToken, reportPreviewSessionEnd]);
 
@@ -207,32 +199,14 @@ export default function VoiceDemo({
     };
   }, [callStartedAt, effectivePreviewDurationSeconds, endCall, isCallActive, isPreviewMode]);
 
-  useEffect(() => {
-    if (!isPreviewMode) {
-      return undefined;
-    }
-
-    const handlePageHide = () => {
-      reportPreviewSessionEnd(isCallActiveRef.current ? 'page_unload' : 'page_refresh', { beacon: true });
-    };
-
-    window.addEventListener('pagehide', handlePageHide);
-
-    return () => {
-      window.removeEventListener('pagehide', handlePageHide);
-      reportPreviewSessionEnd(isCallActiveRef.current ? 'component_unmount_active' : 'component_unmount_idle', { beacon: true });
-    };
-  }, [isPreviewMode, reportPreviewSessionEnd]);
-
   const startCall = async () => {
     try {
       console.log('🎯 Starting 11Labs call with assistantId:', assistantId);
       setIsConnecting(true);
       setCallStatus(t('onboarding.voiceDemo.callStatus.starting'));
-      previewSessionEndedRef.current = false;
       previewConversationRegisteredRef.current = false;
       previewConversationIdRef.current = '';
-      pendingEndReasonRef.current = 'user_ended';
+      pendingEndReasonRef.current = '';
 
       const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       permissionStream.getTracks().forEach((track) => track.stop());
@@ -283,7 +257,10 @@ export default function VoiceDemo({
             setIsConnecting(false);
             setCallStartedAt(null);
 
-            if (isPreviewMode) {
+            if (
+              isPreviewMode &&
+              ['timeout', 'user_ended', 'manual_end', 'page_unload'].includes(pendingEndReasonRef.current)
+            ) {
               await reportPreviewSessionEnd(pendingEndReasonRef.current || 'disconnect');
             }
 
@@ -375,9 +352,12 @@ export default function VoiceDemo({
           setIsConnecting(false);
           setCallStartedAt(null);
 
-          if (isPreviewMode) {
-            await reportPreviewSessionEnd(pendingEndReasonRef.current || 'disconnect');
-          }
+            if (
+              isPreviewMode &&
+              ['timeout', 'user_ended', 'manual_end', 'page_unload'].includes(pendingEndReasonRef.current)
+            ) {
+              await reportPreviewSessionEnd(pendingEndReasonRef.current || 'disconnect');
+            }
 
           setCallStatus(
             pendingEndReasonRef.current === 'timeout'
