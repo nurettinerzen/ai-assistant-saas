@@ -22,6 +22,21 @@ const getElevenLabsWorkletPaths = () => {
   };
 };
 
+const describeError = (error, fallback = 'Bilinmeyen hata') => {
+  if (!error) return fallback;
+  if (typeof error === 'string') return error;
+  if (error.message && String(error.message).trim()) return error.message;
+  if (error.error && String(error.error).trim()) return error.error;
+  if (error.response?.data?.error && String(error.response.data.error).trim()) {
+    return error.response.data.error;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return fallback;
+  }
+};
+
 export default function VoiceDemo({ assistantId, previewFirstMessage = '', previewAssistantName = '', onClose }) {
   const { t } = useLanguage();
   const { resolvedTheme } = useTheme();
@@ -85,7 +100,7 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           console.error('❌ Signed URL error:', response.status, errorData);
-          throw new Error(errorData.error || 'Failed to get signed URL');
+          throw new Error(errorData.error || `Signed URL request failed (${response.status})`);
         }
 
         const { signedUrl } = await response.json();
@@ -104,7 +119,7 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
 
         if (!tokenResponse.ok) {
           const errorData = await tokenResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to get conversation token');
+          throw new Error(errorData.error || `Conversation token request failed (${tokenResponse.status})`);
         }
 
         const { conversationToken } = await tokenResponse.json();
@@ -154,7 +169,7 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
         },
         onError: (error) => {
           console.error('11Labs error:', error);
-          setCallStatus('Bağlantı hatası: ' + (error.message || 'Bağlantı kurulamadı'));
+          setCallStatus('Bağlantı hatası: ' + describeError(error, 'Bağlantı kurulamadı'));
           setIsCallActive(false);
           setIsConnecting(false);
         },
@@ -177,7 +192,7 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
 
     } catch (error) {
       console.error('Start call error:', error);
-      setCallStatus('Bağlantı başlatılamadı: ' + error.message);
+      setCallStatus('Bağlantı başlatılamadı: ' + describeError(error, 'Bağlantı kurulamadı'));
       setIsCallActive(false);
       setIsConnecting(false);
     }
