@@ -93,26 +93,6 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
       let sessionConfig = null;
 
       try {
-        const signedUrlEndpoint = `${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}?preview=1`;
-        console.log('🔗 Fetching signed URL from:', signedUrlEndpoint);
-        const response = await fetch(signedUrlEndpoint);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('❌ Signed URL error:', response.status, errorData);
-          throw new Error(errorData.error || `Signed URL request failed (${response.status})`);
-        }
-
-        const { signedUrl } = await response.json();
-        if (!signedUrl) {
-          throw new Error('Signed URL is empty');
-        }
-
-        sessionConfig = { signedUrl };
-        console.log('✅ Got signed URL for preview session');
-      } catch (signedUrlError) {
-        console.warn('⚠️ Signed URL flow failed, falling back to WebRTC token:', signedUrlError.message);
-
         const tokenUrl = `${BACKEND_URL}/api/elevenlabs/conversation-token/${assistantId}?preview=1`;
         console.log('🎟️ Fetching conversation token from:', tokenUrl);
         const tokenResponse = await fetch(tokenUrl);
@@ -131,7 +111,27 @@ export default function VoiceDemo({ assistantId, previewFirstMessage = '', previ
           conversationToken,
           connectionType: 'webrtc'
         };
-        console.log('✅ Got conversation token for fallback WebRTC session');
+        console.log('✅ Got conversation token for preview WebRTC session');
+      } catch (tokenError) {
+        console.warn('⚠️ Conversation token flow failed, falling back to signed URL:', tokenError.message);
+
+        const signedUrlEndpoint = `${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}?preview=1`;
+        console.log('🔗 Fetching signed URL from:', signedUrlEndpoint);
+        const response = await fetch(signedUrlEndpoint);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('❌ Signed URL error:', response.status, errorData);
+          throw new Error(errorData.error || `Signed URL request failed (${response.status})`);
+        }
+
+        const { signedUrl } = await response.json();
+        if (!signedUrl) {
+          throw new Error('Signed URL is empty');
+        }
+
+        sessionConfig = { signedUrl };
+        console.log('✅ Got signed URL for fallback preview session');
       }
 
       // Start conversation using official SDK
