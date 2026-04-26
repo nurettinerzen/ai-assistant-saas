@@ -3,17 +3,46 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Conversation } from '@elevenlabs/client';
+import { useTheme } from 'next-themes';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
 
-export default function VoiceDemo({ assistantId, onClose }) {
+const getElevenLabsWorkletPaths = () => {
+  if (typeof window === 'undefined') {
+    return {
+      rawAudioProcessor: '/elevenlabs-rawAudioProcessor.js',
+      audioConcatProcessor: '/elevenlabs-audioConcatProcessor.js',
+    };
+  }
+
+  const origin = window.location.origin;
+  return {
+    rawAudioProcessor: `${origin}/elevenlabs-rawAudioProcessor.js`,
+    audioConcatProcessor: `${origin}/elevenlabs-audioConcatProcessor.js`,
+  };
+};
+
+export default function VoiceDemo({ assistantId, previewFirstMessage = '', onClose }) {
   const { t } = useLanguage();
+  const { resolvedTheme } = useTheme();
   const [isCallActive, setIsCallActive] = useState(false);
   const [callStatus, setCallStatus] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const conversationRef = useRef(null);
+  const isDark = resolvedTheme === 'dark';
+
+  const previewPromptOverride = previewFirstMessage
+    ? [
+        'Bu oturum bir Telyx demo önizlemesidir.',
+        'İlk konuşmayı sen başlat.',
+        `İlk cümlen tam olarak şu olsun: "${previewFirstMessage}"`,
+        'Biri adını sorarsa "Ben demo asistanıyım." de.',
+        'Marka adını söylerken "Teliks" de. İlk hecedeki e sesini kısa söyle, "Tee" gibi uzatma.',
+        'Klasik destek açılışı olan "Merhaba, size nasıl yardımcı olabilirim?" cümlesini kullanma.',
+      ].join(' ')
+    : '';
 
   const endCall = useCallback(async () => {
     if (conversationRef.current) {
@@ -43,9 +72,32 @@ export default function VoiceDemo({ assistantId, onClose }) {
       setIsConnecting(true);
       setCallStatus(t('onboarding.voiceDemo.callStatus.starting'));
 
+      const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      permissionStream.getTracks().forEach((track) => track.stop());
+
       let sessionConfig = null;
 
       try {
+        const signedUrlEndpoint = `${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}`;
+        console.log('🔗 Fetching signed URL from:', signedUrlEndpoint);
+        const response = await fetch(signedUrlEndpoint);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('❌ Signed URL error:', response.status, errorData);
+          throw new Error(errorData.error || 'Failed to get signed URL');
+        }
+
+        const { signedUrl } = await response.json();
+        if (!signedUrl) {
+          throw new Error('Signed URL is empty');
+        }
+
+        sessionConfig = { signedUrl };
+        console.log('✅ Got signed URL for preview session');
+      } catch (signedUrlError) {
+        console.warn('⚠️ Signed URL flow failed, falling back to WebRTC token:', signedUrlError.message);
+
         const tokenUrl = `${BACKEND_URL}/api/elevenlabs/conversation-token/${assistantId}`;
         console.log('🎟️ Fetching conversation token from:', tokenUrl);
         const tokenResponse = await fetch(tokenUrl);
@@ -64,52 +116,49 @@ export default function VoiceDemo({ assistantId, onClose }) {
           conversationToken,
           connectionType: 'webrtc'
         };
-        console.log('✅ Got conversation token for WebRTC session');
-      } catch (tokenError) {
-        console.warn('⚠️ WebRTC token flow failed, falling back to signed URL:', tokenError.message);
-
-        const signedUrlEndpoint = `${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}`;
-        console.log('🔗 Fetching signed URL from:', signedUrlEndpoint);
-        const response = await fetch(signedUrlEndpoint);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('❌ Signed URL error:', response.status, errorData);
-          throw new Error(errorData.error || 'Failed to get signed URL');
-        }
-
-        const { signedUrl } = await response.json();
-        if (!signedUrl) {
-          throw new Error('Signed URL is empty');
-        }
-
-        sessionConfig = { signedUrl };
-        console.log('✅ Got signed URL for fallback session');
+        console.log('✅ Got conversation token for fallback WebRTC session');
       }
 
       // Start conversation using official SDK
       const conversation = await Conversation.startSession({
         ...sessionConfig,
+        workletPaths: getElevenLabsWorkletPaths(),
+        overrides: previewFirstMessage
+          ? {
+              agent: {
+                prompt: {
+                  prompt: previewPromptOverride,
+                },
+                firstMessage: previewFirstMessage,
+              },
+              client: {
+                source: 'telyx_lead_preview',
+                version: '1.0.0',
+              },
+            }
+          : {
+              client: {
+                source: 'telyx_lead_preview',
+                version: '1.0.0',
+              },
+            },
         onConnect: () => {
-          console.log('✅ Connected to 11Labs');
           setIsCallActive(true);
           setIsConnecting(false);
           setCallStatus(t('onboarding.voiceDemo.callStatus.started'));
         },
         onDisconnect: () => {
-          console.log('🔴 Disconnected from 11Labs');
           setIsCallActive(false);
           setIsSpeaking(false);
           setCallStatus(t('onboarding.voiceDemo.callStatus.ended'));
         },
         onError: (error) => {
           console.error('11Labs error:', error);
-          setCallStatus('Error: ' + (error.message || 'Connection failed'));
+          setCallStatus('Bağlantı hatası: ' + (error.message || 'Bağlantı kurulamadı'));
           setIsCallActive(false);
           setIsConnecting(false);
         },
         onModeChange: (mode) => {
-          console.log('📢 Mode changed:', mode.mode);
           if (mode.mode === 'speaking') {
             setIsSpeaking(true);
             setCallStatus(t('onboarding.voiceDemo.callStatus.speaking'));
@@ -128,7 +177,7 @@ export default function VoiceDemo({ assistantId, onClose }) {
 
     } catch (error) {
       console.error('Start call error:', error);
-      setCallStatus('Failed to start call: ' + error.message);
+      setCallStatus('Bağlantı başlatılamadı: ' + error.message);
       setIsCallActive(false);
       setIsConnecting(false);
     }
@@ -143,105 +192,80 @@ export default function VoiceDemo({ assistantId, onClose }) {
     }
   };
 
-  console.log('VoiceDemo rendered with assistantId:', assistantId);
+  const isErrorStatus = callStatus.toLowerCase().includes('hata') || callStatus.toLowerCase().includes('başlatılamadı');
 
   return (
-    <div style={{
-      padding: '30px',
-      background: '#f0f4ff',
-      borderRadius: '10px',
-      border: '2px solid #4f46e5',
-      textAlign: 'center',
-      position: 'relative'
-    }}>
-      {/* Close Button */}
+    <div
+      className={`relative rounded-[24px] px-5 py-6 text-center shadow-sm sm:px-7 ${
+        isDark
+          ? 'border border-[#21426f] bg-[#091529]'
+          : 'border border-[#d7e2f0] bg-white'
+      }`}
+    >
       {onClose && (
         <button
           onClick={handleClose}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '32px',
-            height: '32px',
-            cursor: 'pointer',
-            fontSize: '18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          className={`absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+            isDark
+              ? 'border border-[#21426f] bg-[#0d1c36] text-[#c6d6ee] hover:text-white'
+              : 'border border-[#d7e2f0] bg-white text-[#52637d] hover:border-[#051752]/20 hover:text-[#051752]'
+          }`}
+          aria-label="Kapat"
         >
-          x
+          ×
         </button>
       )}
 
-      <h3 style={{ marginBottom: '15px' }}>🎤 {t('onboarding.voiceDemo.title')}</h3>
-      <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
+      <h3 className={`text-2xl font-semibold tracking-[-0.02em] ${isDark ? 'text-white' : 'text-[#051752]'}`}>
+        AI sesi test edin
+      </h3>
+      <p className={`mx-auto mt-3 max-w-xl text-sm leading-6 ${isDark ? 'text-[#c6d6ee]' : 'text-[#52637d]'}`}>
         {assistantId
           ? t('onboarding.voiceDemo.description')
           : t('onboarding.voiceDemo.createAssistantFirst')}
       </p>
 
       {callStatus && (
-        <div style={{
-          padding: '10px',
-          marginBottom: '20px',
-          background: isCallActive ? '#d4edda' : '#fff3cd',
-          borderRadius: '5px',
-          fontSize: '14px'
-        }}>
+        <div
+          aria-live="polite"
+          className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${
+            isErrorStatus
+              ? 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300'
+              : isCallActive
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300'
+                : isDark
+                  ? 'border-[#21426f] bg-[#0d1c36] text-[#c6d6ee]'
+                  : 'border-[#d7e2f0] bg-[#f7f9fc] text-[#52637d]'
+          }`}
+        >
           {callStatus}
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+      <div className="mt-6 flex justify-center">
         {!isCallActive ? (
           <button
             onClick={startCall}
             disabled={!assistantId || isConnecting}
-            style={{
-              padding: '15px 30px',
-              background: assistantId && !isConnecting ? '#4f46e5' : '#e5e7eb',
-              color: assistantId && !isConnecting ? 'white' : '#999',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: assistantId && !isConnecting ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}
+            className={`inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition-colors ${
+              assistantId && !isConnecting
+                ? 'bg-[#051752] text-white hover:bg-[#0a245f] dark:bg-[#051752] dark:text-white dark:hover:bg-[#10307c]'
+                : 'cursor-not-allowed bg-[#d7e2f0] text-[#7b8da8] dark:bg-white/10 dark:text-[#7d8da5]'
+            }`}
           >
             {isConnecting ? 'Bağlanıyor...' : t('onboarding.voiceDemo.startVoiceTest')}
           </button>
         ) : (
           <button
             onClick={endCall}
-            style={{
-              padding: '15px 30px',
-              background: '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}
+            className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-500"
           >
-            🔴 {t('onboarding.voiceDemo.endCall')}
+            {t('onboarding.voiceDemo.endCall')}
           </button>
         )}
       </div>
 
-      <p style={{ fontSize: '12px', color: '#999', marginTop: '15px' }}>
+      <p className={`mt-4 text-xs leading-6 ${isDark ? 'text-[#9bb2d3]' : 'text-[#71829c]'}`}>
         {t('onboarding.voiceDemo.allowMicrophone')}
       </p>
     </div>

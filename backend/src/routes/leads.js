@@ -3,6 +3,7 @@ import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 import { createLead, getLeadByResponseToken, getLeadConstants, handleLeadCtaResponse } from '../services/leadService.js';
+import { buildFrontendUrl } from '../config/runtime.js';
 
 const router = express.Router();
 const {
@@ -81,6 +82,100 @@ function buildResponseHtml({
   `;
 }
 
+async function resolveLeadPreviewAssistant(lead) {
+  const configuredOwnerEmail = String(
+    process.env.LEAD_PREVIEW_OWNER_EMAIL ||
+    process.env.PUBLIC_CONTACT_OWNER_EMAIL ||
+    ''
+  ).trim();
+  const preferredAssistantName = String(process.env.LEAD_PREVIEW_ASSISTANT_NAME || '').trim();
+
+  let previewBusinessId = null;
+
+  if (configuredOwnerEmail) {
+    const previewOwner = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: configuredOwnerEmail,
+          mode: 'insensitive'
+        }
+      },
+      select: {
+        businessId: true
+      }
+    });
+
+    previewBusinessId = previewOwner?.businessId || null;
+  }
+
+  if (previewBusinessId && preferredAssistantName) {
+    return prisma.assistant.findFirst({
+      where: {
+        businessId: previewBusinessId,
+        isActive: true,
+        elevenLabsAgentId: { not: null },
+        name: {
+          equals: preferredAssistantName,
+          mode: 'insensitive'
+        }
+      },
+      orderBy: [
+        { updatedAt: 'desc' },
+        { createdAt: 'desc' }
+      ],
+      select: {
+        id: true,
+        name: true,
+        callDirection: true
+      }
+    });
+  }
+
+  const candidateBusinessIds = [...new Set(
+    [previewBusinessId, lead?.businessId].filter(Boolean)
+  )];
+
+  if (candidateBusinessIds.length === 0) {
+    return null;
+  }
+
+  for (const businessId of candidateBusinessIds) {
+    const assistant = await prisma.assistant.findFirst({
+      where: {
+        businessId,
+        isActive: true,
+        elevenLabsAgentId: { not: null }
+      },
+      orderBy: [
+        { updatedAt: 'desc' },
+        { createdAt: 'desc' }
+      ],
+      select: {
+        id: true,
+        name: true,
+        callDirection: true
+      }
+    });
+
+    if (assistant) {
+      return assistant;
+    }
+  }
+
+  return null;
+}
+
+function buildLeadPreviewUrl(token) {
+  return buildFrontendUrl(`/demo-preview/${encodeURIComponent(token)}`);
+}
+
+function getLeadPreviewFirstMessage() {
+  return String(
+    process.env.LEAD_PREVIEW_FIRST_MESSAGE ||
+    'Merhaba, ben Teliks demo asistanıyım. Nasılsınız? Bugün nasılsınız?'
+  ).trim();
+}
+
 router.get('/respond/:token', async (req, res) => {
   try {
     const { token } = req.params;
@@ -113,15 +208,7 @@ router.get('/respond/:token', async (req, res) => {
     }
 
     if (action === 'yes') {
-      const yesMessage = result.actionTaken === 'demo_call_started'
-        ? 'Harika. Demo aramanız başlatıldı, telefonunuz kısa süre içinde çalabilir.'
-        : 'Harika. Talebiniz alındı; sistemimiz sizin için demo araması akışını hazırlıyor.';
-
-      return res.send(buildResponseHtml({
-        title: 'Demo araması alındı',
-        message: yesMessage,
-        accent: '#006FEB',
-      }));
+      return res.redirect(302, buildLeadPreviewUrl(token));
     }
 
     return res.send(buildResponseHtml({
@@ -190,6 +277,48 @@ router.post('/ingest/meta', async (req, res) => {
     res.status(500).json({
       error: 'Failed to ingest Meta lead'
     });
+  }
+});
+
+router.get('/preview/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const activate = String(req.query.activate || '').trim() === '1';
+
+    const existingLead = await getLeadByResponseToken(token);
+    if (!existingLead) {
+      return res.status(404).json({ error: 'Lead not found' });
+    }
+
+    let lead = existingLead;
+    let actionTaken = null;
+
+    if (activate) {
+      const result = await handleLeadCtaResponse(token, 'yes');
+      if (!result.success) {
+        return res.status(400).json({ error: 'Failed to activate lead preview' });
+      }
+      lead = result.lead || existingLead;
+      actionTaken = result.actionTaken || null;
+    }
+
+    const refreshedLead = await getLeadByResponseToken(token);
+    const previewAssistant = await resolveLeadPreviewAssistant(refreshedLead || lead);
+
+    return res.json({
+      leadName: refreshedLead?.name || lead?.name || null,
+      status: refreshedLead?.status || lead?.status || null,
+      ctaResponse: refreshedLead?.ctaResponse || lead?.ctaResponse || null,
+      actionTaken,
+      previewAssistantId: previewAssistant?.id || null,
+      previewAssistantName: previewAssistant?.name || null,
+      previewAssistantCallDirection: previewAssistant?.callDirection || null,
+      previewDisplayName: 'Demo',
+      previewFirstMessage: getLeadPreviewFirstMessage(),
+    });
+  } catch (error) {
+    console.error('Lead preview error:', error);
+    return res.status(500).json({ error: 'Failed to prepare lead preview' });
   }
 });
 
@@ -326,7 +455,14 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
-    res.json(lead);
+    const previewAssistant = await resolveLeadPreviewAssistant(lead);
+
+    res.json({
+      ...lead,
+      previewAssistantId: previewAssistant?.id || null,
+      previewAssistantName: previewAssistant?.name || null,
+      previewAssistantCallDirection: previewAssistant?.callDirection || null,
+    });
   } catch (error) {
     console.error('Lead detail error:', error);
     res.status(500).json({ error: 'Failed to fetch lead detail' });
