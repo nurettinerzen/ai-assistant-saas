@@ -274,34 +274,11 @@ export default function TrialLandingPage() {
     const cleanups = [];
 
     {
-      const lines = root.querySelectorAll('.hero-line');
-      const tagline = root.querySelector('.hero-tagline');
-      const heroBottom = root.querySelector('.hero-bottom');
       const primaryCta = root.querySelector('.trial-hero-primary-cta');
       let ticking = false;
-      let revealed = false;
 
       function updateHero() {
         const scrolled = window.scrollY;
-        const thresholds = [0, 80, 150, 220];
-
-        for (let i = 0; i < lines.length; i += 1) {
-          lines[i].classList.toggle('active', scrolled >= thresholds[i]);
-        }
-
-        if (scrolled >= 300) {
-          tagline?.classList.add('active');
-          if (!revealed) {
-            revealed = true;
-            heroBottom?.classList.add('visible');
-          }
-        } else if (scrolled < 260) {
-          tagline?.classList.remove('active');
-          if (revealed) {
-            revealed = false;
-            heroBottom?.classList.remove('visible');
-          }
-        }
 
         if (scrolled >= 360) {
           primaryCta?.classList.add('active');
@@ -504,11 +481,11 @@ export default function TrialLandingPage() {
             <div className="hero-grid-bg" aria-hidden="true" />
             <div className="hero-text-stack">
               {copy.hero.lines.map((line) => (
-                <span key={line} className="hero-line">
+                <span key={line} className="hero-line active">
                   {line}
                 </span>
               ))}
-              <span className="hero-tagline">{copy.hero.tagline}</span>
+              <span className="hero-tagline active">{copy.hero.tagline}</span>
             </div>
 
             <div className="hero-bottom">
