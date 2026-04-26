@@ -51,11 +51,6 @@ const formatRemainingSeconds = (seconds) => {
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 };
 
-const sendWebSocketMessage = (ws, payload) => {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify(payload));
-};
-
 export default function VoiceDemo({
   assistantId,
   previewAccessToken = '',
@@ -74,10 +69,6 @@ export default function VoiceDemo({
   const [remainingSeconds, setRemainingSeconds] = useState(previewMaxDurationSeconds || DEFAULT_PREVIEW_DURATION_SECONDS);
 
   const conversationRef = useRef(null);
-  const webSocketRef = useRef(null);
-  const audioContextRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const streamRef = useRef(null);
   const previewSessionEndedRef = useRef(false);
   const previewConversationRegisteredRef = useRef(false);
   const previewConversationIdRef = useRef('');
@@ -123,101 +114,8 @@ export default function VoiceDemo({
   }, [isPreviewMode, previewAccessToken]);
 
   const stopMediaResources = useCallback(() => {
-    if (mediaRecorderRef.current) {
-      try {
-        if (mediaRecorderRef.current.state !== 'inactive') {
-          mediaRecorderRef.current.stop();
-        }
-      } catch (error) {
-        console.error('Error stopping media recorder:', error);
-      }
-      mediaRecorderRef.current = null;
-    }
-
-    if (streamRef.current) {
-      try {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      } catch (error) {
-        console.error('Error stopping media stream:', error);
-      }
-      streamRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      try {
-        audioContextRef.current.close();
-      } catch (error) {
-        console.error('Error closing audio context:', error);
-      }
-      audioContextRef.current = null;
-    }
-  }, []);
-
-  const playAudio = useCallback(async (base64Audio) => {
-    try {
-      if (!base64Audio) return;
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-
-      const audioData = atob(base64Audio);
-      const arrayBuffer = new ArrayBuffer(audioData.length);
-      const view = new Uint8Array(arrayBuffer);
-      for (let i = 0; i < audioData.length; i += 1) {
-        view[i] = audioData.charCodeAt(i);
-      }
-
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-      source.start();
-    } catch (error) {
-      console.error('Error playing preview audio:', error);
-    }
-  }, []);
-
-  const startMicrophoneCapture = useCallback(async (ws) => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    streamRef.current = stream;
-
-    const mimeCandidates = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/mp4',
-      'audio/aac'
-    ];
-    const supportedMimeType = mimeCandidates.find((mimeType) => {
-      try {
-        return typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(mimeType);
-      } catch {
-        return false;
-      }
-    });
-
-    const mediaRecorder = supportedMimeType
-      ? new MediaRecorder(stream, { mimeType: supportedMimeType })
-      : new MediaRecorder(stream);
-
-    mediaRecorderRef.current = mediaRecorder;
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = String(reader.result || '');
-          const base64 = result.includes(',') ? result.split(',')[1] : '';
-          if (base64) {
-            sendWebSocketMessage(ws, {
-              user_audio_chunk: base64
-            });
-          }
-        };
-        reader.readAsDataURL(event.data);
-      }
-    };
-
-    mediaRecorder.start(100);
+    // ElevenLabs SDK manages its own audio resources for signed-url websocket
+    // preview sessions. We keep this hook for symmetry and future cleanup needs.
   }, []);
 
   const registerPreviewConversation = useCallback(async (conversationId) => {
@@ -254,17 +152,6 @@ export default function VoiceDemo({
 
   const endCall = useCallback(async ({ reason = 'user_ended', finalStatus = '' } = {}) => {
     pendingEndReasonRef.current = reason;
-
-    if (webSocketRef.current) {
-      try {
-        if (webSocketRef.current.readyState === WebSocket.OPEN || webSocketRef.current.readyState === WebSocket.CONNECTING) {
-          webSocketRef.current.close();
-        }
-      } catch (error) {
-        console.error('Error ending websocket session:', error);
-      }
-      webSocketRef.current = null;
-    }
 
     if (conversationRef.current) {
       try {
@@ -366,114 +253,73 @@ export default function VoiceDemo({
           throw new Error('Signed URL is empty');
         }
 
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        const nextCallStartedAt = Date.now();
+        const conversation = await Conversation.startSession({
+          signedUrl,
+          connectionType: 'websocket',
+          workletPaths: getElevenLabsWorkletPaths(),
+          overrides: previewFirstMessage
+            ? {
+                agent: {
+                  firstMessage: previewFirstMessage,
+                },
+              }
+            : undefined,
+          onConnect: async () => {
+            setIsCallActive(true);
+            setIsConnecting(false);
+            setCallStartedAt(nextCallStartedAt);
+            setRemainingSeconds(effectivePreviewDurationSeconds);
+            setCallStatus(t('onboarding.voiceDemo.callStatus.started'));
+          },
+          onDisconnect: async () => {
+            setIsCallActive(false);
+            setIsSpeaking(false);
+            setIsConnecting(false);
+            setCallStartedAt(null);
+
+            if (isPreviewMode) {
+              await reportPreviewSessionEnd(pendingEndReasonRef.current || 'disconnect');
+            }
+
+            setCallStatus(
+              pendingEndReasonRef.current === 'timeout'
+                ? '10 dakikalık demo süresi doldu. Görüşme kapatıldı.'
+                : t('onboarding.voiceDemo.callStatus.ended')
+            );
+          },
+          onError: async (error) => {
+            console.error('11Labs preview websocket error:', error);
+            setCallStatus('Bağlantı hatası: ' + describeError(error, 'Bağlantı kurulamadı'));
+            setIsCallActive(false);
+            setIsConnecting(false);
+            setCallStartedAt(null);
+          },
+          onModeChange: (mode) => {
+            if (mode.mode === 'speaking') {
+              setIsSpeaking(true);
+              setCallStatus(t('onboarding.voiceDemo.callStatus.speaking'));
+            } else {
+              setIsSpeaking(false);
+              setCallStatus(t('onboarding.voiceDemo.callStatus.listening'));
+            }
+          },
+          onMessage: (message) => {
+            console.log('📝 Preview message:', message);
+          }
+        });
+
+        conversationRef.current = conversation;
+
+        const previewConversationId = conversation?.getId?.();
+        if (previewConversationId && !previewConversationRegisteredRef.current) {
+          previewConversationIdRef.current = previewConversationId;
+          registerPreviewConversation(previewConversationId).catch((error) => {
+            console.error('Preview conversation registration failed:', error);
+          });
         }
 
-        const nextCallStartedAt = Date.now();
-        const ws = new WebSocket(signedUrl);
-        webSocketRef.current = ws;
-
-        ws.onopen = async () => {
-          setIsCallActive(true);
-          setIsConnecting(false);
-          setCallStartedAt(nextCallStartedAt);
-          setRemainingSeconds(effectivePreviewDurationSeconds);
-          setCallStatus(t('onboarding.voiceDemo.callStatus.started'));
-
-          try {
-            sendWebSocketMessage(ws, {
-              type: 'conversation_initiation_client_data'
-            });
-
-            // Let the agent deliver its configured opening before we start streaming
-            // microphone audio. This avoids background noise immediately hijacking
-            // the turn and restores the expected "assistant speaks first" behavior.
-            await new Promise((resolve) => window.setTimeout(resolve, 350));
-            await startMicrophoneCapture(ws);
-          } catch (error) {
-            console.error('Preview microphone capture failed:', error);
-            setCallStatus('Mikrofon başlatılamadı.');
-          }
-        };
-
-        ws.onmessage = async (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            const incomingConversationId = data?.conversation_id || data?.conversationId || data?.metadata?.conversation_id || data?.metadata?.conversationId;
-
-            if (incomingConversationId && isPreviewMode && !previewConversationRegisteredRef.current) {
-              previewConversationIdRef.current = incomingConversationId;
-              registerPreviewConversation(incomingConversationId).catch((error) => {
-                console.error('Preview websocket registration failed:', error);
-              });
-            }
-
-            if (data?.type === 'ping' && data?.ping_event?.event_id) {
-              const pingDelay = Number(data?.ping_event?.ping_ms) || 0;
-              window.setTimeout(() => {
-                sendWebSocketMessage(ws, {
-                  type: 'pong',
-                  event_id: data.ping_event.event_id,
-                });
-              }, Math.max(0, pingDelay));
-              return;
-            }
-
-            if (data?.type === 'audio' && data?.audio_event?.audio_base_64) {
-              setIsSpeaking(true);
-              await playAudio(data.audio_event.audio_base_64);
-              return;
-            }
-
-            if (data?.type === 'agent_response' || data?.type === 'agent_response_correction') {
-              setIsSpeaking(true);
-              return;
-            }
-
-            if (data?.type === 'interruption' || data?.type === 'user_transcript') {
-              setIsSpeaking(false);
-              return;
-            }
-
-            if (data?.type === 'end') {
-              await endCall({
-                reason: 'remote_end',
-                finalStatus: t('onboarding.voiceDemo.callStatus.ended')
-              });
-            }
-          } catch (error) {
-            console.error('Preview websocket message error:', error);
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('Preview websocket error:', error);
-          setCallStatus('Bağlantı hatası: WebSocket bağlantısı kurulamadı');
-          setIsCallActive(false);
-          setIsConnecting(false);
-          setCallStartedAt(null);
-        };
-
-        ws.onclose = async () => {
-          stopMediaResources();
-          setIsCallActive(false);
-          setIsSpeaking(false);
-          setIsConnecting(false);
-          setCallStartedAt(null);
-
-          if (isPreviewMode) {
-            await reportPreviewSessionEnd(pendingEndReasonRef.current || 'disconnect');
-          }
-
-          setCallStatus(
-            pendingEndReasonRef.current === 'timeout'
-              ? '10 dakikalık demo süresi doldu. Görüşme kapatıldı.'
-              : t('onboarding.voiceDemo.callStatus.ended')
-          );
-        };
-
-        console.log('✅ Preview websocket conversation starting');
+        console.log('✅ Preview websocket conversation started through SDK');
         return;
       }
 
