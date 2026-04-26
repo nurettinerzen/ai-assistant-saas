@@ -257,7 +257,11 @@ router.get('/respond/:token', async (req, res) => {
     }
 
     if (action === 'yes') {
-      return res.redirect(302, buildLeadPreviewUrl(token));
+      return res.status(200).send(buildResponseHtml({
+        title: 'Demo talebinizi aldık',
+        message: 'Talebiniz ekibimize ulaştı. En kısa sürede sizinle iletişime geçeceğiz.',
+        accent: '#10b981',
+      }));
     }
 
     return res.send(buildResponseHtml({
