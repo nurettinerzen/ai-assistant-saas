@@ -1278,7 +1278,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
     throw new Error('Lead email is required for autoresponse');
   }
 
-  const subject = 'Telyx başvurunuzu aldık';
+  const subject = 'Telyx Başvurunuzu Aldık';
   const logoUrl = sanitizeHeaderValue(
     buildInlineImageDataUrl(LEAD_EMAIL_LOGO_ASSET, `${SITE_URL}/telyx-logo-horizontal-black.png`)
   );
@@ -1292,7 +1292,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
     <html lang="tr">
       <body style="margin:0;padding:0;background:#eef3f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0c1843;-webkit-font-smoothing:antialiased;">
         <div style="display:none;font-size:1px;color:#eef3f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
-          Telyx başvurunuzu aldık. Ben Nurettin Erzen, size kısa bir kurucu notu bırakmak istedim.
+          Telyx Başvurunuzu Aldık. Ben Nurettin, size bizzat ulaşmak istedim.
         </div>
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef3f9;padding:32px 0;">
           <tr>
@@ -1315,7 +1315,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
                       Telyx başvurunuzu aldık.
                     </p>
                     <p style="margin:0 0 22px 0;font-size:16px;line-height:1.72;color:#42526b;">
-                      Ben <strong style="color:#051752;">Nurettin Erzen</strong>, Telyx'in kurucusuyum. Size Telyx'i bizzat tanıtmak istedim.
+                      Ben <strong style="color:#051752;">Nurettin</strong>, Telyx'in kurucusuyum. Size bizzat ulaşmak istedim.
                     </p>
                     <p style="margin:0 0 22px 0;font-size:16px;line-height:1.72;color:#42526b;">
                       Telyx, telefon, WhatsApp, web chat ve e-posta kanallarındaki müşteri iletişimini tek merkezde toplar ve AI destekli yanıtlarla operasyon yükünüzü azaltır.
