@@ -18,6 +18,8 @@ const {
   LEAD_STATUS,
   LEAD_TEMPERATURE,
 } = getLeadConstants();
+import { randomUUID } from 'crypto';
+import { getPublicContactProfile } from '../services/businessPhoneRouting.js';
 
 function parseFieldData(fieldData = []) {
   const result = {};
@@ -486,6 +488,97 @@ router.post('/cleanup/by-match', async (req, res) => {
   } catch (error) {
     console.error('Targeted lead cleanup error:', error);
     return res.status(500).json({ error: 'Failed to clean matching leads' });
+  }
+});
+
+router.post('/restore/by-data', async (req, res) => {
+  try {
+    if (!ensureLeadIngestAuthorized(req)) {
+      return res.status(401).json({ error: 'Unauthorized lead restore request' });
+    }
+
+    const payload = req.body?.lead || {};
+    const source = String(payload.source || '').trim();
+    const name = String(payload.name || '').trim();
+
+    if (!source || !name) {
+      return res.status(400).json({ error: 'Lead source and name are required' });
+    }
+
+    const externalSourceId = payload.externalSourceId ? String(payload.externalSourceId).trim() : null;
+    if (externalSourceId) {
+      const existing = await prisma.lead.findFirst({
+        where: { source, externalSourceId }
+      });
+
+      if (existing) {
+        return res.json({ success: true, restored: false, reason: 'already_exists', lead: existing });
+      }
+    }
+
+    const contactProfile = await getPublicContactProfile(prisma);
+    const createdLead = await prisma.$transaction(async (tx) => {
+      const lead = await tx.lead.create({
+        data: {
+          businessId: payload.businessId ?? contactProfile.businessId ?? null,
+          source,
+          externalSourceId,
+          campaignName: payload.campaignName || null,
+          adsetName: payload.adsetName || null,
+          adName: payload.adName || null,
+          formName: payload.formName || null,
+          name,
+          email: payload.email || null,
+          phone: payload.phone || null,
+          company: payload.company || null,
+          businessType: payload.businessType || null,
+          message: payload.message || null,
+          status: payload.status || LEAD_STATUS.NEW,
+          temperature: payload.temperature || LEAD_TEMPERATURE.COLD,
+          ctaResponse: payload.ctaResponse || null,
+          responseToken: payload.responseToken || randomUUID(),
+          notes: payload.notes || null,
+          sourceSubmittedAt: payload.sourceSubmittedAt ? new Date(payload.sourceSubmittedAt) : null,
+          receivedAtUtc: payload.receivedAtUtc ? new Date(payload.receivedAtUtc) : undefined,
+          notificationSentAt: payload.notificationSentAt ? new Date(payload.notificationSentAt) : null,
+          firstEmailedAt: payload.firstEmailedAt ? new Date(payload.firstEmailedAt) : null,
+          lastContactedAt: payload.lastContactedAt ? new Date(payload.lastContactedAt) : null,
+          nextFollowUpAt: payload.nextFollowUpAt ? new Date(payload.nextFollowUpAt) : null,
+          ctaRespondedAt: payload.ctaRespondedAt ? new Date(payload.ctaRespondedAt) : null,
+          rawPayload: payload.rawPayload || null,
+          createdAt: payload.createdAt ? new Date(payload.createdAt) : undefined,
+        }
+      });
+
+      await tx.leadActivity.create({
+        data: {
+          leadId: lead.id,
+          type: 'LEAD_CREATED',
+          message: 'Lead geri yüklendi.',
+          actorType: 'system',
+          actorLabel: 'lead_restore'
+        }
+      });
+
+      if (lead.firstEmailedAt) {
+        await tx.leadActivity.create({
+          data: {
+            leadId: lead.id,
+            type: 'INITIAL_EMAIL_SENT',
+            message: 'Önceden gönderilmiş ilk email durumu geri yüklendi.',
+            actorType: 'system',
+            actorLabel: 'lead_restore'
+          }
+        });
+      }
+
+      return lead;
+    });
+
+    return res.status(201).json({ success: true, restored: true, lead: createdLead });
+  } catch (error) {
+    console.error('Lead restore error:', error);
+    return res.status(500).json({ error: 'Failed to restore lead' });
   }
 });
 
