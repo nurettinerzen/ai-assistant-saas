@@ -10,6 +10,14 @@ import { SecurePasswordInput } from '@/components/ui/secure-password-input';
 import { Label } from '@/components/ui/label';
 import { Mail, Lock, User, Loader2, Building2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import {
+  trackFormStart,
+  trackFormError,
+  trackFormSubmit,
+  trackSignupPageView,
+  trackSignupSuccess,
+  trackTrialStart,
+} from '@/lib/marketingAnalytics';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -26,6 +34,7 @@ export default function SignupPage() {
   const { t, locale } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [formStarted, setFormStarted] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -53,29 +62,76 @@ export default function SignupPage() {
     checkExistingAuth();
   }, [router]);
 
+  useEffect(() => {
+    if (!checkingAuth) {
+      trackSignupPageView({ locale });
+    }
+  }, [checkingAuth, locale]);
+
+  const markFormStarted = () => {
+    if (formStarted) return;
+    setFormStarted(true);
+    trackFormStart({
+      formName: 'signup',
+      locale,
+    });
+  };
+
   const handleSignup = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       if (!formData.email || !formData.password || !formData.fullName || !formData.businessName) {
+        trackFormError({
+          formName: 'signup',
+          errorType: 'missing_required_fields',
+          locale,
+        });
         toast.error(t('auth.pleaseFillAllFields'));
         setLoading(false);
         return;
       }
 
       if (!acceptedTerms) {
+        trackFormError({
+          formName: 'signup',
+          errorType: 'terms_not_accepted',
+          locale,
+        });
         toast.error(t('auth.acceptTermsRequired'));
         setLoading(false);
         return;
       }
 
+      trackFormSubmit({
+        formName: 'signup',
+        locale,
+        business_name: formData.businessName,
+      });
+
       await apiClient.auth.signup(formData);
+      trackSignupSuccess({
+        formName: 'signup',
+        locale,
+        business_name: formData.businessName,
+      });
+      trackTrialStart({
+        source: 'signup_form',
+        locale,
+        form_name: 'signup',
+      });
       toast.success(t('auth.accountCreated'));
       // Redirect to email verification pending page
       router.push('/auth/email-pending');
     } catch (error) {
       console.error('Signup error:', error);
+      trackFormError({
+        formName: 'signup',
+        errorType: 'submission_failed',
+        locale,
+        status_code: error.response?.status,
+      });
       toast.error(error.response?.data?.error || t('auth.signupFailed'));
     } finally {
       setLoading(false);
@@ -122,6 +178,7 @@ export default function SignupPage() {
                   placeholder={t('auth.fullName')}
                   className="pl-10"
                   value={formData.fullName}
+                  onFocus={markFormStarted}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   required
                 />
@@ -138,6 +195,7 @@ export default function SignupPage() {
                   placeholder={t('auth.businessName')}
                   className="pl-10"
                   value={formData.businessName}
+                  onFocus={markFormStarted}
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                   required
                 />
@@ -154,6 +212,7 @@ export default function SignupPage() {
                   placeholder="email@example.com"
                   className="pl-10"
                   value={formData.email}
+                  onFocus={markFormStarted}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                 />
@@ -173,6 +232,7 @@ export default function SignupPage() {
                   required
                   minLength={12}
                   showToggle
+                  onFocus={markFormStarted}
                   aria-label={t('auth.password')}
                   toggleShowLabel={passwordToggleLabels.show}
                   toggleHideLabel={passwordToggleLabels.hide}

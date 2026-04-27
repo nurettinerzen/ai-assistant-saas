@@ -8,7 +8,13 @@ import Navigation from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { trackCtaClick, trackPricingPlanClick } from '@/lib/marketingAnalytics';
+import {
+  trackCtaClick,
+  trackPageView,
+  trackPricingPlanClick,
+  trackPricingView,
+  trackScrollMilestone,
+} from '@/lib/marketingAnalytics';
 import {
   SHARED_REGIONAL_PRICING,
   SHARED_FEATURE_ORDER,
@@ -109,6 +115,47 @@ export default function PricingPage() {
         : 'Deducted from the PAYG wallet. On Pro and Enterprise, voice overage applies after included minutes are exhausted.'
     },
   ];
+
+  useEffect(() => {
+    trackPageView({
+      pageType: 'pricing',
+      locale,
+      region,
+    });
+    trackPricingView({
+      locale,
+      region,
+    });
+
+    let didTrackScroll = false;
+
+    const handleScroll = () => {
+      if (didTrackScroll) return;
+
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      const viewportHeight = window.innerHeight || 0;
+      const documentHeight = document.documentElement.scrollHeight || 0;
+      const maxScroll = Math.max(documentHeight - viewportHeight, 1);
+      const progress = scrollTop / maxScroll;
+
+      if (progress >= 0.5) {
+        didTrackScroll = true;
+        trackScrollMilestone({
+          pageType: 'pricing',
+          milestone: '50',
+          locale,
+          region,
+        });
+      }
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [locale, region]);
 
   return (
     <div className="pricing-page min-h-screen bg-white dark:bg-neutral-950 overflow-hidden">

@@ -20,7 +20,13 @@ import {
   Zap, Headphones, Sparkles, Phone,
 } from 'lucide-react';
 import { formatPhone } from '@/lib/utils';
-import { trackContactClick, trackLeadGenerated } from '@/lib/marketingAnalytics';
+import {
+  trackContactClick,
+  trackDemoRequest,
+  trackFormError,
+  trackPageView,
+  trackScrollMilestone,
+} from '@/lib/marketingAnalytics';
 
 export default function ContactPage() {
   const { t, locale } = useLanguage();
@@ -129,6 +135,41 @@ export default function ContactPage() {
     };
   }, []);
 
+  useEffect(() => {
+    trackPageView({
+      pageType: 'contact',
+      locale,
+    });
+
+    let didTrackScroll = false;
+
+    const handleScroll = () => {
+      if (didTrackScroll) return;
+
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      const viewportHeight = window.innerHeight || 0;
+      const documentHeight = document.documentElement.scrollHeight || 0;
+      const maxScroll = Math.max(documentHeight - viewportHeight, 1);
+      const progress = scrollTop / maxScroll;
+
+      if (progress >= 0.5) {
+        didTrackScroll = true;
+        trackScrollMilestone({
+          pageType: 'contact',
+          milestone: '50',
+          locale,
+        });
+      }
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [locale]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -142,19 +183,30 @@ export default function ContactPage() {
 
       if (response.ok) {
         setSubmitted(true);
-        trackLeadGenerated({
-          leadType: 'contact',
+        trackDemoRequest({
           formName: 'contact_form',
+          leadType: 'contact',
           business_type: formData.businessType || 'unspecified',
           locale,
         });
         toast.success(t('contact.successMessage'));
         setFormData({ name: '', email: '', company: '', phone: '', businessType: '', message: '' });
       } else {
+        trackFormError({
+          formName: 'contact_form',
+          errorType: 'submission_failed',
+          locale,
+          status_code: response.status,
+        });
         toast.error(t('contact.errorMessage'));
       }
     } catch (error) {
       console.error('Error:', error);
+      trackFormError({
+        formName: 'contact_form',
+        errorType: 'network_error',
+        locale,
+      });
       toast.error(t('contact.errorMessage'));
     } finally {
       setLoading(false);

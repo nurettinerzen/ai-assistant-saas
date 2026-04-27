@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { trackCtaClick } from '@/lib/marketingAnalytics';
+import { trackCtaClick, trackPageView, trackScrollMilestone } from '@/lib/marketingAnalytics';
 import '@/styles/landing.css';
 
 export function LandingPage() {
@@ -10,6 +10,7 @@ export function LandingPage() {
   const pageRef = useRef(null);
   const chatDemoStarted = useRef(false);
   const chatLoopTimeout = useRef(null);
+  const scrollTracked = useRef(false);
 
   /* ── Manifesto: split text into words, mark emphasis ── */
   const manifestoWords = useMemo(() => {
@@ -29,6 +30,36 @@ export function LandingPage() {
     { type: 'customer', text: t('landing.chatDemoSection.msg3') },
     { type: 'bot', text: t('landing.chatDemoSection.msg4') },
   ], [t]);
+
+  useEffect(() => {
+    trackPageView({
+      pageType: 'homepage',
+      locale,
+    });
+
+    const onScrollMilestone = () => {
+      if (scrollTracked.current) return;
+
+      const scrollTop = window.scrollY || window.pageYOffset || 0;
+      const documentHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (documentHeight <= 0) return;
+
+      const progress = scrollTop / documentHeight;
+      if (progress >= 0.5) {
+        scrollTracked.current = true;
+        trackScrollMilestone({
+          pageType: 'homepage',
+          milestone: '50',
+          locale,
+        });
+      }
+    };
+
+    window.addEventListener('scroll', onScrollMilestone, { passive: true });
+    onScrollMilestone();
+
+    return () => window.removeEventListener('scroll', onScrollMilestone);
+  }, [locale]);
 
   useEffect(() => {
     const root = pageRef.current;

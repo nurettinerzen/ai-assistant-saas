@@ -1,3 +1,30 @@
+const EVENTS_BASE_URL =
+  process.env.NEXT_PUBLIC_MARKETING_EVENTS_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_CAMPAIGN_ORCHESTRATOR_URL ||
+  '';
+const ATTRIBUTION_STORAGE_KEY = 'telyx_marketing_attribution_v1';
+const ANON_ID_STORAGE_KEY = 'telyx_marketing_anonymous_id_v1';
+const SESSION_ID_STORAGE_KEY = 'telyx_marketing_session_id_v1';
+const BLOCKED_ANALYTICS_KEYS = new Set([
+  'email',
+  'full_name',
+  'fullname',
+  'fullName',
+  'phone',
+  'phone_number',
+  'password',
+  'business_name',
+  'businessName',
+]);
+const CANONICAL_EVENT_NAMES = {
+  form_start: 'signup_start',
+  form_submit: 'signup_submit',
+  signup_success: 'signup_complete',
+  complete_registration: 'signup_complete',
+  start_trial: 'trial_start',
+};
+
 function getBrowserContext() {
   if (typeof window === 'undefined') return null;
 
@@ -9,9 +36,21 @@ function getBrowserContext() {
   return window;
 }
 
+function getStorage(kind) {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    return kind === 'session' ? window.sessionStorage : window.localStorage;
+  } catch (_error) {
+    return null;
+  }
+}
+
 function sanitizeParams(params = {}) {
   return Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    Object.entries(params).filter(
+      ([key, value]) => !BLOCKED_ANALYTICS_KEYS.has(key) && value !== undefined && value !== null && value !== ''
+    )
   );
 }
 
@@ -25,16 +64,258 @@ function getDefaultParams() {
   };
 }
 
-export function trackMarketingEvent(eventName, params = {}) {
+function createId(prefix) {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getOrCreatePersistentId(storageKey, kind = 'local') {
+  const storage = getStorage(kind);
+  if (!storage) return createId(storageKey);
+
+  const existing = storage.getItem(storageKey);
+  if (existing) return existing;
+
+  const next = createId(storageKey);
+  storage.setItem(storageKey, next);
+  return next;
+}
+
+function parseCurrentAttribution() {
+  if (typeof window === 'undefined') return {};
+
+  const params = new URLSearchParams(window.location.search);
+  return sanitizeParams({
+    source: params.get('utm_source'),
+    medium: params.get('utm_medium'),
+    campaign_name: params.get('utm_campaign') || params.get('campaign_name') || params.get('campaign'),
+    campaign_id: params.get('utm_id') || params.get('campaign_id'),
+    content: params.get('utm_content'),
+    term: params.get('utm_term'),
+    fbclid: params.get('fbclid'),
+    gclid: params.get('gclid'),
+  });
+}
+
+function getPersistedAttribution() {
+  const storage = getStorage('local');
+  if (!storage) return {};
+
+  try {
+    return JSON.parse(storage.getItem(ATTRIBUTION_STORAGE_KEY) || '{}');
+  } catch (_error) {
+    return {};
+  }
+}
+
+function persistAttribution() {
+  const storage = getStorage('local');
+  if (!storage) return getPersistedAttribution();
+
+  const persisted = getPersistedAttribution();
+  const current = parseCurrentAttribution();
+  const merged = sanitizeParams({
+    ...persisted,
+    ...current,
+    landing_path: persisted.landing_path || (typeof window !== 'undefined' ? window.location.pathname : undefined),
+    landing_url: persisted.landing_url || (typeof window !== 'undefined' ? window.location.href : undefined),
+  });
+
+  storage.setItem(ATTRIBUTION_STORAGE_KEY, JSON.stringify(merged));
+  return merged;
+}
+
+function getAttribution() {
+  return sanitizeParams({
+    ...persistAttribution(),
+    ...parseCurrentAttribution(),
+  });
+}
+
+function postToOrchestrator(eventName, payload) {
+  if (!EVENTS_BASE_URL || typeof fetch === 'undefined') return;
+
+  const endpoint = `${EVENTS_BASE_URL.replace(/\/$/, '')}/api/marketing/events`;
+  const attribution = getAttribution();
+
+  const body = {
+    sessionId: getOrCreatePersistentId(SESSION_ID_STORAGE_KEY, 'session'),
+    anonymousId: getOrCreatePersistentId(ANON_ID_STORAGE_KEY, 'local'),
+    eventName,
+    pageUrl: payload.page_location,
+    pagePath: payload.page_path,
+    referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
+    source: attribution.source,
+    medium: attribution.medium,
+    campaignName: attribution.campaign_name || attribution.campaign_id,
+    properties: payload,
+  };
+
+  void fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    keepalive: true,
+  }).catch(() => {
+    // Best-effort analytics sink.
+  });
+}
+
+function normalizeEventName(eventName) {
+  return CANONICAL_EVENT_NAMES[eventName] || eventName;
+}
+
+function fireMetaPixel(eventName, payload) {
+  const browser = getBrowserContext();
+  if (!browser || typeof browser.fbq !== 'function') return;
+
+  if (eventName === 'demo_request') {
+    browser.fbq('track', 'Lead', {
+      content_name: payload.form_name || 'demo_request',
+      status: 'submitted',
+      campaign_name: payload.campaign_name,
+    });
+    return;
+  }
+
+  if (eventName === 'signup_complete') {
+    browser.fbq('track', 'CompleteRegistration', {
+      content_name: 'signup',
+      status: 'success',
+      campaign_name: payload.campaign_name,
+    });
+    return;
+  }
+
+  if (eventName === 'signup_submit') {
+    browser.fbq('trackCustom', 'SignupSubmit', payload);
+    return;
+  }
+
+  if (eventName === 'signup_start') {
+    browser.fbq('trackCustom', 'SignupStart', payload);
+    return;
+  }
+
+  if (eventName === 'trial_start') {
+    browser.fbq('trackCustom', 'TrialStart', payload);
+    return;
+  }
+
+  if (eventName === 'cta_click') {
+    browser.fbq('trackCustom', 'CtaClick', payload);
+  }
+}
+
+function emitEvent(eventName, params = {}, options = {}) {
   const browser = getBrowserContext();
   if (!browser || !eventName) return;
+  const normalizedEventName = normalizeEventName(eventName);
 
+  const attribution = getAttribution();
   const payload = sanitizeParams({
     ...getDefaultParams(),
+    ...attribution,
     ...params,
   });
 
-  browser.gtag('event', eventName, payload);
+  if (options.gtag !== false) {
+    browser.gtag('event', normalizedEventName, payload);
+  }
+
+  if (options.fbq !== false) {
+    fireMetaPixel(normalizedEventName, payload);
+  }
+
+  if (options.ingest !== false) {
+    postToOrchestrator(normalizedEventName, payload);
+  }
+}
+
+export function trackMarketingEvent(eventName, params = {}, options = {}) {
+  emitEvent(eventName, params, options);
+}
+
+export function trackPageView({ pageType, locale, ...rest } = {}) {
+  emitEvent(
+    'page_view',
+    {
+      page_type: pageType,
+      locale,
+      ...rest,
+    },
+    { gtag: false, fbq: false, ingest: true }
+  );
+}
+
+export function trackScrollMilestone({ pageType, milestone = '50', locale, ...rest } = {}) {
+  emitEvent(
+    'scroll',
+    {
+      page_type: pageType,
+      milestone,
+      locale,
+      ...rest,
+    },
+    { gtag: false, fbq: false, ingest: true }
+  );
+}
+
+export function trackSignupPageView({ locale, ...rest } = {}) {
+  emitEvent(
+    'signup_page_view',
+    {
+      page_type: 'signup',
+      locale,
+      ...rest,
+    },
+    { gtag: true, fbq: false, ingest: true }
+  );
+}
+
+export function trackPricingView({ locale, ...rest } = {}) {
+  emitEvent('pricing_view', {
+    page_type: 'pricing',
+    locale,
+    ...rest,
+  });
+}
+
+export function trackFormStart({ formName, locale, ...rest } = {}) {
+  emitEvent('signup_start', {
+    form_name: formName,
+    locale,
+    ...rest,
+  });
+}
+
+export function trackFormSubmit({ formName, locale, ...rest } = {}) {
+  emitEvent('signup_submit', {
+    form_name: formName,
+    locale,
+    ...rest,
+  });
+}
+
+export function trackSignupSuccess({ formName, locale, ...rest } = {}) {
+  emitEvent('signup_complete', {
+    form_name: formName,
+    locale,
+    ...rest,
+  });
+}
+
+export function trackTrialStart({ source, locale, ...rest } = {}) {
+  emitEvent('trial_start', {
+    source,
+    locale,
+    ...rest,
+  });
 }
 
 export function trackCtaClick({
@@ -44,7 +325,7 @@ export function trackCtaClick({
   locale,
   ...rest
 } = {}) {
-  trackMarketingEvent('cta_click', {
+  emitEvent('cta_click', {
     cta_name: ctaName,
     cta_location: ctaLocation,
     destination,
@@ -68,13 +349,13 @@ export function trackPricingPlanClick({
     ...rest,
   };
 
-  trackMarketingEvent('cta_click', {
+  emitEvent('cta_click', {
     cta_name: `${planId || 'unknown'}_plan_click`,
     cta_location: 'pricing_plans',
     ...payload,
   });
 
-  trackMarketingEvent('pricing_plan_click', payload);
+  emitEvent('pricing_plan_click', payload);
 }
 
 export function trackLeadGenerated({
@@ -90,8 +371,21 @@ export function trackLeadGenerated({
     ...rest,
   };
 
-  trackMarketingEvent('generate_lead', payload);
-  trackMarketingEvent(`${formName}_submit_success`, payload);
+  emitEvent('generate_lead', payload);
+}
+
+export function trackDemoRequest({
+  formName,
+  leadType = 'demo_request',
+  locale,
+  ...rest
+} = {}) {
+  emitEvent('demo_request', {
+    form_name: formName,
+    lead_type: leadType,
+    locale,
+    ...rest,
+  });
 }
 
 export function trackContactClick({
@@ -100,9 +394,23 @@ export function trackContactClick({
   locale,
   ...rest
 } = {}) {
-  trackMarketingEvent('contact_click', {
+  emitEvent('contact_click', {
     contact_method: contactMethod,
     contact_value: contactValue,
+    locale,
+    ...rest,
+  });
+}
+
+export function trackFormError({
+  formName,
+  errorType,
+  locale,
+  ...rest
+} = {}) {
+  emitEvent('form_error', {
+    form_name: formName,
+    error_type: errorType,
     locale,
     ...rest,
   });
