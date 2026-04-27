@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 import { createLead, getLeadByResponseToken, getLeadConstants, handleLeadCtaResponse } from '../services/leadService.js';
 import {
+  createLeadPreviewSession,
   finishLeadPreviewSession,
   registerLeadPreviewConversation,
   LEAD_PREVIEW_MAX_DURATION_SECONDS,
@@ -171,6 +172,87 @@ function buildResponseHtml({
       </body>
     </html>
   `;
+}
+
+async function resolveLeadPreviewAssistant(lead) {
+  const configuredOwnerEmail = String(
+    process.env.LEAD_PREVIEW_OWNER_EMAIL ||
+    process.env.PUBLIC_CONTACT_OWNER_EMAIL ||
+    ''
+  ).trim();
+  const preferredAgentId = String(process.env.LEAD_PREVIEW_AGENT_ID || '').trim();
+  const preferredAssistantName = String(process.env.LEAD_PREVIEW_ASSISTANT_NAME || '').trim();
+
+  let previewBusinessId = null;
+
+  if (configuredOwnerEmail) {
+    const previewOwner = await prisma.user.findFirst({
+      where: {
+        email: { equals: configuredOwnerEmail, mode: 'insensitive' }
+      },
+      select: { businessId: true }
+    });
+    previewBusinessId = previewOwner?.businessId || null;
+  }
+
+  if (previewBusinessId && preferredAgentId) {
+    const byAgentId = await prisma.assistant.findFirst({
+      where: {
+        businessId: previewBusinessId,
+        elevenLabsAgentId: preferredAgentId
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      select: { id: true, name: true, callDirection: true, isActive: true }
+    });
+    if (byAgentId) return byAgentId;
+  }
+
+  if (previewBusinessId && preferredAssistantName) {
+    const byName = await prisma.assistant.findFirst({
+      where: {
+        businessId: previewBusinessId,
+        isActive: true,
+        elevenLabsAgentId: { not: null },
+        name: { equals: preferredAssistantName, mode: 'insensitive' }
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      select: { id: true, name: true, callDirection: true, isActive: true }
+    });
+    if (byName) return byName;
+  }
+
+  const candidateBusinessIds = [...new Set(
+    [previewBusinessId, lead?.businessId].filter(Boolean)
+  )];
+
+  if (candidateBusinessIds.length === 0) return null;
+
+  for (const businessId of candidateBusinessIds) {
+    const assistant = await prisma.assistant.findFirst({
+      where: {
+        businessId,
+        isActive: true,
+        elevenLabsAgentId: { not: null }
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      select: { id: true, name: true, callDirection: true, isActive: true }
+    });
+    if (assistant) return assistant;
+  }
+
+  return null;
+}
+
+function getLeadPreviewDisplayName(previewAssistant) {
+  const configuredDisplayName = String(process.env.LEAD_PREVIEW_DISPLAY_NAME || '').trim();
+  return configuredDisplayName || previewAssistant?.name || 'Asistan';
+}
+
+function getLeadPreviewFirstMessage(previewAssistant) {
+  const configuredFirstMessage = String(process.env.LEAD_PREVIEW_FIRST_MESSAGE || '').trim();
+  if (configuredFirstMessage) return configuredFirstMessage;
+  const assistantName = getLeadPreviewDisplayName(previewAssistant);
+  return `Merhaba, ben ${assistantName}. Telyx demo önizlemesine hoş geldiniz, size nasıl yardımcı olabilirim?`;
 }
 
 function handleLeadPreviewError(res, error, fallbackMessage, responseMessage = 'Failed to prepare lead preview') {
@@ -410,29 +492,51 @@ router.post('/cleanup/by-match', async (req, res) => {
 router.get('/preview/:token', async (req, res) => {
   try {
     const { token } = req.params;
+    const activate = String(req.query.activate || '').trim() === '1';
+
     const existingLead = await getLeadByResponseToken(token);
     if (!existingLead) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
-    const result = await handleLeadCtaResponse(token, 'yes');
-    if (!result.success) {
-      return res.status(400).json({ error: 'Demo talebi işlenemedi' });
+    let lead = existingLead;
+    let actionTaken = null;
+
+    if (activate) {
+      const result = await handleLeadCtaResponse(token, 'yes');
+      if (!result.success) {
+        return res.status(400).json({ error: 'Failed to activate lead preview' });
+      }
+      lead = result.lead || existingLead;
+      actionTaken = result.actionTaken || (result.alreadyProcessed ? 'already_requested' : 'demo_requested');
     }
 
-    const effectiveLead = result.lead || existingLead;
-    const message = result.alreadyProcessed
-      ? 'Demo talebiniz daha önce alınmıştı. Ekibimiz bu kayıt üzerinden sizinle iletişime geçecek.'
-      : 'Demo talebiniz bize ulaştı. Ekibimiz bu kayıt üzerinden sizinle en kısa sürede iletişime geçecek.';
+    const refreshedLead = await getLeadByResponseToken(token);
+    const effectiveLead = refreshedLead || lead;
+    const previewAssistant = await resolveLeadPreviewAssistant(effectiveLead);
+    const previewDisplayName = getLeadPreviewDisplayName(previewAssistant);
+    let previewAccessToken = null;
+
+    if (activate && previewAssistant?.id && effectiveLead?.id) {
+      const previewSession = await createLeadPreviewSession({
+        leadId: effectiveLead.id,
+        assistantId: previewAssistant.id
+      });
+      previewAccessToken = previewSession.previewAccessToken;
+    }
 
     return res.json({
-      mode: 'request_received',
-      title: 'Demo talebinizi aldık',
-      message,
       leadName: effectiveLead?.name || null,
       status: effectiveLead?.status || null,
       ctaResponse: effectiveLead?.ctaResponse || null,
-      actionTaken: result.actionTaken || (result.alreadyProcessed ? 'already_requested' : 'demo_requested'),
+      actionTaken,
+      previewAssistantId: previewAssistant?.id || null,
+      previewAssistantName: previewAssistant?.name || null,
+      previewAssistantCallDirection: previewAssistant?.callDirection || null,
+      previewDisplayName,
+      previewFirstMessage: getLeadPreviewFirstMessage(previewAssistant),
+      previewAccessToken,
+      previewMaxDurationSeconds: LEAD_PREVIEW_MAX_DURATION_SECONDS,
     });
   } catch (error) {
     return handleLeadPreviewError(res, error, 'Lead preview error:', 'Failed to prepare lead preview');

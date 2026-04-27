@@ -1285,7 +1285,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
   const avatarUrl = sanitizeHeaderValue(
     buildInlineImageDataUrl(LEAD_EMAIL_AVATAR_ASSET, `${SITE_URL}/favicon-v3.png`)
   );
-  const demoRequestUrl = buildBackendUrl(`/api/leads/respond/${encodeURIComponent(lead.responseToken)}?action=yes`);
+  const demoRequestUrl = buildFrontendUrl(`/demo-preview/${encodeURIComponent(lead.responseToken)}`);
   const trialUrl = buildFrontendUrl('/signup');
   const html = `
     <!DOCTYPE html>

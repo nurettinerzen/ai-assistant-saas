@@ -221,6 +221,7 @@ const corsAllowedHeaders = [
   'Authorization',
   'X-Requested-With',
   'X-Webhook-Secret',
+  'X-Lead-Preview-Access',
   'Stripe-Signature',
   'ElevenLabs-Signature'
 ];
