@@ -596,12 +596,12 @@ router.get('/preview/:token', async (req, res) => {
     let actionTaken = null;
 
     if (activate) {
-      const result = await handleLeadCtaResponse(token, 'yes');
+      const result = await handleLeadCtaResponse(token, 'yes', { skipCallbackQueue: true });
       if (!result.success) {
         return res.status(400).json({ error: 'Failed to activate lead preview' });
       }
       lead = result.lead || existingLead;
-      actionTaken = result.actionTaken || (result.alreadyProcessed ? 'already_requested' : 'demo_requested');
+      actionTaken = result.actionTaken || (result.alreadyProcessed ? 'already_requested' : 'demo_preview_started');
     }
 
     const refreshedLead = await getLeadByResponseToken(token);

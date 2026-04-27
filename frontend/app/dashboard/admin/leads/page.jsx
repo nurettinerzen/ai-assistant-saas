@@ -163,7 +163,7 @@ function getLeadCopy(locale) {
       POSITIVE: isTr ? 'Olumlu' : 'Positive',
       NOT_NOW: isTr ? 'Şimdilik Hayır' : 'Not Now',
       CALL_QUEUED: isTr ? 'Arama Kuyruğunda' : 'Call Queued',
-      CALLED: isTr ? 'Arandı' : 'Called',
+      CALLED: isTr ? 'Görüşüldü' : 'Talked',
       WON: isTr ? 'Kazanıldı' : 'Won',
       LOST: isTr ? 'Kaybedildi' : 'Lost',
     },
@@ -198,8 +198,8 @@ function getLeadCopy(locale) {
       NOTE_UPDATED: isTr ? 'Not güncellendi' : 'Note updated',
       CALLBACK_QUEUED: isTr ? 'Callback kuyruğa alındı' : 'Callback queued',
       CALLBACK_QUEUE_FAILED: isTr ? 'Callback kuyruğu hatası' : 'Callback queue failed',
-      DEMO_CALL_INITIATED: isTr ? 'Demo araması başlatıldı' : 'Demo call started',
-      DEMO_CALL_FAILED: isTr ? 'Demo araması hatası' : 'Demo call failed',
+      DEMO_CALL_INITIATED: isTr ? 'Demo görüşmesi başladı' : 'Demo conversation started',
+      DEMO_CALL_FAILED: isTr ? 'Demo görüşmesi hatası' : 'Demo conversation failed',
     },
   };
 }

@@ -324,7 +324,8 @@ export async function getLeadByResponseToken(responseToken) {
   });
 }
 
-export async function handleLeadCtaResponse(responseToken, action) {
+export async function handleLeadCtaResponse(responseToken, action, options = {}) {
+  const { skipCallbackQueue = false } = options;
   const lead = await getLeadByResponseToken(responseToken);
   if (!lead) {
     return { success: false, reason: 'not_found' };
@@ -343,6 +344,9 @@ export async function handleLeadCtaResponse(responseToken, action) {
   const ctaResponse = normalizedAction === 'yes' ? 'YES' : 'NO';
   const baseStatus = normalizedAction === 'yes' ? LEAD_STATUS.POSITIVE : LEAD_STATUS.NOT_NOW;
   const baseTemperature = normalizedAction === 'yes' ? LEAD_TEMPERATURE.HOT : lead.temperature;
+  const ctaActivityMessage = normalizedAction === 'yes'
+    ? (skipCallbackQueue ? 'Lead canlı demo asistanını başlattı.' : 'Lead demo araması istedi.')
+    : 'Lead şu an ilgilenmediğini belirtti.';
 
   const updatedLead = await prisma.$transaction(async (tx) => {
     const nextLead = await tx.lead.update({
@@ -362,9 +366,7 @@ export async function handleLeadCtaResponse(responseToken, action) {
     await createLeadActivity(tx, {
       leadId: nextLead.id,
       type: normalizedAction === 'yes' ? LEAD_ACTIVITY.CTA_YES : LEAD_ACTIVITY.CTA_NO,
-      message: normalizedAction === 'yes'
-        ? 'Lead demo araması istedi.'
-        : 'Lead şu an ilgilenmediğini belirtti.',
+      message: ctaActivityMessage,
       actorType: 'lead',
       actorLabel: nextLead.email || nextLead.phone || nextLead.name,
     });
@@ -374,6 +376,15 @@ export async function handleLeadCtaResponse(responseToken, action) {
 
   if (normalizedAction === 'no') {
     return { success: true, lead: updatedLead, alreadyProcessed: false };
+  }
+
+  if (skipCallbackQueue) {
+    return {
+      success: true,
+      lead: updatedLead,
+      alreadyProcessed: false,
+      actionTaken: 'demo_preview_started'
+    };
   }
 
   try {
@@ -431,6 +442,51 @@ export async function handleLeadCtaResponse(responseToken, action) {
     alreadyProcessed: false,
     actionTaken: 'demo_requested'
   };
+}
+
+export async function markLeadDemoConducted({ leadId, conversationId = null, source = 'preview' }) {
+  if (!leadId) return null;
+
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: { id: true, status: true }
+  });
+  if (!lead) return null;
+
+  const ADVANCEABLE_STATUSES = new Set([
+    LEAD_STATUS.NEW,
+    LEAD_STATUS.EMAILED,
+    LEAD_STATUS.POSITIVE,
+    LEAD_STATUS.CALL_QUEUED
+  ]);
+  const shouldAdvance = ADVANCEABLE_STATUSES.has(lead.status);
+
+  return prisma.$transaction(async (tx) => {
+    const nextLead = shouldAdvance
+      ? await tx.lead.update({
+          where: { id: lead.id },
+          data: {
+            status: LEAD_STATUS.CALLED,
+            temperature: LEAD_TEMPERATURE.HOT,
+            lastContactedAt: new Date()
+          }
+        })
+      : lead;
+
+    await createLeadActivity(tx, {
+      leadId: lead.id,
+      type: LEAD_ACTIVITY.DEMO_CALL_INITIATED,
+      message: 'Lead canlı demo asistanıyla görüşmeye başladı.',
+      metadata: {
+        conversationId: conversationId || null,
+        source
+      },
+      actorType: 'lead',
+      actorLabel: 'demo_preview_session'
+    });
+
+    return nextLead;
+  });
 }
 
 export function getLeadConstants() {

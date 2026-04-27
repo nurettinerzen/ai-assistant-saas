@@ -1321,7 +1321,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
                       Telyx, telefon, WhatsApp, web chat ve e-posta kanallarındaki müşteri iletişimini tek merkezde toplar ve AI destekli yanıtlarla operasyon yükünüzü azaltır.
                     </p>
                     <p style="margin:0;font-size:16px;line-height:1.72;color:#42526b;">
-                      Dilerseniz aşağıdaki butonla demo talebi bırakabilirsiniz. Talebiniz bize ulaştığında demo sürecinizi hızlıca başlatalım.
+                      Aşağıdaki butona basarak demo asistanımızla doğrudan görüşebilir, Telyx'in işletmenizde nasıl çalıştığını birkaç dakika içinde canlı olarak deneyebilirsiniz.
                     </p>
                   </td>
                 </tr>
@@ -1331,7 +1331,7 @@ export const sendLeadAutoResponseEmail = async (lead) => {
                       <tr>
                         <td style="background:#051752;border-radius:999px;">
                           <a href="${sanitizeHeaderValue(demoRequestUrl)}" style="display:inline-block;padding:16px 34px;font-size:16px;font-weight:800;letter-spacing:-0.01em;color:#ffffff !important;text-decoration:none;">
-                            Demo talebi
+                            Demo asistanıyla konuş
                           </a>
                         </td>
                       </tr>

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import prisma from '../prismaClient.js';
 import elevenLabsService from './elevenlabs.js';
+import { markLeadDemoConducted } from './leadService.js';
 
 export const LEAD_PREVIEW_MAX_DURATION_SECONDS = 10 * 60;
 const LEAD_PREVIEW_ACCESS_TTL_SECONDS = 60 * 60;
@@ -394,6 +395,7 @@ export async function registerLeadPreviewConversation({ previewAccessToken, conv
 
   const now = new Date();
   const expiresAt = session.expiresAt || new Date(now.getTime() + (LEAD_PREVIEW_MAX_DURATION_SECONDS * 1000));
+  const isFirstConnect = !session.connectedAt;
 
   const updatedSession = await prisma.leadPreviewSession.update({
     where: { id: session.id },
@@ -424,6 +426,18 @@ export async function registerLeadPreviewConversation({ previewAccessToken, conv
   });
 
   await scheduleLeadPreviewTermination(updatedSession);
+
+  if (isFirstConnect && updatedSession.lead?.id) {
+    try {
+      await markLeadDemoConducted({
+        leadId: updatedSession.lead.id,
+        conversationId: normalizedConversationId,
+        source: 'preview'
+      });
+    } catch (error) {
+      console.error(`Failed to mark lead demo conducted for ${updatedSession.lead.id}:`, error.message);
+    }
+  }
 
   return updatedSession;
 }
