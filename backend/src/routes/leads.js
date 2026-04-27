@@ -722,6 +722,7 @@ router.get('/', async (req, res) => {
   try {
     const {
       status,
+      statusGroup,
       source,
       temperature,
       search,
@@ -735,6 +736,11 @@ router.get('/', async (req, res) => {
     const where = {};
 
     if (status) where.status = status;
+    if (statusGroup === 'POSITIVE_PIPELINE') {
+      where.status = {
+        in: [LEAD_STATUS.POSITIVE, LEAD_STATUS.CALL_QUEUED, LEAD_STATUS.CALLED]
+      };
+    }
     if (source) where.source = source;
     if (temperature) where.temperature = temperature;
 

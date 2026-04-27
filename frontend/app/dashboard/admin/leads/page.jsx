@@ -104,10 +104,8 @@ function getLeadCopy(locale) {
     stats: {
       total: isTr ? 'Toplam Lead' : 'Total Leads',
       hot: isTr ? 'Sıcak Lead' : 'Hot Leads',
-      new: isTr ? 'Yeni Bekleyen' : 'New Leads',
       emailed: isTr ? 'İlk Mail Giden' : 'Autoresponse Sent',
-      positive: isTr ? 'Olumlu Dönüş' : 'Positive Response',
-      calledToday: isTr ? 'Bugün Aranan' : 'Called Today',
+      positive: isTr ? 'Demo Talebi' : 'Demo Requests',
     },
     filters: {
       searchPlaceholder: isTr ? 'İsim, email, telefon veya şirket ara...' : 'Search by name, email, phone, or company...',
@@ -218,6 +216,7 @@ export default function AdminLeadsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sourceFilter, setSourceFilter] = useState('ALL');
   const [temperatureFilter, setTemperatureFilter] = useState('ALL');
+  const [statFilter, setStatFilter] = useState('total');
   const [selectedLead, setSelectedLead] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -232,11 +231,37 @@ export default function AdminLeadsPage() {
   const statCards = useMemo(() => ([
     { key: 'total', label: copy.stats.total, value: stats?.total ?? 0, tone: 'bg-slate-500' },
     { key: 'hot', label: copy.stats.hot, value: stats?.hot ?? 0, tone: 'bg-red-500' },
-    { key: 'new', label: copy.stats.new, value: stats?.new ?? 0, tone: 'bg-blue-500' },
     { key: 'emailed', label: copy.stats.emailed, value: stats?.emailed ?? 0, tone: 'bg-cyan-500' },
     { key: 'positive', label: copy.stats.positive, value: stats?.positive ?? 0, tone: 'bg-emerald-500' },
-    { key: 'calledToday', label: copy.stats.calledToday, value: stats?.calledToday ?? 0, tone: 'bg-amber-500' },
   ]), [copy, stats]);
+
+  const applyStatFilter = useCallback((key) => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    setStatFilter(key);
+
+    if (key === 'total') {
+      setStatusFilter('ALL');
+      setTemperatureFilter('ALL');
+      return;
+    }
+
+    if (key === 'hot') {
+      setStatusFilter('ALL');
+      setTemperatureFilter('HOT');
+      return;
+    }
+
+    if (key === 'emailed') {
+      setStatusFilter('EMAILED');
+      setTemperatureFilter('ALL');
+      return;
+    }
+
+    if (key === 'positive') {
+      setStatusFilter('ALL');
+      setTemperatureFilter('ALL');
+    }
+  }, []);
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
@@ -263,6 +288,7 @@ export default function AdminLeadsPage() {
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (sourceFilter !== 'ALL') params.source = sourceFilter;
       if (temperatureFilter !== 'ALL') params.temperature = temperatureFilter;
+      if (statFilter === 'positive') params.statusGroup = 'POSITIVE_PIPELINE';
 
       const response = await apiClient.admin.getLeads(params);
       setLeads(response.data.items || []);
@@ -278,7 +304,7 @@ export default function AdminLeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [copy.toasts.loadFailed, pagination.page, pagination.pageSize, searchQuery, sourceFilter, statusFilter, temperatureFilter]);
+  }, [copy.toasts.loadFailed, pagination.page, pagination.pageSize, searchQuery, sourceFilter, statFilter, statusFilter, temperatureFilter]);
 
   useEffect(() => {
     loadStats();
@@ -349,11 +375,17 @@ export default function AdminLeadsPage() {
         <p className="text-sm text-gray-500 dark:text-gray-400">{copy.description}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => (
-          <div
+          <button
             key={stat.key}
-            className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#081224]/95"
+            type="button"
+            onClick={() => applyStatFilter(stat.key)}
+            className={`rounded-2xl border p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+              statFilter === stat.key
+                ? 'border-primary-400 bg-primary-50/60 dark:border-primary-400 dark:bg-primary-500/10'
+                : 'border-gray-200 bg-white dark:border-white/10 dark:bg-[#081224]/95'
+            }`}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -366,7 +398,7 @@ export default function AdminLeadsPage() {
                 <Flame className="h-5 w-5 text-white" />
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -388,6 +420,7 @@ export default function AdminLeadsPage() {
           <div className="flex flex-wrap gap-2">
             <Select value={statusFilter} onValueChange={(value) => {
               setStatusFilter(value);
+              setStatFilter('total');
               setPagination((prev) => ({ ...prev, page: 1 }));
             }}>
               <SelectTrigger className="w-[180px]">
@@ -420,6 +453,7 @@ export default function AdminLeadsPage() {
 
             <Select value={temperatureFilter} onValueChange={(value) => {
               setTemperatureFilter(value);
+              setStatFilter('total');
               setPagination((prev) => ({ ...prev, page: 1 }));
             }}>
               <SelectTrigger className="w-[170px]">
