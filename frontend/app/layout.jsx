@@ -5,11 +5,15 @@ import { ThemeProvider } from 'next-themes';
 import { Providers } from './providers';
 import BetaEnvironmentBar from '@/components/BetaEnvironmentBar';
 import PublicSiteChatWidget from '@/components/PublicSiteChatWidget';
+import PageViewTracker from '@/components/PageViewTracker';
 import runtimeConfig from '@/lib/runtime-config';
 
 const metadataBase = runtimeConfig.siteUrl ? new URL(runtimeConfig.siteUrl) : undefined;
 const iconVersion = '20260413';
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || 'GTM-MQ6NHMKP';
+const GA_MEASUREMENT_ID = runtimeConfig.isBetaApp
+  ? null
+  : (process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-08CRCMG37C');
 const META_PIXEL_ID = runtimeConfig.isBetaApp
   ? null
   : (process.env.NEXT_PUBLIC_META_PIXEL_ID || '1458852735458229');
@@ -64,6 +68,25 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             }}
           />
         ) : null}
+        {GA_MEASUREMENT_ID ? (
+          <>
+            <Script
+              id="google-analytics-direct"
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script
+              id="google-analytics-direct-init"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `window.dataLayer = window.dataLayer || [];
+window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
+window.gtag('js', new Date());
+window.gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });`,
+              }}
+            />
+          </>
+        ) : null}
         {META_PIXEL_ID ? (
           <Script
             id="meta-pixel"
@@ -77,8 +100,7 @@ n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '${META_PIXEL_ID}');
-fbq('track', 'PageView');`,
+fbq('init', '${META_PIXEL_ID}');`,
             }}
           />
         ) : null}
@@ -113,6 +135,7 @@ fbq('track', 'PageView');`,
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <LanguageProvider>
               <BetaEnvironmentBar />
+              {META_PIXEL_ID ? <PageViewTracker /> : null}
               {children}
               <PublicSiteChatWidget />
             </LanguageProvider>

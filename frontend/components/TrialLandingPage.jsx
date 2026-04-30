@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { trackCtaClick } from '@/lib/marketingAnalytics';
+import { trackCtaClick, trackPageView, trackScrollMilestone } from '@/lib/marketingAnalytics';
 import '@/styles/landing.css';
 
 function getTrialLandingCopy(locale) {
@@ -254,6 +254,7 @@ function getTrialLandingCopy(locale) {
 export default function TrialLandingPage() {
   const { locale } = useLanguage();
   const pageRef = useRef(null);
+  const scrollTracked = useRef(false);
   const copy = useMemo(() => getTrialLandingCopy(locale), [locale]);
 
   const manifestoWords = useMemo(
@@ -266,6 +267,36 @@ export default function TrialLandingPage() {
     },
     [copy.manifesto, copy.manifestoEmphasis]
   );
+
+  useEffect(() => {
+    trackPageView({
+      pageType: 'trial_landing',
+      locale,
+    });
+
+    const onScrollMilestone = () => {
+      if (scrollTracked.current) return;
+
+      const scrollTop = window.scrollY || window.pageYOffset || 0;
+      const documentHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (documentHeight <= 0) return;
+
+      const progress = scrollTop / documentHeight;
+      if (progress >= 0.5) {
+        scrollTracked.current = true;
+        trackScrollMilestone({
+          pageType: 'trial_landing',
+          milestone: '50',
+          locale,
+        });
+      }
+    };
+
+    window.addEventListener('scroll', onScrollMilestone, { passive: true });
+    onScrollMilestone();
+
+    return () => window.removeEventListener('scroll', onScrollMilestone);
+  }, [locale]);
 
   useEffect(() => {
     const root = pageRef.current;

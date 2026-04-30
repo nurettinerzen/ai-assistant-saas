@@ -54,6 +54,7 @@ import batchCallsRoutes from './routes/batchCalls.js';
 import teamRoutes from './routes/team.js';
 // Contact
 import contactRoutes from './routes/contact.js';
+import metaCapiRoutes from './routes/meta-capi.js';
 import leadsRoutes from './routes/leads.js';
 import waitlistRoutes from './routes/waitlist.js';
 // Onboarding
@@ -100,7 +101,7 @@ import { assertAllRoutesProtected } from './middleware/routeEnforcement.js';
 // Log redaction for sensitive data
 import { getSafeRequestPath, logRedactionMiddleware } from './middleware/logRedaction.js';
 import BUILD_INFO from './config/buildInfo.js';
-import { getGeminiApiKeyDiagnostics } from './config/gemini.js';
+import { getLlmDiagnostics } from './config/llm.js';
 import runtimeConfig from './config/runtime.js';
 import { preventParameterPollution } from './middleware/parameterPollution.js';
 import { authRateLimiter, apiRateLimiter } from './middleware/rateLimiter.js';
@@ -227,13 +228,25 @@ const corsAllowedHeaders = [
 ];
 
 if (process.env.NODE_ENV !== 'test') {
-  const geminiDiagnostics = getGeminiApiKeyDiagnostics();
+  const llmDiagnostics = getLlmDiagnostics();
   console.log(`🔖 [Backend Build] version=${BUILD_INFO.version} commit=${BUILD_INFO.commitHash} buildTime=${BUILD_INFO.buildTime}`);
   console.log(`🌍 [Backend Runtime] nodeEnv=${runtimeConfig.nodeEnv} appEnv=${runtimeConfig.appEnv} frontend=${runtimeConfig.frontendUrl} backend=${runtimeConfig.backendUrl} site=${runtimeConfig.siteUrl} stripe=${runtimeConfig.stripeMode}`);
-  console.log('🤖 [Backend Runtime] Gemini config', {
-    configured: geminiDiagnostics.configured,
-    source: geminiDiagnostics.source || 'missing',
-    candidates: geminiDiagnostics.candidates
+  console.log('🤖 [Backend Runtime] LLM config', {
+    configured: llmDiagnostics.configured,
+    requestedProvider: llmDiagnostics.requestedProvider,
+    activeProvider: llmDiagnostics.activeProvider,
+    gemini: {
+      configured: llmDiagnostics.gemini.configured,
+      source: llmDiagnostics.gemini.source || 'missing',
+      candidates: llmDiagnostics.gemini.candidates
+    },
+    openai: {
+      configured: llmDiagnostics.openai.configured,
+      source: llmDiagnostics.openai.source || 'missing',
+      chatModel: llmDiagnostics.openai.chatModel,
+      classifierModel: llmDiagnostics.openai.classifierModel,
+      candidates: llmDiagnostics.openai.candidates
+    }
   });
   runtimeConfig.runtimeWarnings.forEach((warning) => {
     console.warn(`⚠️ [Backend Runtime] ${warning}`);
@@ -434,6 +447,7 @@ app.use('/api/webhook', webhookRoutes);
 app.use('/api/batch-calls', apiRateLimiter.middleware(), batchCallsRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/meta', metaCapiRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/onboarding', onboardingRoutes);
