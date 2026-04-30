@@ -6,7 +6,6 @@
 
 // Environment-based defaults
 const ENVIRONMENT = process.env.NODE_ENV || 'development';
-const APP_ENV = String(process.env.APP_ENV || '').trim().toLowerCase();
 
 export const FEATURE_FLAGS = {
   // Message Type Classification & Smart Routing
@@ -94,11 +93,12 @@ export const FEATURE_FLAGS = {
   // Semantic chatter fast path.
   // When enabled: pure social chatter can be answered by a tiny classifier+reply
   // LLM call before the full orchestration pipeline loads tools/prompts/guards.
-  // Default: ON in development/beta, OFF in production unless explicitly enabled.
+  // Default: ON in every environment. The semantic gate still falls through for
+  // ambiguous/business/security messages; disable explicitly if a rollback is needed.
   // Rollback: Set FEATURE_SEMANTIC_CHATTER_FAST_PATH=false.
   SEMANTIC_CHATTER_FAST_PATH: process.env.FEATURE_SEMANTIC_CHATTER_FAST_PATH
     ? process.env.FEATURE_SEMANTIC_CHATTER_FAST_PATH === 'true'
-    : APP_ENV === 'beta' || ENVIRONMENT === 'development',
+    : true,
 
   // ─── Channel Identity Proof Autoverification ───
   // When enabled: WhatsApp/Email channel identity signals can skip second-factor
