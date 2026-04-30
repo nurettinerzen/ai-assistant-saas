@@ -350,7 +350,7 @@ export function LandingPage() {
                 </div>
                 <div className="metric-card reveal reveal-delay-3">
                   <div className="metric-label">{t('landing.dashboardSection.avgResponse')}</div>
-                  <div className="metric-value" data-color="info" data-count="1.8" data-suffix="s" data-decimal="1">0</div>
+                  <div className="metric-value" data-color="info" data-count="5" data-prefix="< " data-suffix="s" data-decimal="0">0</div>
                   <div className="metric-trend">{t('landing.dashboardSection.avgResponseTrend')}</div>
                 </div>
                 <div className="metric-card reveal reveal-delay-4">

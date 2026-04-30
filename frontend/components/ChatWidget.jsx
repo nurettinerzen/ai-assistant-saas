@@ -271,6 +271,13 @@ useEffect(() => {
   }
 }, [isLoading, isOpen]);
 
+  // Allow other parts of the page (e.g. landing CTAs) to open the widget
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('telyx:open-chat', handler);
+    return () => window.removeEventListener('telyx:open-chat', handler);
+  }, []);
+
   const sendMessage = async () => {
     const text = inputValue.trim();
     if (!text || isLoading) return;

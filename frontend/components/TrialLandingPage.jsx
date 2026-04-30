@@ -1,11 +1,172 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
+import { Mail, MessageCircle, PhoneCall } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { trackCtaClick, trackPageView, trackScrollMilestone } from '@/lib/marketingAnalytics';
+import { createScrollDepthTracker, trackCtaClick, trackPageView } from '@/lib/marketingAnalytics';
+import ChatDemoSection from '@/components/ChatDemoSection';
 import '@/styles/landing.css';
 
-function getTrialLandingCopy(locale) {
+function WhatsAppLineIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5.2 19.2l1.1-3.1a7.2 7.2 0 1 1 2.1 2.1l-3.2 1Z" />
+      <path d="M9.2 8.4c.2-.4.4-.5.8-.5h.4c.3 0 .5.2.6.4l.5 1.2c.1.3.1.5-.1.7l-.4.5c.5 1 1.3 1.8 2.4 2.4l.5-.4c.2-.2.5-.2.7-.1l1.2.5c.3.1.4.3.4.6v.4c0 .4-.2.6-.5.8-.7.3-1.6.2-2.5-.2-1.2-.5-2.3-1.2-3.3-2.2-1-1-1.8-2.2-2.2-3.3-.3-.9-.4-1.8-.1-2.5Z" />
+    </svg>
+  );
+}
+
+const TRIAL_CHANNEL_ICONS = [PhoneCall, WhatsAppLineIcon, MessageCircle, Mail];
+
+function getTrialLandingCopy(locale, variant = 'offer') {
+  if (variant === 'ops') {
+    if (locale === 'en') {
+      return {
+        hero: {
+          lines: ['Bring every customer touchpoint', 'into one operating flow.'],
+          tagline:
+            'Phone, WhatsApp, email, and web chat run from the same AI workspace, so your team sees what matters first.',
+          primaryCta: 'See the live flow',
+          secondaryNote: '14-day trial. No credit card.',
+          signals: ['Phone + WhatsApp + Email + Chat', 'AI triage and handoff', 'Setup without a card'],
+        },
+        manifesto:
+          'Telyx is not another inbox. It is the operating layer between your customers, your channels, and your team.',
+        manifestoEmphasis: ['operating', 'customers,', 'channels,'],
+        dashboard: {
+          title: 'Live operating layer',
+          pills: ['Now', 'Today', 'This week'],
+          metrics: [
+            { label: 'Connected channels', value: '4', color: 'primary', trend: 'One shared customer view' },
+            { label: 'First response', value: '5', color: 'accent', prefix: '< ', suffix: ' s', trend: 'Immediate triage' },
+            { label: 'Human handoffs', value: '3', color: 'info', trend: 'Only when judgment is needed' },
+            { label: 'Setup window', value: '14', color: 'warning', suffix: ' min', trend: 'To launch the first flow' },
+          ],
+          channelLoad: [
+            { name: 'Phone', width: '72', color: 'primary' },
+            { name: 'WhatsApp', width: '63', color: 'accent' },
+            { name: 'Email', width: '54', color: 'info' },
+            { name: 'Web Chat', width: '46', color: 'warning' },
+          ],
+          activities: [
+            { text: 'A WhatsApp question was answered from order context', time: 'Now', color: 'var(--lp-accent)' },
+            { text: 'A call was handed to the right team member', time: '2 min', color: 'var(--lp-info)' },
+            { text: 'An email draft was prepared for approval', time: '5 min', color: 'var(--lp-warning)' },
+            { text: 'A web chat lead entered the sales flow', time: '8 min', color: 'var(--lp-primary)' },
+          ],
+        },
+        channels: {
+          kicker: 'One operational surface',
+          title: 'Every channel keeps the same context.',
+          subtitle:
+            'Instead of scattering customer conversations across tools, Telyx keeps the thread, the action, and the handoff in one place.',
+          items: [
+            { icon: '📞', title: 'Phone', description: 'Answer, qualify, summarize, and hand over urgent calls without losing context.' },
+            { icon: '💬', title: 'WhatsApp', description: 'Handle order, support, and sales questions with consistent brand language.' },
+            { icon: '🌐', title: 'Web Chat', description: 'Meet visitors immediately and route serious intent into the right next step.' },
+            { icon: '📧', title: 'Email', description: 'Classify requests and prepare replies that your team can approve or adjust.' },
+          ],
+        },
+        proof: [
+          { count: '4', suffix: ' channels', title: 'One customer view', description: 'A single thread across phone, WhatsApp, email, and chat.', color: 'primary' },
+          { count: '3', suffix: ' handoffs', title: 'Control stays human', description: 'AI handles repeatable work, your team handles judgment.', color: 'accent' },
+          { count: '14', suffix: ' min', title: 'First flow setup', description: 'Start with a focused use case before connecting everything.', color: 'info' },
+        ],
+        workflow: {
+          kicker: 'Operating rhythm',
+          title: 'Start from one painful flow, then expand channel by channel.',
+          subtitle:
+            'The strongest trial is not a tour of features. It is one real workflow where the team can feel the load moving.',
+          steps: [
+            { step: '01', title: 'Pick the use case', description: 'Choose support, sales, callbacks, order status, or appointment handling.' },
+            { step: '02', title: 'Add context', description: 'Connect the assistant to the knowledge, CRM, commerce, or calendar data it needs.' },
+            { step: '03', title: 'Turn on one channel', description: 'Measure the first flow before adding WhatsApp, email, chat, or phone together.' },
+            { step: '04', title: 'Review handoffs', description: 'See what AI resolved, what it escalated, and where your team should stay involved.' },
+          ],
+        },
+        cta: {
+          kicker: 'Ready to see the operating layer?',
+          title: 'Start with one workflow your team already feels every day.',
+          subtitle:
+            'Use the trial to test real customer communication, not just screens. No card required.',
+          button: 'See the live flow',
+        },
+      };
+    }
+
+    return {
+      hero: {
+        lines: ['Müşteri temaslarını', 'tek operasyon akışında toplayın.'],
+        tagline:
+          'Telefon, WhatsApp, e-posta ve web chat aynı AI çalışma alanında ilerler; ekibiniz önce gerçekten önemli olana bakar.',
+        primaryCta: 'Canlı akışı görün',
+        secondaryNote: '14 gün deneme. Kredi kartı yok.',
+        signals: ['Telefon + WhatsApp + E-posta + Chat', 'AI triage ve insan devri', 'Kartsız kurulum'],
+      },
+      manifesto:
+        'Telyx yeni bir gelen kutusu değil. Müşteriniz, kanallarınız ve ekibiniz arasındaki operasyon katmanıdır.',
+      manifestoEmphasis: ['operasyon', 'Müşteriniz,', 'kanallarınız'],
+      dashboard: {
+        title: 'Canlı operasyon katmanı',
+        pills: ['Şimdi', 'Bugün', 'Bu hafta'],
+        metrics: [
+          { label: 'Bağlı kanal', value: '4', color: 'primary', trend: 'Tek müşteri görünümü' },
+          { label: 'İlk yanıt', value: '5', color: 'accent', prefix: '< ', suffix: ' sn', trend: 'Anında triage' },
+          { label: 'İnsan devri', value: '3', color: 'info', trend: 'Yalnızca muhakeme gerektiğinde' },
+          { label: 'İlk akış', value: '14', color: 'warning', suffix: ' dk', trend: 'Kuruluma başlamak için' },
+        ],
+        channelLoad: [
+          { name: 'Telefon', width: '72', color: 'primary' },
+          { name: 'WhatsApp', width: '63', color: 'accent' },
+          { name: 'E-posta', width: '54', color: 'info' },
+          { name: 'Web Chat', width: '46', color: 'warning' },
+        ],
+        activities: [
+          { text: 'WhatsApp sorusu sipariş bağlamıyla yanıtlandı', time: 'Şimdi', color: 'var(--lp-accent)' },
+          { text: 'Telefon görüşmesi doğru ekip üyesine devredildi', time: '2 dk', color: 'var(--lp-info)' },
+          { text: 'E-posta taslağı onay için hazırlandı', time: '5 dk', color: 'var(--lp-warning)' },
+          { text: 'Web chat lead’i satış akışına taşındı', time: '8 dk', color: 'var(--lp-primary)' },
+        ],
+      },
+      channels: {
+        kicker: 'Tek operasyon yüzeyi',
+        title: 'Her kanal aynı müşteri bağlamını taşır.',
+        subtitle:
+          'Müşteri konuşmaları araçlara dağılmak yerine aynı yerde bağlam, aksiyon ve insan devriyle birlikte ilerler.',
+        items: [
+          { icon: '📞', title: 'Telefon', description: 'Aramaları karşılayın, özetleyin, nitelendirin ve acil olanları bağlamıyla ekibe devredin.' },
+          { icon: '💬', title: 'WhatsApp', description: 'Sipariş, destek ve satış sorularını aynı marka diliyle hızlıca yanıtlayın.' },
+          { icon: '🌐', title: 'Web Chat', description: 'Ziyaretçiyi bekletmeden karşılayın ve ciddi niyeti doğru sonraki adıma taşıyın.' },
+          { icon: '📧', title: 'E-posta', description: 'Talepleri sınıflandırın, ekibin onaylayabileceği cevap taslakları hazırlayın.' },
+        ],
+      },
+      proof: [
+        { count: '4', suffix: ' kanal', title: 'Tek müşteri görünümü', description: 'Telefon, WhatsApp, e-posta ve chat aynı bağlamda ilerler.', color: 'primary' },
+        { count: '3', suffix: ' devir', title: 'Kontrol insanda kalır', description: 'Tekrarlı işi AI alır, muhakeme isteyen iş ekibe kalır.', color: 'accent' },
+        { count: '14', suffix: ' dk', title: 'İlk akış kurulumu', description: 'Her şeyi bağlamadan önce tek bir net senaryoyla başlayın.', color: 'info' },
+      ],
+      workflow: {
+        kicker: 'Operasyon ritmi',
+        title: 'Önce en ağrılı akışı seçin, sonra kanal kanal genişletin.',
+        subtitle:
+          'En güçlü deneme bir özellik turu değil; ekibin yükün azaldığını hissedeceği gerçek bir iş akışıdır.',
+        steps: [
+          { step: '01', title: 'Kullanım senaryosunu seçin', description: 'Destek, satış, geri arama, sipariş durumu veya randevu akışıyla başlayın.' },
+          { step: '02', title: 'Bağlamı ekleyin', description: 'Asistanın ihtiyaç duyduğu bilgi tabanı, CRM, e-ticaret veya takvim verisini bağlayın.' },
+          { step: '03', title: 'İlk kanalı açın', description: 'WhatsApp, e-posta, chat veya telefonu birlikte açmadan önce ilk akışı ölçün.' },
+          { step: '04', title: 'Devirleri inceleyin', description: 'AI neyi çözdü, neyi devretti, ekip nerede kalmalı net biçimde görün.' },
+        ],
+      },
+      cta: {
+        kicker: 'Operasyon katmanını görmek ister misiniz?',
+        title: 'Ekibinizin her gün hissettiği tek bir akıştan başlayın.',
+        subtitle:
+          'Denemeyi ekran gezisi için değil, gerçek müşteri iletişimini test etmek için kullanın. Kart gerekmez.',
+        button: 'Canlı akışı görün',
+      },
+    };
+  }
+
   if (locale === 'en') {
     return {
     hero: {
@@ -22,7 +183,7 @@ function getTrialLandingCopy(locale) {
         pills: ['Today', 'First week', '14 days'],
         metrics: [
           { label: 'Active channels', value: '4', color: 'primary', trend: 'Phone, WhatsApp, chat, email' },
-          { label: 'First response target', value: '1.8', color: 'accent', decimal: '1', suffix: ' s', trend: 'Faster first touch' },
+          { label: 'First response target', value: '5', color: 'accent', prefix: '< ', suffix: ' s', trend: 'Faster first touch' },
           { label: 'Human handoff points', value: '3', color: 'info', trend: 'Control stays with your team' },
           { label: 'Setup time', value: '14', color: 'warning', suffix: ' min', trend: 'To launch the first flow' },
         ],
@@ -144,7 +305,7 @@ function getTrialLandingCopy(locale) {
       pills: ['Bugün', 'İlk hafta', '14 gün'],
       metrics: [
         { label: 'Açık kanal', value: '4', color: 'primary', trend: 'Telefon, WhatsApp, chat, e-posta' },
-        { label: 'İlk yanıt hedefi', value: '1.8', color: 'accent', decimal: '1', suffix: ' sn', trend: 'Hızlı ilk temas hissi' },
+        { label: 'İlk yanıt hedefi', value: '5', color: 'accent', prefix: '< ', suffix: ' sn', trend: 'Hızlı ilk temas hissi' },
         { label: 'İnsan devri', value: '3', color: 'info', trend: 'Kontrol tamamen sizde' },
         { label: 'Kurulum süresi', value: '14', color: 'warning', suffix: ' dk', trend: 'İlk akışı başlatmak için' },
       ],
@@ -163,7 +324,7 @@ function getTrialLandingCopy(locale) {
     },
     channels: {
       kicker: 'Deneme boyunca tek tasarım dili',
-      title: 'Dört kanal, tek operasyon mantığı.',
+      title: 'Dört kanal, tek panel.',
       subtitle:
         'Telyx’in her temas noktasını aynı görsel aile ve aynı operasyon ritmi içinde nasıl yönettiğini deneme sürecinde görün.',
       items: [
@@ -200,12 +361,12 @@ function getTrialLandingCopy(locale) {
       {
         count: '4',
         suffix: ' kanal',
-        title: 'Tek panel',
+        title: 'Aynı bağlam',
         description: 'Telefon, WhatsApp, e-posta ve web chat aynı operasyon ekranında buluşur.',
-        color: 'accent',
+        color: 'warning',
       },
       {
-        count: '2',
+        count: '3',
         prefix: '< ',
         suffix: ' sn',
         title: 'İlk yanıt hissi',
@@ -251,11 +412,10 @@ function getTrialLandingCopy(locale) {
   };
 }
 
-export default function TrialLandingPage() {
-  const { locale } = useLanguage();
+export default function TrialLandingPage({ variant = 'offer' }) {
+  const { locale, t } = useLanguage();
   const pageRef = useRef(null);
-  const scrollTracked = useRef(false);
-  const copy = useMemo(() => getTrialLandingCopy(locale), [locale]);
+  const copy = useMemo(() => getTrialLandingCopy(locale, variant), [locale, variant]);
 
   const manifestoWords = useMemo(
     () => {
@@ -272,50 +432,56 @@ export default function TrialLandingPage() {
     trackPageView({
       pageType: 'trial_landing',
       locale,
+      landing_variant: variant,
     });
 
-    const onScrollMilestone = () => {
-      if (scrollTracked.current) return;
-
-      const scrollTop = window.scrollY || window.pageYOffset || 0;
-      const documentHeight = document.documentElement.scrollHeight - window.innerHeight;
-      if (documentHeight <= 0) return;
-
-      const progress = scrollTop / documentHeight;
-      if (progress >= 0.5) {
-        scrollTracked.current = true;
-        trackScrollMilestone({
-          pageType: 'trial_landing',
-          milestone: '50',
-          locale,
-        });
-      }
-    };
+    const onScrollMilestone = createScrollDepthTracker({
+      pageType: 'trial_landing',
+      locale,
+      landing_variant: variant,
+    });
 
     window.addEventListener('scroll', onScrollMilestone, { passive: true });
     onScrollMilestone();
 
     return () => window.removeEventListener('scroll', onScrollMilestone);
-  }, [locale]);
+  }, [locale, variant]);
 
   useEffect(() => {
     const root = pageRef.current;
     if (!root) return;
 
     const cleanups = [];
+    const isCompactViewport = () => {
+      const widths = [
+        window.innerWidth,
+        document.documentElement.clientWidth,
+        root.getBoundingClientRect().width,
+      ].filter((width) => Number.isFinite(width) && width > 0);
+
+      return Math.min(...widths) <= 700;
+    };
 
     {
-      const primaryCta = root.querySelector('.trial-hero-primary-cta');
       let ticking = false;
 
       function updateHero() {
+        const hero = root.querySelector('.hero');
+        const lines = hero?.querySelectorAll('.hero-line') || [];
+        const tagline = hero?.querySelector('.hero-tagline');
+        const primaryCta = hero?.querySelector('.trial-hero-primary-cta');
         const scrolled = window.scrollY;
+        const isCompact = isCompactViewport();
+        const thresholds = isCompact ? [0, 32, 64, 96] : [0, 64, 128, 192];
+        const taglineAt = isCompact ? 116 : 220;
+        const ctaAt = isCompact ? 132 : 248;
 
-        if (scrolled >= 360) {
-          primaryCta?.classList.add('active');
-        } else if (scrolled < 320) {
-          primaryCta?.classList.remove('active');
+        for (let i = 0; i < lines.length; i += 1) {
+          lines[i].classList.toggle('active', scrolled >= thresholds[i]);
         }
+
+        tagline?.classList.toggle('active', scrolled >= taglineAt);
+        primaryCta?.classList.toggle('active', scrolled >= ctaAt);
 
         ticking = false;
       }
@@ -329,7 +495,11 @@ export default function TrialLandingPage() {
 
       window.addEventListener('scroll', onScroll, { passive: true });
       updateHero();
-      cleanups.push(() => window.removeEventListener('scroll', onScroll));
+      const initialHeroFrame = requestAnimationFrame(updateHero);
+      cleanups.push(() => {
+        cancelAnimationFrame(initialHeroFrame);
+        window.removeEventListener('scroll', onScroll);
+      });
     }
 
     {
@@ -342,9 +512,12 @@ export default function TrialLandingPage() {
         function updateManifesto() {
           const rect = section.getBoundingClientRect();
           const viewHeight = window.innerHeight;
-          const start = viewHeight * 0.55;
+          const isCompact = isCompactViewport();
+          const revealStartScroll = isCompact ? 150 : 280;
+          const start = viewHeight * (isCompact ? 0.5 : 0.62);
           const end = -rect.height * 0.3;
-          const progress = Math.max(0, Math.min(1, (start - rect.top) / (start - end)));
+          const rawProgress = Math.max(0, Math.min(1, (start - rect.top) / (start - end)));
+          const progress = window.scrollY < revealStartScroll ? 0 : rawProgress;
           const total = words.length;
 
           for (let i = 0; i < total; i += 1) {
@@ -373,14 +546,10 @@ export default function TrialLandingPage() {
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('visible');
-            } else {
-              entry.target.classList.remove('visible');
-            }
+            entry.target.classList.toggle('visible', entry.isIntersecting);
           });
         },
-        { threshold: 0.15, rootMargin: '0px 0px -90px 0px' }
+        { threshold: 0, rootMargin: '0px 0px -80px 0px' }
       );
 
       revealNodes.forEach((node) => observer.observe(node));
@@ -388,41 +557,27 @@ export default function TrialLandingPage() {
     }
 
     {
-      const grids = [
-        { id: 'trialChannelsGrid', start: 110, gap: 80 },
-        { id: 'trialProofGrid', start: 110, gap: 80 },
-        { id: 'trialStepsGrid', start: 110, gap: 80 },
-      ];
-      let ticking = false;
+      const gridIds = ['trialChannelsGrid', 'trialProofGrid', 'trialStepsGrid'];
+      const cardObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            entry.target.classList.toggle('visible', entry.isIntersecting);
+          });
+        },
+        { threshold: 0, rootMargin: '0px 0px -80px 0px' }
+      );
 
-      function updateCards() {
-        const viewHeight = window.innerHeight;
-
-        grids.forEach(({ id, start, gap }) => {
-          const grid = root.querySelector(`#${id}`);
-          if (!grid) return;
-
-          const cards = grid.querySelectorAll('.scroll-card');
-          const scrolled = viewHeight - grid.getBoundingClientRect().top;
-
-          for (let i = 0; i < cards.length; i += 1) {
-            cards[i].classList.toggle('visible', scrolled >= start + i * gap);
-          }
+      gridIds.forEach((id) => {
+        const grid = root.querySelector(`#${id}`);
+        if (!grid) return;
+        const cards = grid.querySelectorAll('.scroll-card');
+        cards.forEach((card, i) => {
+          card.style.transitionDelay = `${i * 60}ms`;
+          cardObserver.observe(card);
         });
+      });
 
-        ticking = false;
-      }
-
-      const onScroll = () => {
-        if (!ticking) {
-          ticking = true;
-          requestAnimationFrame(updateCards);
-        }
-      };
-
-      window.addEventListener('scroll', onScroll, { passive: true });
-      updateCards();
-      cleanups.push(() => window.removeEventListener('scroll', onScroll));
+      cleanups.push(() => cardObserver.disconnect());
     }
 
     {
@@ -468,7 +623,7 @@ export default function TrialLandingPage() {
               }
             });
           },
-          { threshold: 0.5, rootMargin: '0px 0px -50px 0px' }
+          { threshold: isCompactViewport() ? 0.12 : 0.5, rootMargin: isCompactViewport() ? '0px 0px 80px 0px' : '0px 0px -50px 0px' }
         );
 
         counters.forEach((counter) => observer.observe(counter));
@@ -503,60 +658,34 @@ export default function TrialLandingPage() {
   }, []);
 
   return (
-    <div className="landing-page trial-landing-page" ref={pageRef}>
+    <div className={`landing-page trial-landing-page trial-landing-${variant}`} ref={pageRef}>
       <div className="lp-page">
           <div className="glow glow-l" aria-hidden="true" />
           <div className="glow glow-r" aria-hidden="true" />
 
-          <section className="hero" id="hero">
-            <div className="hero-grid-bg" aria-hidden="true" />
-            <div className="hero-text-stack">
-              {copy.hero.lines.map((line) => (
-                <span key={line} className="hero-line active">
-                  {line}
-                </span>
-              ))}
-              <span className="hero-tagline active">{copy.hero.tagline}</span>
-            </div>
-
-            <div className="hero-bottom">
-              <div className="hero-actions">
-                <a
-                  href="/signup"
-                  className="lp-btn trial-hero-primary-cta"
-                  onClick={() =>
-                    trackCtaClick({
-                      ctaName: 'trial_landing_primary',
-                      ctaLocation: 'trial_landing_hero',
-                      destination: '/signup',
-                      locale,
-                    })
+          <ChatDemoSection
+            variant="hero"
+            cta={(
+              <button
+                type="button"
+                className="lp-btn"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('telyx:open-chat'));
                   }
-                >
-                  {copy.hero.primaryCta}
-                </a>
-              </div>
-            </div>
-
-            <div className="hero-scroll-cue" aria-hidden="true">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M12 5v14m0 0l-6-6m6 6l6-6" />
-              </svg>
-            </div>
-          </section>
-
-          <section className="manifesto" id="manifesto">
-            <div className="shell">
-              <p className="manifesto-text">
-                {manifestoWords.map((item, index) => (
-                  <span key={`${item.word}-${index}`}>
-                    <span className={`mw${item.em ? ' em' : ''}`}>{item.word}</span>
-                    {index < manifestoWords.length - 1 ? ' ' : ''}
-                  </span>
-                ))}
-              </p>
-            </div>
-          </section>
+                  trackCtaClick({
+                    ctaName: 'trial_landing_test_assistant',
+                    ctaLocation: 'trial_landing_hero',
+                    destination: 'chat-widget',
+                    locale,
+                    landing_variant: variant,
+                  });
+                }}
+              >
+                {t('landing.chatDemoSection.testButton')}
+              </button>
+            )}
+          />
 
           <section className="channels" id="channels">
             <div className="shell">
@@ -569,13 +698,21 @@ export default function TrialLandingPage() {
               </div>
 
               <div className="channels-grid" id="trialChannelsGrid">
-                {copy.channels.items.map((channel, index) => (
-                  <div key={channel.title} className={`channel-card ch-${(index % 4) + 1} scroll-card`}>
-                    <div className="channel-icon">{channel.icon}</div>
-                    <h3>{channel.title}</h3>
-                    <p>{channel.description}</p>
-                  </div>
-                ))}
+                {copy.channels.items.map((channel, index) => {
+                  const ChannelIcon = TRIAL_CHANNEL_ICONS[index % TRIAL_CHANNEL_ICONS.length];
+
+                  return (
+                    <div key={channel.title} className={`channel-card ch-${(index % 4) + 1} scroll-card`}>
+                      <div className="trial-channel-heading">
+                        <span className="trial-channel-icon" aria-hidden="true">
+                          <ChannelIcon />
+                        </span>
+                        <h3>{channel.title}</h3>
+                      </div>
+                      <p>{channel.description}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -640,6 +777,7 @@ export default function TrialLandingPage() {
                         ctaLocation: 'trial_landing_cta',
                         destination: '/signup',
                         locale,
+                        landing_variant: variant,
                       })
                     }
                   >
