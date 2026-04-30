@@ -1,11 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ShoppingBag, UtensilsCrossed, Stethoscope } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const SECTOR_ORDER = ['ecommerce', 'restaurant', 'clinic', 'services'];
+const SECTOR_ORDER = ['ecommerce', 'restaurant', 'clinic'];
+const SECTOR_ICONS = {
+  ecommerce: ShoppingBag,
+  restaurant: UtensilsCrossed,
+  clinic: Stethoscope,
+};
 
-export default function ChatDemoSection() {
+export default function ChatDemoSection({ variant = 'split', cta = null }) {
   const { t } = useLanguage();
 
   const sectorsData = t('landing.chatDemoSection.sectors');
@@ -114,6 +120,78 @@ export default function ChatDemoSection() {
 
   if (sectors.length === 0) return null;
 
+  const chipsBlock = (
+    <div
+      className="chat-demo-chips"
+      role="tablist"
+      aria-label={t('landing.chatDemoSection.sectorsLabel')}
+    >
+      {sectors.map((sector) => {
+        const isActive = sector.id === activeSector;
+        const Icon = SECTOR_ICONS[sector.id];
+        return (
+          <button
+            key={sector.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            className={`chat-demo-chip${isActive ? ' active' : ''}`}
+            onClick={() => handleChipClick(sector.id)}
+          >
+            {Icon ? (
+              <span className="chat-demo-chip-icon" aria-hidden="true">
+                <Icon size={16} strokeWidth={2} />
+              </span>
+            ) : null}
+            <span className="chat-demo-chip-label">{sector.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const chatWindow = (
+    <div className="chat-window">
+      <div className="chat-header">
+        <div className="chat-avatar">TX</div>
+        <div className="chat-header-info">
+          <strong>{t('landing.chatDemoSection.assistantName')}</strong>
+          <span>&#9679; {t('landing.chatDemoSection.online')}</span>
+        </div>
+      </div>
+      <div className="chat-messages" ref={messagesRef}>
+        {messages.map((msg, i) => (
+          <div key={i} className={`chat-msg ${msg.type}`}>
+            {msg.typing ? (
+              <div className="typing-dots">
+                <span />
+                <span />
+                <span />
+              </div>
+            ) : (
+              msg.text
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (variant === 'hero') {
+    return (
+      <section className="chat-demo chat-demo-hero" ref={sectionRef}>
+        <div className="shell">
+          <h1 className="chat-demo-hero-title">
+            {t('landing.chatDemoSection.title')}
+          </h1>
+          {chipsBlock}
+          {chatWindow}
+          {cta ? <div className="chat-demo-hero-cta">{cta}</div> : null}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="chat-demo" ref={sectionRef}>
       <div className="shell">
@@ -122,57 +200,9 @@ export default function ChatDemoSection() {
             <span className="kicker">{t('landing.chatDemoSection.kicker')}</span>
             <h2 className="section-title">{t('landing.chatDemoSection.title')}</h2>
             <p className="section-sub">{t('landing.chatDemoSection.desc')}</p>
-
-            <div
-              className="chat-demo-chips"
-              role="tablist"
-              aria-label={t('landing.chatDemoSection.sectorsLabel')}
-            >
-              {sectors.map((sector) => {
-                const isActive = sector.id === activeSector;
-                return (
-                  <button
-                    key={sector.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    className={`chat-demo-chip${isActive ? ' active' : ''}`}
-                    onClick={() => handleChipClick(sector.id)}
-                  >
-                    <span className="chat-demo-chip-icon" aria-hidden="true">
-                      {sector.icon}
-                    </span>
-                    <span className="chat-demo-chip-label">{sector.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {chipsBlock}
           </div>
-
-          <div className="chat-window">
-            <div className="chat-header">
-              <div className="chat-avatar">TX</div>
-              <div className="chat-header-info">
-                <strong>{t('landing.chatDemoSection.assistantName')}</strong>
-                <span>&#9679; {t('landing.chatDemoSection.online')}</span>
-              </div>
-            </div>
-            <div className="chat-messages" ref={messagesRef}>
-              {messages.map((msg, i) => (
-                <div key={i} className={`chat-msg ${msg.type}`}>
-                  {msg.typing ? (
-                    <div className="typing-dots">
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  ) : (
-                    msg.text
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          {chatWindow}
         </div>
       </div>
     </section>

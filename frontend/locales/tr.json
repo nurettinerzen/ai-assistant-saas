@@ -133,7 +133,7 @@
     },
     "feature2": {
       "title": "Anlık Sohbet\nDeneyimi",
-      "desc": "Ortalama 1,8 saniye yanıt süresi. Müşterileriniz doğal bir sohbet deneyimi yaşarken, yapay zekâ arka planda sipariş takibi, iade işlemleri ve daha fazlasını halleder.",
+      "desc": "Müşteriniz saniyeler içinde yanıt alır. Müşterileriniz doğal bir sohbet deneyimi yaşarken, yapay zekâ arka planda sipariş takibi, iade işlemleri ve daha fazlasını halleder.",
       "link": "Canlı demo"
     },
     "feature3": {
@@ -272,50 +272,38 @@
     },
     "chatDemoSection": {
       "kicker": "Canlı Deneyim",
-      "title": "1.8 Saniyede Müşteri Yanıtı",
+      "title": "Saniyeler içinde müşteri yanıtı",
       "desc": "AI asistan, müşterinizin sorusunu anlar, CRM verinize bakar ve saniyeler içinde doğru yanıtı verir. İnsan müşteri temsilcisi gibi — ama 7/24.",
       "assistantName": "Telyx AI Asistan",
       "online": "Çevrimiçi",
+      "testButton": "Asistanı deneyimleyin",
       "sectorsLabel": "Sektörünüze göre deneyin",
       "sectors": {
         "ecommerce": {
           "label": "E-ticaret",
-          "icon": "🛍️",
           "messages": [
             { "type": "customer", "text": "Merhaba, siparişim nerede?" },
             { "type": "bot", "text": "Merhaba! Kontrol edebilmem için sipariş numaranızı rica edebilir miyim?" },
             { "type": "customer", "text": "Sipariş numaram SİP-12345." },
-            { "type": "bot", "text": "Siparişiniz şu an hazırlanıyor aşamasında ve bugün kargoya verilmesi bekleniyor. 📦" }
+            { "type": "bot", "text": "Siparişiniz şu an hazırlanıyor aşamasında ve bugün kargoya verilmesi bekleniyor." }
           ]
         },
         "restaurant": {
           "label": "Restoran",
-          "icon": "🍽️",
           "messages": [
-            { "type": "customer", "text": "Merhaba, bu cumartesi 4 kişilik rezervasyon yapabilir miyiz?" },
-            { "type": "bot", "text": "Tabii! Saat tercihiniz var mı? 19:00 ve 21:00 için müsait masamız var." },
-            { "type": "customer", "text": "20:00 olur mu?" },
-            { "type": "bot", "text": "Cumartesi 20:00, 4 kişilik rezervasyonunuzu oluşturdum. Onay SMS'iniz birazdan iletilecek. 🍽️" }
+            { "type": "customer", "text": "Merhaba, bu akşam 19:00 için 4 kişilik rezervasyon yaptırabilir miyiz?" },
+            { "type": "bot", "text": "Tabii, adınızı ve telefon numaranızı alabilir miyim?" },
+            { "type": "customer", "text": "Mehmet Yılmaz, 0532 123 45 67" },
+            { "type": "bot", "text": "Tamamdır, rezervasyonunuzu oluşturdum. İyi eğlenceler!" }
           ]
         },
         "clinic": {
           "label": "Klinik",
-          "icon": "🦷",
           "messages": [
-            { "type": "customer", "text": "Diş muayenesi için randevu almak istiyorum." },
-            { "type": "bot", "text": "Tabii! Yarın 14:00, perşembe 10:30 veya cuma 16:00 müsait. Hangisi size uygun?" },
-            { "type": "customer", "text": "Perşembe 10:30 olur." },
-            { "type": "bot", "text": "Perşembe 10:30 randevunuz oluşturuldu. SMS hatırlatma 1 saat önce gelecek. 🦷" }
-          ]
-        },
-        "services": {
-          "label": "Servis",
-          "icon": "🔧",
-          "messages": [
-            { "type": "customer", "text": "Kombim çalışmıyor. Yarın gelebilir misiniz?" },
-            { "type": "bot", "text": "Geçmiş olsun! Yarın 10:00-12:00 veya 14:00-16:00 müsait. Hangi adres?" },
-            { "type": "customer", "text": "Beşiktaş, 14:00 uygun." },
-            { "type": "bot", "text": "Yarın 14:00, Beşiktaş için ustamız yönlendirildi. Telefonla 30 dk önce arayacak. 🔧" }
+            { "type": "customer", "text": "Merhaba, yarın için randevu oluşturmak istiyorum." },
+            { "type": "bot", "text": "Tabii, yarın 14:00 için randevunuzu oluşturabilirim. Adınızı ve numaranızı alabilir miyim?" },
+            { "type": "customer", "text": "Ahmet Yıldız, 0533 987 65 43" },
+            { "type": "bot", "text": "Tamamdır, randevunuzu oluşturdum." }
           ]
         }
       }
@@ -2178,7 +2166,7 @@
       "planDescEnterprise": "Özel kullanım, ses, eşzamanlı",
       "perMinuteUnit": "dk",
       "featureTrialMinutes": "15 dakika telefon görüşmesi",
-      "featureTrialChat": "7 gün chat/WhatsApp",
+      "featureTrialChat": "14 gün chat/WhatsApp",
       "featurePayPerMinute": "{price}/dk PAYG",
       "featureWalletBilling": "Bakiyeden ödeme",
       "featureWrittenInteractions": "{count} yazılı etkileşim",
