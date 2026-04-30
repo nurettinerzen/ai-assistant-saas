@@ -45,7 +45,7 @@ describe('semantic chatter fast path', () => {
     mockJsonResponse({
       pure_chatter: true,
       confidence: 0.94,
-      reply: 'Merhaba! Size nasıl yardımcı olabilirim?',
+      reply: 'Selam, buyurun.',
       reason: 'clear greeting'
     });
 
@@ -59,7 +59,7 @@ describe('semantic chatter fast path', () => {
     });
 
     expect(result.handled).toBe(true);
-    expect(result.reply).toBe('Merhaba! Size nasıl yardımcı olabilirim?');
+    expect(result.reply).toBe('Selam, buyurun.');
     expect(result.confidence).toBe(0.94);
     expect(result.inputTokens).toBe(42);
     expect(result.outputTokens).toBe(9);
@@ -82,6 +82,50 @@ describe('semantic chatter fast path', () => {
 
     expect(result.handled).toBe(true);
     expect(result.confidence).toBe(0.95);
+  });
+
+  it('falls through when the reply repeats a recent fast-path answer', async () => {
+    mockJsonResponse({
+      pure_chatter: true,
+      confidence: 0.96,
+      reply: 'Selam, buradayım.',
+      reason: 'casual opener'
+    });
+
+    const result = await trySemanticChatterFastPath({
+      channel: 'CHAT',
+      userMessage: 'naber',
+      language: 'TR',
+      state: {
+        chatter: {
+          recent: [
+            { reply: 'Selam, buradayım.' }
+          ]
+        }
+      }
+    });
+
+    expect(result.handled).toBe(false);
+    expect(result.reason).toBe('repeated_fast_path_reply');
+  });
+
+  it('falls through when wellbeing chatter gets a generic presence acknowledgement', async () => {
+    mockJsonResponse({
+      pure_chatter: true,
+      confidence: 0.96,
+      reply: 'Selam, buradayım.',
+      reason: 'wellbeing chatter'
+    });
+
+    const result = await trySemanticChatterFastPath({
+      channel: 'CHAT',
+      userMessage: 'naber',
+      language: 'TR',
+      state: {}
+    });
+
+    expect(result.handled).toBe(false);
+    expect(result.reason).toBe('generic_presence_reply_for_wellbeing');
   });
 
   it('falls through when the semantic gate sees an operational request', async () => {

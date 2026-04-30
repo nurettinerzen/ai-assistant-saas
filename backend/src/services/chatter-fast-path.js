@@ -5,10 +5,61 @@ import { getGeminiClient } from './gemini-utils.js';
 const DEFAULT_TIMEOUT_MS = 2200;
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.82;
 const DEFAULT_MAX_MESSAGE_CHARS = 500;
+const STOCK_HELP_OFFER_REPLIES = new Set([
+  'merhaba size nasil yardimci olabilirim',
+  'selam size nasil yardimci olabilirim',
+  'hello how can i help you today'
+]);
+const WELLBEING_CHATTER_PATTERN = /^(naber|ne\s+haber|nasılsın|nasilsin|iyi\s+misin|how\s+are\s+you|what'?s\s+up|sup)[!.?, ]*$/i;
+const GENERIC_PRESENCE_REPLY_PATTERN = /\b(buradayım|buradayim|sizi\s+dinliyorum|dinliyorum)\b/i;
 
 function parsePositiveNumber(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeForComparison(value = '') {
+  return String(value || '')
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getRecentFastPathReplies(state = {}) {
+  const recent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
+  return recent
+    .map(item => item?.reply)
+    .filter(reply => typeof reply === 'string' && reply.trim().length > 0)
+    .slice(-4);
+}
+
+function validateFastPathReply({ userMessage = '', reply = '', state = {} } = {}) {
+  const normalizedReply = normalizeForComparison(reply);
+  if (!normalizedReply) {
+    return { ok: false, reason: 'empty_reply' };
+  }
+
+  if (STOCK_HELP_OFFER_REPLIES.has(normalizedReply)) {
+    return { ok: false, reason: 'stock_help_offer_reply' };
+  }
+
+  const recentReplies = getRecentFastPathReplies(state)
+    .map(normalizeForComparison)
+    .filter(Boolean);
+
+  if (recentReplies.includes(normalizedReply)) {
+    return { ok: false, reason: 'repeated_fast_path_reply' };
+  }
+
+  if (WELLBEING_CHATTER_PATTERN.test(String(userMessage || '').trim()) && GENERIC_PRESENCE_REPLY_PATTERN.test(reply)) {
+    return { ok: false, reason: 'generic_presence_reply_for_wellbeing' };
+  }
+
+  return { ok: true, reason: 'ok' };
 }
 
 function extractJsonObject(raw = '') {
@@ -110,7 +161,8 @@ function buildFastPathPrompt({
   userMessage = '',
   language = 'TR',
   businessName = '',
-  assistantName = ''
+  assistantName = '',
+  state = {}
 } = {}) {
   return `You are a fast semantic gate for a customer support chat assistant.
 
@@ -127,7 +179,9 @@ NOT pure chatter:
 
 If pure chatter is true, write a short natural reply in the user's language. Do not claim business facts. Use at most one sentence.
 Avoid repeating stock widget opening/help-offer lines, especially "Merhaba! Size nasıl yardımcı olabilirim?", "Selam! Size nasıl yardımcı olabilirim?", and "Hello! How can I help you today?".
-For bare greetings, prefer a brief acknowledgement such as "Selam, buradayım." or "Merhaba, sizi dinliyorum." instead of asking how you can help again.
+Do not repeat any recent assistant reply below. If the user repeats small talk, vary the wording naturally.
+For bare greetings, prefer a brief acknowledgement such as "Selam, buyurun.".
+For wellbeing chatter like "naber", "ne haber", or "nasılsın", answer the wellbeing question naturally, e.g. "İyiyim, teşekkürler. Siz nasılsınız?".
 If not pure chatter, return pure_chatter=false and reply="".
 
 Return ONLY JSON:
@@ -146,6 +200,7 @@ Rules for confidence:
 language=${String(language || 'TR').toUpperCase()}
 business_name=${businessName || ''}
 assistant_name=${assistantName || ''}
+recent_assistant_replies=${JSON.stringify(getRecentFastPathReplies(state).slice(-3))}
 message="""${String(userMessage || '').slice(0, 1000)}"""`;
 }
 
@@ -200,7 +255,8 @@ export async function trySemanticChatterFastPath({
       userMessage,
       language,
       businessName: business?.name || '',
-      assistantName: assistant?.name || ''
+      assistantName: assistant?.name || '',
+      state
     });
 
     const result = await withTimeout(
@@ -228,6 +284,23 @@ export async function trySemanticChatterFastPath({
       return {
         handled: false,
         reason: isPureChatter ? 'low_confidence_or_empty_reply' : 'not_chatter',
+        confidence,
+        latencyMs: Date.now() - startedAt,
+        inputTokens: usage.promptTokenCount || 0,
+        outputTokens: usage.candidatesTokenCount || 0
+      };
+    }
+
+    const replyValidation = validateFastPathReply({
+      userMessage,
+      reply,
+      state
+    });
+
+    if (!replyValidation.ok) {
+      return {
+        handled: false,
+        reason: replyValidation.reason,
         confidence,
         latencyMs: Date.now() - startedAt,
         inputTokens: usage.promptTokenCount || 0,

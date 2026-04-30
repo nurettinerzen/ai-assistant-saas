@@ -1190,7 +1190,13 @@ export async function handleIncomingMessage({
         lastVariantIndex: null,
         recent: [
           ...((Array.isArray(state.chatter?.recent) ? state.chatter.recent : []).slice(-1)),
-          { messageKey: 'SEMANTIC_FAST_PATH', variantIndex: null }
+          {
+            messageKey: 'SEMANTIC_FAST_PATH',
+            variantIndex: null,
+            userMessage: String(userMessage || '').slice(0, 160),
+            reply: String(chatterFastPath.reply || '').slice(0, 240),
+            at: new Date().toISOString()
+          }
         ].slice(-2)
       };
 
