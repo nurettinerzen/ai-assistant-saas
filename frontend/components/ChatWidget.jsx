@@ -79,14 +79,19 @@ function mergeLocalWelcomeWithHistory(previousMessages = [], historyMessages = [
     return historyMessages;
   }
 
-  const historyWithoutDuplicateWelcome = historyMessages.filter((message, index) => {
-    const isDuplicateWelcome =
-      historyMessages.length <= 2 &&
-      index === historyMessages.length - 1 &&
+  let hasSeenUserMessage = false;
+  const historyWithoutDuplicateWelcome = historyMessages.filter((message) => {
+    if (message?.role === 'user') {
+      hasSeenUserMessage = true;
+      return true;
+    }
+
+    const isDuplicateInitialWelcome =
+      !hasSeenUserMessage &&
       message?.role === 'assistant' &&
       normalizeMessageContent(message?.content) === normalizedWelcome;
 
-    return !isDuplicateWelcome;
+    return !isDuplicateInitialWelcome;
   });
 
   return [existingWelcome, ...historyWithoutDuplicateWelcome];
