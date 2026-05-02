@@ -540,57 +540,6 @@ export const BLOG_POSTS = {
       ],
     },
   },
-  'instagram-dm-ai-reklam-roi': {
-    category: { tr: 'Sosyal Medya', en: 'Social Media' },
-    title: {
-      tr: 'Instagram DM\'lerini AI ile Yanıtlayarak Reklam Bütçenizden 2x Daha Fazla Verim Alın',
-      en: 'Get 2x More From Your Instagram Ad Budget With AI DM Responses',
-    },
-    excerpt: {
-      tr: 'Instagram reklamlarından gelen DM\'lere yapay zeka ile saniyeler içinde yanıt vermek, dönüşüm oranını ve reklam ROI\'sini nasıl iki katına çıkarıyor?',
-      en: 'Why responding to Instagram ad DMs in seconds with AI doubles conversion rate and ad ROI.',
-    },
-    date: '2026-03-30',
-    readTime: { tr: '6 dk', en: '5 min' },
-    author: 'Telyx Ekibi',
-    color: 'from-pink-500 via-red-500 to-yellow-500',
-    keywords: [
-      'instagram dm ai',
-      'instagram reklam roi',
-      'instagram dm chatbot',
-      'meta ads dm dönüşüm',
-      'instagram lead toplama',
-      'instagram satış otomasyonu',
-    ],
-    content: {
-      tr: [
-        { type: 'paragraph', text: 'Instagram\'da reklam yapan herkes aynı manzarayı biliyor: kampanya yayına girer, ilk birkaç saatte onlarca DM gelir, ekip yanıt vermeye yetişemez, gelen sorular kaybolur, sıcak lead\'ler soğur. Aylık 50.000 TL bütçe ile çalışan bir e-ticaret markasının iç verisinde bunu net görüyoruz: reklamdan gelen DM\'lerin yüzde 60\'ı ilk 30 dakika içinde yanıtlanmazsa müşteriye dönüşmüyor. Bu yazıda AI ile DM yanıtlamanın matematiğini ve uygulamayı anlatıyoruz.' },
-        { type: 'heading', text: 'Niye İlk 30 Dakika Bu Kadar Kritik?' },
-        { type: 'paragraph', text: 'Instagram\'da müşteri DM atarken aktif satın alma niyetinde oluyor. Reklam görüyor, ürünü beğeniyor, "Stokta var mı?" yazıyor. Eğer aynı akşam veya sabah yanıt verirseniz büyük ihtimalle satışı kaybediyorsunuz. Çünkü o müşteri gece yatmadan önce 5 marka daha tarıyor; yarın yine aynı niyetle gelmeyecek. Hızlı yanıt vermek satış kapama oranını ortalama yüzde 80 artırıyor.' },
-        { type: 'heading', text: 'AI Yanıtın Üç Avantajı' },
-        { type: 'paragraph', text: 'Birinci avantaj: yanıt süresi. AI ortalama 2-5 saniyede yanıt verir; insan ekip için en iyi durumda 5-15 dakika. İkinci avantaj: 7/24 hizmet. Reklam gece yarısı bile çalışıyor; AI da öyle. Üçüncü avantaj: kalifikasyon. AI lead\'in ilgi alanını, bütçesini, hangi şehirden olduğunu sorgulayabilir; bu sayede satış ekibine sadece sıcak lead\'ler iletilir.' },
-        { type: 'heading', text: 'AI Lead Kalifikasyonu Nasıl Çalışır?' },
-        { type: 'paragraph', text: 'Müşteri "stokta var mı?" sorduğunda AI önce ürünü doğrular, stoğu kontrol eder. Sonra alıcı niyetini netleştirmek için "size en uygun rengi/bedeni öneren bir bağlantı yollayayım mı?" gibi sorular sorar. Müşterinin yanıtlarına göre AI etiketler atar: "yüksek ilgili", "fiyat hassas", "şehir Ankara", "kadın seyirci". Bu etiketler Telyx\'ten CRM\'e geçer ve satış ekibi sadece "yüksek ilgili" lead\'lere odaklanır. Soğuk lead\'lere ise AI follow-up mesajı gönderir; örneğin 3 gün sonra "indirimli fiyatla ilgilenir misiniz?"' },
-        { type: 'heading', text: 'Reklam ROI Hesabı' },
-        { type: 'paragraph', text: 'Aylık 50.000 TL Instagram bütçeli bir markanın eski sürecinde 1.200 DM geliyordu, %15 dönüşümle 180 satış yapılıyordu (ortalama satış 850 TL = 153.000 TL ciro). AI DM yanıt sistemine geçiş sonrası: aynı 1.200 DM\'ye 5 saniyede yanıt verildi, dönüşüm yüzde 30\'a çıktı = 360 satış (306.000 TL ciro). Reklam bütçesi aynı, hatta öyle ki — gelir iki katına çıktı. Telyx Starter plan aylık 2.499 TL — yani aylık ek maliyet bütçenin yüzde 5\'i, ama gelir yüzde 100 arttı.' },
-        { type: 'heading', text: 'Story Reklamlardan Story Sticker\'a Akış' },
-        { type: 'paragraph', text: 'Instagram\'da Story reklamlardan gelen DM\'ler, feed reklamlarından gelenlere göre yüzde 25 daha sıcak. Çünkü Story\'de görülen ürünü hatırlama oranı daha yüksek. AI bu lead\'leri Story reklam etiketiyle özel akışa alabilir; "Story\'mizden gelmişsiniz" mesajıyla başlar, daha samimi tonla devam eder. Story sticker\'lardan (ör. "Sorularınız var mı?" sticker) gelen DM\'ler ise tamamen ücretsiz; AI bu kanalı tamamen organik lead toplama mecrası olarak kullanabilir.' },
-        { type: 'heading', text: 'Uyarı: Spam Görünmemek İçin' },
-        { type: 'paragraph', text: 'Meta, Instagram\'da otomatik mesajlaşmayı izliyor. Aşırı kişiselleştirilmiş ya da çok hızlı seri mesajlar (3 saniyede 5 mesaj) spam olarak değerlendirilebilir. AI yanıt akışında dikkat edilecek: ilk yanıt 3-10 saniye gecikmeli olabilir (insan hızında), uzun yanıtları 2-3 mesaja böl, müşterinin yazdığı dilde yanıtla. Telyx\'in spam-prevention katmanı bu kuralları otomatik uygular.' },
-      ],
-      en: [
-        { type: 'paragraph', text: 'Anyone who runs Instagram ads knows the picture: a campaign goes live, dozens of DMs arrive, the team cannot keep up, hot leads cool off. Internal data from a 50k TL/month e-commerce brand shows that DMs not answered within 30 minutes convert at 60% lower rates. AI DM response changes the math.' },
-        { type: 'heading', text: 'Why The First 30 Minutes' },
-        { type: 'paragraph', text: 'Instagram DMs come with active buying intent. Same-day delays cost the sale because customers compare 5+ brands before sleeping.' },
-        { type: 'heading', text: 'Three Advantages' },
-        { type: 'paragraph', text: 'AI reply time is 2-5 seconds. AI works 24/7. AI qualifies leads, passing only warm ones to sales.' },
-        { type: 'heading', text: 'ROI Calculation' },
-        { type: 'paragraph', text: 'A 50k TL monthly Instagram ad budget converted 180 sales (153k TL revenue) before AI. With AI DM response, conversion doubled to 360 sales (306k TL revenue) — same ad budget.' },
-        { type: 'heading', text: 'Avoiding Spam Flags' },
-        { type: 'paragraph', text: 'Meta watches automated messaging. Use 3-10 second response delays, split long messages into chunks, match customer language. Telyx applies these rules automatically.' },
-      ],
-    },
-  },
 };
 
 export const BLOG_SLUGS = Object.keys(BLOG_POSTS);

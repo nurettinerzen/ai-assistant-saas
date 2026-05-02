@@ -40,7 +40,6 @@ export default function Navigation() {
         { label: locale === 'tr' ? 'Telefon AI' : 'Phone AI', href: '/telefon' },
         { label: locale === 'tr' ? 'Web Sohbet' : 'Web Chat', href: '/web-sohbet' },
         { label: locale === 'tr' ? 'E-posta AI' : 'Email AI', href: '/e-posta' },
-        { label: 'Instagram DM AI', href: '/instagram' },
         { divider: true },
         { label: locale === 'tr' ? 'Tüm Çözüm Matrisi' : 'Full Solution Matrix', href: '/cozumler' },
       ]
