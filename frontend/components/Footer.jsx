@@ -28,7 +28,6 @@ export const Footer = () => {
         { label: isTR ? 'Telefon AI' : 'Phone AI', href: '/telefon' },
         { label: isTR ? 'Web Sohbet' : 'Web Chat', href: '/web-sohbet' },
         { label: isTR ? 'E-posta AI' : 'Email AI', href: '/e-posta' },
-        { label: 'Instagram DM AI', href: '/instagram' },
       ],
     },
     {

@@ -30,7 +30,6 @@ export const KEYWORD_TARGETS = [
   { query: 'web sohbet botu', targetUrl: '/web-sohbet', tier: 1, clusterId: 'channel-websohbet' },
   { query: 'site chatbot türkçe', targetUrl: '/web-sohbet', tier: 1, clusterId: 'channel-websohbet' },
   { query: 'gmail ai yanıt', targetUrl: '/e-posta', tier: 1, clusterId: 'channel-email' },
-  { query: 'instagram dm chatbot', targetUrl: '/instagram', tier: 1, clusterId: 'channel-instagram' },
 
   // ─── Tier 1: Industry hubs ───
   { query: 'e-ticaret chatbot', targetUrl: '/solutions/ecommerce', tier: 1, clusterId: 'industry-ecommerce' },

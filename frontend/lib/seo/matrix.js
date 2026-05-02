@@ -7,7 +7,6 @@ const CHANNELS = {
   telefon: { label: 'Telefon', icon: 'telefon', gradient: 'from-[#051752] to-[#006FEB]' },
   'web-sohbet': { label: 'Web Sohbet', icon: 'web-sohbet', gradient: 'from-[#000ACF] to-[#00C4E6]' },
   'e-posta': { label: 'E-posta', icon: 'e-posta', gradient: 'from-purple-600 to-indigo-600' },
-  instagram: { label: 'Instagram DM', icon: 'instagram', gradient: 'from-pink-500 via-red-500 to-yellow-500' },
 };
 
 const INDUSTRIES = {
@@ -512,127 +511,6 @@ export const MATRIX_LANDINGS = {
     keywords: ['eğitim e-posta otomasyonu', 'okul veli bildirimi', 'kurs kayıt e-postası', 'eğitim takip e-postası', 'öğrenci iletişim sistemi'],
   },
 
-  // ───────────── Instagram DM (6 industries) ─────────────
-  'instagram-e-ticaret': {
-    slug: 'instagram-e-ticaret',
-    channel: 'instagram',
-    industry: 'e-ticaret',
-    title: 'E-ticaret İçin Instagram DM Chatbot — Sipariş ve Ürün Sorgusu',
-    metaDescription: 'E-ticaret markanızın Instagram DM iletişimini AI ile otomatikleştirin. Ürün sorgusu, sipariş takibi ve sepet kurtarma. Reklamdan gelen DM\'ler kalifiye olur.',
-    heroTitle: 'Instagram Mağazanıza Otomatik DM Yanıtı',
-    heroSubtitle: 'Ürün postlarınıza ya da story sticker\'ınıza gelen mesajlara AI saniyeler içinde yanıt verir. Stok bilgisi, fiyat, sipariş ve kargo durumu sözlü olarak iletilir.',
-    useCases: [
-      { title: 'Ürün postu DM\'leri', body: '"Bu ürün stokta var mı?" sorusuna AI ürün katalogundan stok ve fiyat bilgisi çekerek anında yanıt verir; satın alma linkini sunar.' },
-      { title: 'Sipariş takibi', body: 'Müşteri "siparişim nerede?" diye sorduğunda AI sipariş numarasını arar, kargo entegrasyonundan durumu çekip iletir.' },
-      { title: 'Reklamdan gelen lead', body: 'Instagram reklamlarından DM gelen lead\'leri AI kalifiye eder, ihtiyaç sorgulaması yapar, satışa hazır olanları satış ekibine iletir.' },
-    ],
-    benefits: [
-      'DM yanıt süresi saniyelere iner',
-      'Reklam ROI\'si yüzde 30\'a kadar artar',
-      'Tüm Meta ekosistem (Instagram + Facebook) tek panelde',
-    ],
-    keywords: ['instagram dm chatbot', 'instagram e-ticaret otomasyonu', 'instagram ai yanıt', 'instagram sipariş takip', 'meta dm otomasyonu'],
-  },
-  'instagram-restoran': {
-    slug: 'instagram-restoran',
-    channel: 'instagram',
-    industry: 'restoran',
-    title: 'Restoran İçin Instagram DM — Rezervasyon ve Menü Soruları',
-    metaDescription: 'Restoranınızın Instagram DM iletişimini AI ile yönetin. Rezervasyon, menü, paket sipariş ve özel etkinlik soruları otomatik yanıtlanır.',
-    heroTitle: 'Restoranınıza Instagram\'dan Gelen Mesajlara 7/24 AI Yanıtı',
-    heroSubtitle: 'Story\'lerinize ve gönderilerinize gelen DM\'leri AI yanıtlar; rezervasyon alır, menü gösterir, paket sipariş işler. Sosyal medyadan satış kaçmaz.',
-    useCases: [
-      { title: 'Rezervasyon DM\'leri', body: '"Bu cumartesi 4 kişilik masa var mı?" sorusuna AI takvimi kontrol eder, müsait ise rezervasyonu kaydeder, onay verir.' },
-      { title: 'Menü ve fiyat soruları', body: 'AI menü pdf\'ini gönderir, gün menüsünü açıklar, vegan/vejetaryen seçenekleri listeler.' },
-      { title: 'Özel etkinlik talebi', body: 'Doğum günü, kurumsal yemek, özel mönü talepleri AI tarafından ön bilgi alındıktan sonra yöneticiye iletilir.' },
-    ],
-    benefits: [
-      'Sosyal medyadan rezervasyon dönüşümü artar',
-      'Hatırlatma mesajları no-show azaltır',
-      'Instagram + WhatsApp aynı asistanla yönetilir',
-    ],
-    keywords: ['instagram restoran dm', 'restoran instagram rezervasyon', 'restoran sosyal medya otomasyon', 'instagram menü soru', 'restoran instagram chatbot'],
-  },
-  'instagram-salon': {
-    slug: 'instagram-salon',
-    channel: 'instagram',
-    industry: 'salon',
-    title: 'Güzellik Salonu İçin Instagram DM — Otomatik Randevu',
-    metaDescription: 'Salonunuzun Instagram DM iletişimini AI ile yönetin. Story randevu sticker\'larından gelen mesajlar, fiyat soruları ve hizmet danışmanlığı otomatik.',
-    heroTitle: 'Instagram\'dan Gelen Randevu Taleplerini AI Yönetsin',
-    heroSubtitle: 'Story\'lerinize "randevu" sticker\'ı koyduğunuzda gelen DM\'lere AI saniyeler içinde yanıt verir; müsait saat sunar, randevuyu kaydeder.',
-    useCases: [
-      { title: 'Story randevu sticker DM\'leri', body: 'Story\'lere randevu sticker koyduğunuzda gelen otomatik mesajları AI yanıtlar, müsait slotları gösterir.' },
-      { title: 'Hizmet ve fiyat danışmanlığı', body: 'Müşteri "saç boyası ne kadar?" gibi sorduğunda AI hizmet listesi, süre ve fiyat bilgisini iletir.' },
-      { title: 'Önceki müşteri bağlantısı', body: 'Daha önce kayıt olmuş müşteriyse AI hatırlar, geçmiş randevuları referans verir, sadakat indirimini hatırlatır.' },
-    ],
-    benefits: [
-      'Story\'lerden randevuya dönüşüm artar',
-      'Sadakat programı otomatik takip',
-      'Randevu sistemi Google Calendar ile senkron',
-    ],
-    keywords: ['salon instagram dm', 'kuaför instagram randevu', 'estetik klinik instagram', 'salon sosyal medya otomasyon', 'güzellik merkezi instagram'],
-  },
-  'instagram-destek': {
-    slug: 'instagram-destek',
-    channel: 'instagram',
-    industry: 'destek',
-    title: 'Müşteri Destek İçin Instagram DM Otomasyonu',
-    metaDescription: 'Markanızın Instagram destek operasyonlarını AI ile otomatikleştirin. Sıkça sorulanlara saniyeler içinde yanıt, karmaşık konularda canlı temsilciye sorunsuz handoff.',
-    heroTitle: 'Instagram Destek Operasyonunuzu AI ile Hızlandırın',
-    heroSubtitle: 'Yorumlardan, story\'lerden ve gönderilerden gelen DM destek taleplerine AI hızlı yanıt verir. Karmaşık konular ekibe iletilir, müşteri başa dönmez.',
-    useCases: [
-      { title: 'SSS otomasyonu', body: 'Müşteri "iade nasıl yapılır?" sorduğunda AI politikayı anlatır, formu gönderir, iade kargosu hazırlar.' },
-      { title: 'Şikayet yönetimi', body: 'Olumsuz yorumlardan gelen DM\'leri AI tonu yumuşatarak yanıtlar, çözüm önerir, gerekirse yöneticiye iletir.' },
-      { title: 'Lead toplama', body: 'Marka takipçilerinden gelen sorgular AI tarafından kalifiye edilir, ilgi alanlarına göre etiketlenir, satış ekibine iletilir.' },
-    ],
-    benefits: [
-      'DM bekleme süresi sıfıra iner',
-      'Marka itibarı korunur',
-      'Şikayet yönetimi sistematik hale gelir',
-    ],
-    keywords: ['instagram destek otomasyonu', 'instagram müşteri hizmetleri', 'instagram dm yönetimi', 'sosyal medya destek ai', 'meta destek otomasyonu'],
-  },
-  'instagram-klinik': {
-    slug: 'instagram-klinik',
-    channel: 'instagram',
-    industry: 'klinik',
-    title: 'Klinik İçin Instagram DM — Estetik ve Sağlık Sorgu Yanıtları',
-    metaDescription: 'Estetik kliniği ve sağlık merkezleri için Instagram DM otomasyonu. Hizmet detayı, fiyat aralığı ve randevu için 7/24 yanıt. Tıbbi sorular doktora iletilir.',
-    heroTitle: 'Klinik Instagram\'ınıza Gelen DM\'leri AI Yönetsin',
-    heroSubtitle: 'Estetik öncesi-sonrası fotoğraflarınıza ve hizmet postlarınıza gelen DM\'leri AI bilgilendirir; tıbbi sorular doğrudan sekrekterye veya doktora iletilir.',
-    useCases: [
-      { title: 'Estetik hizmet bilgisi', body: 'AI hizmet detayını, süreyi ve fiyat aralığını iletir; randevu için takvim gösterir veya iletişim formuna yönlendirir.' },
-      { title: 'Vaka fotoğraflarına gelen sorgu', body: '"Bu işlem ne kadar?" gibi sorulara AI standart fiyat aralığı verir; kişisel değerlendirme için ön muayene randevusu önerir.' },
-      { title: 'Tıbbi soru filtrelemesi', body: 'AI tıbbi tanı/tedavi önerisi ASLA vermez; bu tür soruları doğrudan doktora veya sekrekterye yönlendirir.' },
-    ],
-    benefits: [
-      'Tıbbi sorumluluk riski sıfır (AI tıbbi yorum yapmaz)',
-      'Estetik kliniği lead\'leri kalifiye olur',
-      'KVKK uyumlu hasta veri yönetimi',
-    ],
-    keywords: ['estetik klinik instagram', 'klinik dm otomasyonu', 'sağlık merkezi instagram', 'estetik hizmet sorgusu', 'klinik sosyal medya'],
-  },
-  'instagram-egitim': {
-    slug: 'instagram-egitim',
-    channel: 'instagram',
-    industry: 'egitim',
-    title: 'Eğitim Kurumu İçin Instagram DM — Kayıt ve Soru Yanıtları',
-    metaDescription: 'Kurs ve eğitim kurumları için Instagram DM otomasyonu. Aday öğrenci sorularına anında yanıt, kurs bilgisi ve kayıt için tek tıkla form yönlendirme.',
-    heroTitle: 'Eğitim Kurumu Instagram\'ından Gelen Soruları AI Yanıtlasın',
-    heroSubtitle: 'Aday öğrenci ve veliler Instagram\'dan ders, fiyat ve kayıt soruları sorar; AI kursları açıklar, kayıt için form sunar, danışmanı bilgilendirir.',
-    useCases: [
-      { title: 'Kurs soruları', body: 'AI hangi kursun ne içerdiğini, başlangıç tarihini, eğitmenini açıklar; örnek ders linki sunar.' },
-      { title: 'Kayıt yönlendirme', body: 'Karar veren aday için AI kayıt formunu DM\'den gönderir, ödeme linkini ekler, takip e-postası ayarlar.' },
-      { title: 'Veli soruları', body: 'Veliler "çocuğum için hangi kurs?" gibi sorularda AI ön bilgi alır, danışman ile randevu önerir.' },
-    ],
-    benefits: [
-      'Reklamdan gelen lead\'ler kalifiye olur',
-      'Kayıt sezonunda DM yığılmaz',
-      'Veli iletişimi sistematik hale gelir',
-    ],
-    keywords: ['eğitim instagram dm', 'kurs instagram kayıt', 'okul sosyal medya', 'eğitim kurumu instagram', 'kurs aday sorgusu instagram'],
-  },
 };
 
 export const MATRIX_SLUGS = Object.keys(MATRIX_LANDINGS);

@@ -21,7 +21,6 @@ const STATIC_ROUTES = [
   { path: '/telefon', changeFrequency: 'weekly', priority: 0.9 },
   { path: '/web-sohbet', changeFrequency: 'weekly', priority: 0.9 },
   { path: '/e-posta', changeFrequency: 'weekly', priority: 0.9 },
-  { path: '/instagram', changeFrequency: 'weekly', priority: 0.85 },
   { path: '/cozumler', changeFrequency: 'weekly', priority: 0.8 },
   { path: '/about', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/contact', changeFrequency: 'monthly', priority: 0.7 },
