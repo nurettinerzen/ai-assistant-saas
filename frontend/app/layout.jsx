@@ -23,16 +23,19 @@ import { organizationSchema, websiteSchema } from '@/lib/seo/schemas';
 
 const metadataBase = runtimeConfig.siteUrl ? new URL(runtimeConfig.siteUrl) : undefined;
 const iconVersion = '20260413';
-const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || 'GTM-MQ6NHMKP';
-const GA_MEASUREMENT_ID = runtimeConfig.isBetaApp
-  ? null
-  : (process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-08CRCMG37C');
-const META_PIXEL_ID = runtimeConfig.isBetaApp
-  ? null
-  : (process.env.NEXT_PUBLIC_META_PIXEL_ID || '1458852735458229');
-const META_DOMAIN_VERIFICATION = runtimeConfig.isBetaApp
-  ? null
-  : (process.env.NEXT_PUBLIC_META_DOMAIN_VERIFICATION || 'ga7o0o26qenlpeya07p1dxd40tvd4');
+const marketingAnalyticsEnabled = runtimeConfig.isProductionApp;
+const GTM_ID = marketingAnalyticsEnabled
+  ? (process.env.NEXT_PUBLIC_GTM_ID || 'GTM-MQ6NHMKP')
+  : null;
+const GA_MEASUREMENT_ID = marketingAnalyticsEnabled
+  ? (process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-08CRCMG37C')
+  : null;
+const META_PIXEL_ID = marketingAnalyticsEnabled
+  ? (process.env.NEXT_PUBLIC_META_PIXEL_ID || '1458852735458229')
+  : null;
+const META_DOMAIN_VERIFICATION = marketingAnalyticsEnabled
+  ? (process.env.NEXT_PUBLIC_META_DOMAIN_VERIFICATION || 'ga7o0o26qenlpeya07p1dxd40tvd4')
+  : null;
 const inter = Inter({
   subsets: ['latin', 'latin-ext'],
   display: 'swap',

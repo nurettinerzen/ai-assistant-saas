@@ -1,4 +1,5 @@
 import runtimeConfig from '@/lib/runtime-config';
+import { KB_MANIFEST } from '@/lib/kb/loader';
 
 const STATIC_ROUTES = [
   { path: '/', changeFrequency: 'weekly', priority: 1.0 },
@@ -10,6 +11,8 @@ const STATIC_ROUTES = [
   { path: '/solutions/restaurant', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/solutions/salon', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/solutions/support', changeFrequency: 'monthly', priority: 0.8 },
+  { path: '/kaynak', changeFrequency: 'weekly', priority: 0.8 },
+  { path: '/sss', changeFrequency: 'monthly', priority: 0.7 },
   { path: '/about', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/contact', changeFrequency: 'monthly', priority: 0.7 },
   { path: '/blog', changeFrequency: 'weekly', priority: 0.7 },
@@ -67,5 +70,17 @@ export default function sitemap() {
     },
   }));
 
-  return [...staticEntries, ...blogEntries];
+  const kbEntries = KB_MANIFEST.map(({ slug }) => ({
+    url: `${baseUrl}/kaynak/${slug}`,
+    lastModified: now,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    alternates: {
+      languages: {
+        'tr-TR': `${baseUrl}/kaynak/${slug}`,
+      },
+    },
+  }));
+
+  return [...staticEntries, ...blogEntries, ...kbEntries];
 }
