@@ -1,10 +1,17 @@
+import runtimeConfig from './runtime-config';
+
 const CAPI_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  '';
+  runtimeConfig.isProductionApp
+    ? (
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        ''
+      )
+    : '';
 const GA_MEASUREMENT_ID =
-  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ||
-  'G-08CRCMG37C';
+  runtimeConfig.isProductionApp
+    ? (process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-08CRCMG37C')
+    : '';
 const ATTRIBUTION_STORAGE_KEY = 'telyx_marketing_attribution_v1';
 const ANONYMOUS_ID_STORAGE_KEY = 'telyx_marketing_anonymous_id_v1';
 const SESSION_ID_STORAGE_KEY = 'telyx_marketing_session_id_v1';
@@ -356,6 +363,8 @@ function postToCapi(eventName, payload, eventId, pixelConfig, userData) {
 }
 
 function emitEvent(eventName, params = {}, options = {}) {
+  if (!runtimeConfig.isProductionApp) return;
+
   const browser = getBrowserContext();
   if (!browser || !eventName) return;
   const normalizedEventName = normalizeEventName(eventName);
