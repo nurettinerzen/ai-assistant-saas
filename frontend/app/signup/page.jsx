@@ -123,6 +123,10 @@ export default function SignupPage() {
         form_name: 'signup',
         email: formData.email,
       });
+      if (typeof window !== 'undefined' && window.telyx?.track) {
+        window.telyx.track('signup_complete', { form_name: 'signup', locale });
+        window.telyx.track('trial_start', { source: 'signup_form', form_name: 'signup', locale });
+      }
       toast.success(t('auth.accountCreated'));
       // Redirect to email verification pending page
       router.push('/auth/email-pending');

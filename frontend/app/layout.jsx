@@ -21,6 +21,10 @@ const META_PIXEL_ID = runtimeConfig.isBetaApp
 const META_DOMAIN_VERIFICATION = runtimeConfig.isBetaApp
   ? null
   : (process.env.NEXT_PUBLIC_META_DOMAIN_VERIFICATION || 'ga7o0o26qenlpeya07p1dxd40tvd4');
+const TELYX_ANALYTICS_HOST = runtimeConfig.isBetaApp
+  ? null
+  : (process.env.NEXT_PUBLIC_TELYX_ANALYTICS_HOST || null);
+const TELYX_ANALYTICS_SECRET = process.env.NEXT_PUBLIC_TELYX_ANALYTICS_SECRET || null;
 const inter = Inter({
   subsets: ['latin', 'latin-ext'],
   display: 'swap',
@@ -114,6 +118,14 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '${META_PIXEL_ID}');`,
             }}
+          />
+        ) : null}
+        {TELYX_ANALYTICS_HOST ? (
+          <Script
+            id="telyx-analytics"
+            src={`${TELYX_ANALYTICS_HOST.replace(/\/$/, '')}/analytics/telyx.js`}
+            strategy="afterInteractive"
+            data-secret={TELYX_ANALYTICS_SECRET || undefined}
           />
         ) : null}
       </head>
